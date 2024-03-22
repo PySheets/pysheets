@@ -1,0 +1,595 @@
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    background: #fef1e6;
+    border: 0 solid #AAA;
+    border-bottom-width: 1px;
+    height: 38px;
+    padding: 4px 12px;
+    color: #646464;
+}
+
+#selection {
+    color: #3f3f3f;
+}
+
+.logo-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.logo-container span {
+    padding-left: 8px;
+    font-size: 15px;
+    color: #754d15;
+}
+
+.logo-container span:hover {
+    color: #a7752f;
+}
+
+.logo {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.logo:hover {
+    opacity: 0.8;
+}
+
+.menu {
+    padding: 0 0 0 8px;
+}
+
+.blank,
+.row-label {
+    padding: 3px 6px 0 6px;
+    width: 30px;
+    height: 22px;
+    margin: 0 0 0 0;
+    color: black;
+    border: 0 solid transparent;
+    border-width: 0 0 4px 0;
+    background-color: transparent;
+    margin-bottom: -2px;
+}
+
+.row-label:hover {
+    border-color: #AAF;
+}
+
+.cell {
+    background-color: white;
+    padding: 2px 8px;
+    width: 92px;
+}
+
+input.arrow {
+    border-radius: 3px;
+    border: 1px solid rgb(255, 115, 0);
+}
+
+.inputs-marker {
+    position: absolute;
+}
+
+.current-marker {
+    position: absolute;
+}
+
+.column-label {
+    width: calc(100% - 4px);
+    padding: 4px 8px;
+    color: black;
+    text-align: center;
+    border: 0 solid transparent;
+    border-width: 0 4px 0 0;
+    background-color: transparent;
+    margin-right: -2px;
+}
+
+.column-label:hover {
+    border-color: #AAF;
+    background-color: #EEE;
+}
+
+h3 {
+    color: grey;
+    font-weight: 100;
+}
+
+.pysheets-img {
+    background-color: transparent;
+    padding: 0;
+    cursor: move;
+    margin: 20px;
+    float: left;
+}
+
+.pysheets-img img {
+    box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
+    border-radius: 2px;
+    border: 1px solid gray;
+}
+
+.sheet {
+    border-spacing: 0px;
+}
+
+.sheet th,
+td {
+    padding: 0px;
+}
+
+.main-editor-container {
+    width: 100%;
+    border-bottom: 3px solid transparent;
+}
+
+.main-editor-container:hover {
+    border-color: #AAF;
+}
+
+#editor {
+    width: 100%;
+    min-height: 25px;
+    font-family: 'Courier New', Courier, monospace;
+    background-color: white;
+}
+
+#value {
+    width: 100%;
+    color: #AAA;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.preview {
+    position: absolute;
+    background-color: white;
+    z-index: 1000;
+    float: left;
+    margin: 20px;
+    width: fit-content;
+    border: 1px solid rgb(176, 176, 176);
+    padding: 5px;
+    box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.preview table {
+    border-collapse: collapse;
+    border-color: transparent;
+}
+
+.preview td, .preview th {
+    padding: 4px 8px;
+    text-wrap: wrap;
+    border-color: lightgray;
+    max-width: 200px;
+}
+
+.preview thead > tr > th {
+    background-color: #d1e1fb;
+}
+
+.preview:hover .ui-resizable-handle {
+    background-color: #AAF;
+}
+
+.ltk-input {
+    border-color: transparent;
+    height: 23px;
+}
+
+.header {
+    z-index: 2000;
+}
+
+.header {
+    width: calc(100vw - 24px)
+}
+
+.editor-container {
+    overflow: hidden;
+    border: 0px solid #DDD;
+    border-left-width: 2px;
+    background-color: #f7f7f7;
+}
+
+.editor-container .ltk-textarea {
+    border-bottom-width: 2px;
+    height: 62px;
+}
+
+.editor-container .ltk-textarea:hover {
+    border-left-color: rgb(255, 200, 255);
+}
+
+#main {
+    display: block;
+    width: 100vw;
+    height: calc(100vh - 78px);
+    background-color: #f7f7f7;
+    opacity: 0.4;
+    position: absolute;
+    top: 48px;
+    z-index: 1;
+}
+
+#dashboard {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+}
+
+.leader-line,
+.inputs-marker {
+    z-index: 2;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+    background-color: #f7f7f7;
+    height: 100vh;
+}
+
+input {
+    background-color: transparent;
+}
+
+.site-header {
+    display: flex;
+    height: 24px;
+    align-items: center;
+}
+
+.column.grow {
+    flex: 1;
+}
+
+.column {
+    height: 24px;
+    align-items: center;
+}
+
+#cell-font-color, #cell-fill {
+    padding: 0;
+    inline-size: 17px;
+    block-size: 19px;
+    background: white;
+}
+
+.user-image:hover {
+    display: none;
+    border: 3px solid rgb(219, 134, 73);
+}
+
+.cell-attributes-container {
+    display: none;
+}
+
+.user-image-container {
+    display: flex;
+    flex-direction: row;
+    height: 24px;
+}
+
+.other-editor {
+    margin-left: 8px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    border-radius: 14px;
+    width: 21px;
+    height: 21px;
+    color: white;
+}
+
+.disclaimer {
+    width: 600px;
+    text-align:justify;
+}
+
+.login-form {
+    width: 400px;
+}
+
+#login-container {
+    display: none;
+    font-family: Arial;
+    position: absolute;
+    display: block;
+    top: 50px;
+    width: 100%;
+    z-index: 10;
+}
+
+#login-container input.text {
+    padding: 16px;
+    width: 300px;
+    border: 1px solid gray;
+    border-radius: 4px;
+    background-color: white;
+    margin-bottom: 16px;
+}
+
+#login-container input.text:hover {
+    background-color: rgb(245, 245, 245);
+}
+
+#login-container button {
+    padding: 16px 14px;
+    width: 120px;
+    border: 3px solid gray;
+    border-radius: 4px;
+    color: white;
+}
+
+#login-container button:hover {
+    border-color: orange;
+}
+
+#login-container #login-login {
+    background-color: var(--ltk-primary);
+    width: 334px;
+}
+
+#login-container #login-reset {
+    background-color: var(--ltk-primary);
+    width: 334px;
+    display: none;
+}
+
+#login-container #login-confirm {
+    background-color: var(--ltk-primary);
+    width: 334px;
+    display: none;
+}
+
+#login-container #login-register {
+    background-color: var(--ltk-primary);
+    width: 334px;
+    display: none;
+}
+
+#login-container #login-code {
+    display: none;
+}
+
+#login-container #login-message {
+    color: red;
+}
+
+#login-container #login-register-link, #login-signin-link, #login-password-reset {
+    color: var(--ltk-primary);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+#login-container #login-password-reset {
+    display: none;
+}
+
+#title {
+    font-size: 16px;
+    width: 100%;
+    height: 28px;
+    border: 1px solid transparent;
+    margin-left: 8px;
+    color: #646464;
+}
+
+#title:hover {
+    border: 1px solid grey;
+}
+
+#info {
+    width: 35vw;
+    font-style: italic;
+    font-size: 16px;
+}
+
+#value,
+#selection {
+    padding: 6px 6px 0 6px;
+    height: 28px;
+}
+
+#selection {
+    width: 56px;
+}
+
+td {
+    position: relative;
+    vertical-align: top;
+}
+
+img.loading {
+    position: absolute;
+    z-index: 100;
+    left: 50vw;
+    top: 50vh;
+    width: 50px;
+}
+
+.py-error {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 1000%;
+    text-wrap: wrap;
+}
+
+.new-button {
+    background-color: white;
+    border-radius: 15px;
+    border: 3px solid #BBB;
+    padding: 35px;
+    margin: 16px;
+    float: left;
+    box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
+    cursor: pointer;
+}
+
+.new-button:hover {
+    background-color: #d7ecfc;
+    border-color: #86caff;
+}
+
+.share-label {
+    width: 300px;
+}
+
+.share-email {
+    margin: 8px 0 24px 0;
+    width: 98%;
+}
+
+.share-button {
+    float: right;
+    width: 80px;
+    padding: 12px;
+    background-color: #185abc;
+    color: white;
+}
+
+.cancel-button {
+    float: right;
+    width: 80px;
+    padding: 12px;
+    margin-right: 12px;
+}
+
+.share-popup {
+    border-radius: 4px;
+    padding: 4px;
+    margin: 4px;
+    background-color: white;
+    font-size: 14px;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+}
+
+.document-card {
+    display: flex;
+    float: left;
+    background-color: white;
+    border-radius: 15px;
+    border: 3px solid #BBB;
+    margin: 16px;
+    box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.document-card:hover {
+    background-color: #d7ecfc;
+    border-color: #86caff;
+}
+
+.document-card:focus {
+    border-color: #86caff;
+}
+
+.document-card .ltk-image {
+    width: 200px;
+    height: 150px;
+    border: 1px solid #AAA;
+    margin-bottom: 8px;
+}
+
+.document-card .ltk-text {
+    width: 200px;
+    margin: auto;
+    text-align: center;
+    font-size: 16px;
+    text-overflow: ellipsis;
+}
+
+.document-button {
+    width: 100px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    margin: auto;
+    padding: 12px 0;
+    color: white;
+    border-radius: 6px;
+    background-color: #185abc;
+}
+
+.ltk-table-cell {
+    font-family: Arial;
+    padding: 0;
+    border-width: 1px 0 0 1px;
+    height: 22px;
+}
+
+.ltk-switch-checkbox:checked+.ltk-switch {
+    background-color: #fbcb7a;
+}
+
+.debug-info {
+    display: none;
+    position: absolute;
+    background-color: rgb(253, 253, 235);
+    padding: 3px;
+    border: 1px solid gray;
+    z-index: 10000;
+    max-width: 250px;
+    text-wrap: wrap;
+    overflow-wrap: break-word;
+}
+
+td:hover .debug-info {
+    display: block;
+}
+
+.menu-button {
+    background-color: transparent;
+    font-size: 25px;
+    font-weight: bold;
+    border-width: 0;
+    width: 14px;
+}
+
+.menu-button:hover {
+    font-size: 30px;
+}
+
+.packages-container {
+    align-content: center;
+    flex-wrap: wrap;
+}
+
+#packages {
+    background-color: white;
+    width: 300px;
+}
+
+.console {
+    background-color: lightyellow;
+    min-height: 300px;
+    width: 100%;
+    padding: 8px;
+}
+
+.console pre {
+    margin: 0;
+}
+
+.console .error {
+    color: red;
+}
+
+.console .warning {
+    color: rgb(207, 112, 3);
+}
+

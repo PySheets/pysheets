@@ -1,0 +1,21 @@
+runtime: python39
+app_engine_apis: true
+
+handlers:
+- url: /
+  script: main.app
+- url: /.*
+  script: main.app
+
+inbound_services:
+- mail
+- mail_bounce
+
+env_variables:
+  MAIL_SENDER_ADDRESS: 'laffra@gmail.com'
+  APP_VERSION: 0.1.1
+
+resources:
+  cpu: 2
+  memory_gb: 2.3
+  disk_size_gb: 10

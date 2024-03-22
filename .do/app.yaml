@@ -1,0 +1,8 @@
+name: pysheets
+services:
+- environment_slug: python
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: ascend-software-company/pysheets-prod
+  name: pysheets

@@ -1,0 +1,3 @@
+import pysheets
+
+pysheets.main()
