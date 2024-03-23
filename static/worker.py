@@ -28,7 +28,6 @@ class PyScriptResponse():
         self.url = url
         self.status = status
         self.content = content
-        print(self)
 
     def json(self):
         return json.loads(self.content)
@@ -43,7 +42,6 @@ class PyScriptResponse():
 class PyScriptSession(OriginalSession):
     def __init__(self):
         OriginalSession.__init__(self)
-        print("NEW Session", self)
 
     def request(self,
         method,
@@ -74,6 +72,14 @@ requests.Session = PyScriptSession
 requests.session = lambda: PyScriptSession()
 
 import urllib.request
+ 
+
+def wrap_as_file(content):
+    try:
+        return io.BytesIO(content)
+    except:
+        return io.StringIO(content)
+
 
 def load_with_trampoline(url):
     def get(url):
@@ -84,32 +90,16 @@ def load_with_trampoline(url):
             raise IOError(f"HTTP Error: {xhr.status} for {url}")
         return xhr.responseText
 
-    if url and url[0] == "/":
-        url = f"https://{window.location.host}{url}"
-    elif not url.startswith("https://"):
-        url = f"{window.location.href}{url}"
-    bytes_or_string = get(window.addToken(f"/load?u={window.encodeURIComponent(url)}"))
-    print("load =>", type(bytes_or_string), bytes_or_string[:32])
-    try:
-        response = base64.b64decode(bytes_or_string)
-    except:
-        response = bytes_or_string
-    try:
-        return json.loads(response)
-    except:
-        return response
+    if url and url[0] != "/":
+        url = f"/load?u={window.encodeURIComponent(url)}"
+
+    return base64.b64decode(get(window.addToken(url)))
+   
 
 
 def urlopen(url, data=None, timeout=3, *, cafile=None, capath=None, cadefault=False, context=None):
-    try:
-        content = load_with_trampoline(url)
-        print("urlopen", url, "=>", type(content), len(content))
-        try:
-            return io.BytesIO(content)
-        except:
-            return io.StringIO(content)
-    except Exception as e:
-        print("urlopen", "error", e)
+    return wrap_as_file(load_with_trampoline(url))
+
 
 urllib.request.urlopen = urlopen
 
@@ -197,7 +187,7 @@ def run_script(script, inputs):
 
         @classmethod
         def load(cls, url):
-            return load_with_trampoline(url)
+            return urlopen(url)
 
     _globals = {}
     _globals.update(inputs)
@@ -235,19 +225,19 @@ def create_preview(result):
     try:
         return get_image_data(result)
     except:
-        pass
+        pass # print(traceback.format_exc())
     try:
         return get_image_data(result.get_figure())
     except:
-        pass
+        pass # print(traceback.format_exc())
     try:
         return result._repr_html_()
     except:
-        pass
+        pass # print(traceback.format_exc())
     try:
         return get_dict_table(result)
     except:
-        pass
+        pass # print(traceback.format_exc())
     return str(result)
 
 
