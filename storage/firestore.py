@@ -332,11 +332,9 @@ def check_owner(token, uid):
 
 def check_admin(token):
     user = token_to_email.document(token).get().to_dict()
-    if user:
-        email = user[constants.DATA_KEY_EMAIL]
-
-        if not email in admins:
-            raise ValueError(f"Not an admin: {email}")
+    if user and user[constants.DATA_KEY_EMAIL] in admins:
+        return
+    raise ValueError(f"admin")
 
 
 def share(token, sheet_id, email):
