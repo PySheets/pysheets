@@ -13,8 +13,8 @@ import json
 import pyscript # type: ignore
 import requests
 
-
-from constants import *
+DATA_KEY_URL = "u"
+DATA_KEY_TOKEN = "t"
 
 window = pyscript.window
 get = window.get
