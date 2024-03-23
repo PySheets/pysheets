@@ -260,7 +260,7 @@ def start_worker():
         return
     console.write("worker", f"Loading Browser Worker {constants.ICON_HOUR_GLASS}")
     url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
-    packages = url_packages.split(",") if url_packages else []
+    packages = url_packages.split(" ") if url_packages else []
     config = {
         "packages": [ "pandas", "matplotlib", "seaborn", "numpy", "requests" ] + packages,
         "files": {
@@ -268,7 +268,6 @@ def start_worker():
             "https://raw.githubusercontent.com/laffra/ltk/main/ltk/jquery.py": "ltk/jquery.py",
         }
     }
-    import json
     worker = XWorker(f"./worker{window.app_version}.py", config=ltk.to_js(config), type="pyodide")
     ltk.register_worker("pyodide-worker", worker)
     worker_ready[id(worker)] = False
