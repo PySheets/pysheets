@@ -262,7 +262,7 @@ def start_worker():
     url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
     packages = url_packages.split(",") if url_packages else []
     config = {
-        "packages": [ "pandas", "matplotlib", "seaborn", "numpy" ] + packages,
+        "packages": [ "pandas", "matplotlib", "seaborn", "numpy", "requests" ] + packages,
         "files": {
             "static/constants.py": "constants.py", 
             "https://raw.githubusercontent.com/laffra/ltk/main/ltk/jquery.py": "ltk/jquery.py",
