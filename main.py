@@ -38,7 +38,6 @@ def handle_error(error):
     response = { 
         DATA_KEY_ERROR: f"{error.__class__.__name__}: {error}",
         DATA_KEY_STATUS: "error",
-        DATA_KEY_STACK: traceback.format_exc()
     }
     return response
 
@@ -188,7 +187,6 @@ def share():
     token = request.args.get(DATA_KEY_TOKEN)
     storage.share(token, uid, email)
     return jsonify({ DATA_KEY_STATUS: "OK" })
-
 
 
 @app.route("/users", methods=["GET"])
