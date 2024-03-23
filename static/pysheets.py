@@ -19,7 +19,6 @@ logger = logging.getLogger("root")
 logger.setLevel(
     logging.DEBUG if state.mode == constants.MODE_DEVELOPMENT else logging.INFO
 )
-
 local_storage = window.localStorage
 proxy = ltk.proxy
 
@@ -1089,12 +1088,14 @@ def main():
 
 
 ltk.schedule(watch, "watch", 3)
-version = sys.version.split()[0].replace(";", "")
+vm_version = sys.version.split()[0].replace(";", "")
 minimized = "minimized" if __name__ != "pysheets" else "full"
-message = f"Browser Main: Python={version}. VM={state.vm_type(sys.version)}. Mode={state.mode}-{minimized}."
+message = f"Browser Main: Python={vm_version}. VM={state.vm_type(sys.version)}. Mode={state.mode}-{minimized}."
 logger.info(message)
+
+app_version = __name__[5:].replace("_", ".") if __name__.startswith("main_v") else "dev" 
 state.console.write(
     "welcome",
-    "PySheets is in alpha-mode. Use only for experiments.",
+    f"PySheets {app_version} is in alpha-mode. Use only for experiments.",
 )
 state.console.write("pysheets", message)
