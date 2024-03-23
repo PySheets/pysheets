@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 import sys
 import time
@@ -8,6 +9,109 @@ import js # type: ignore
 import polyscript # type: ignore
 import pyodide # type: ignore
 import pyscript # type: ignore
+import json
+import pyscript # type: ignore
+import requests
+
+
+from constants import *
+
+window = pyscript.window
+get = window.get
+cache = {}
+
+OriginalSession = requests.Session
+
+
+class PyScriptResponse():
+    def __init__(self, url, status, content):
+        self.url = url
+        self.status = status
+        self.content = content
+        print(self)
+
+    def json(self):
+        return json.loads(self.content)
+
+    def text(self):
+        return self.content
+
+    def __repr__(self):
+        return f"Response[{self.url}, {self.status}, {self.content[32]}...]"
+
+
+class PyScriptSession(OriginalSession):
+    def __init__(self):
+        OriginalSession.__init__(self)
+        print("NEW Session", self)
+
+    def request(self,
+        method,
+        url,
+        params=None,
+        data=None,
+        headers=None,
+        cookies=None,
+        files=None,
+        auth=None,
+        timeout=None,
+        allow_redirects=True,
+        proxies=None,
+        hooks=None,
+        stream=None,
+        verify=None,
+        cert=None,
+        json=None,
+    ):
+        xhr = window.XMLHttpRequest.new()
+        xhr.open(method, f"load?{DATA_KEY_TOKEN}={window.getToken()}&{DATA_KEY_URL}={url}", False)
+        xhr.setRequestHeader("Authorization", (headers or self.headers).get("Authorization"))
+        xhr.send(data)
+        return PyScriptResponse(url, xhr.status, xhr.responseText)
+
+
+requests.Session = PyScriptSession
+requests.session = lambda: PyScriptSession()
+
+import urllib.request
+
+def load_with_trampoline(url):
+    def get(url):
+        xhr = window.XMLHttpRequest.new()
+        xhr.open("GET", url, False)
+        xhr.send(None)
+        if xhr.status != 200:
+            raise IOError(f"HTTP Error: {xhr.status} for {url}")
+        return xhr.responseText
+
+    if url and url[0] == "/":
+        url = f"https://{window.location.host}{url}"
+    elif not url.startswith("https://"):
+        url = f"{window.location.href}{url}"
+    bytes_or_string = get(window.addToken(f"/load?u={window.encodeURIComponent(url)}"))
+    print("load =>", type(bytes_or_string), bytes_or_string[:32])
+    try:
+        response = base64.b64decode(bytes_or_string)
+    except:
+        response = bytes_or_string
+    try:
+        return json.loads(response)
+    except:
+        return response
+
+
+def urlopen(url, data=None, timeout=3, *, cafile=None, capath=None, cadefault=False, context=None):
+    try:
+        content = load_with_trampoline(url)
+        print("urlopen", url, "=>", type(content), len(content))
+        try:
+            return io.BytesIO(content)
+        except:
+            return io.StringIO(content)
+    except Exception as e:
+        print("urlopen", "error", e)
+
+urllib.request.urlopen = urlopen
 
 
 TOPIC_INFO = "log.info"
@@ -40,11 +144,6 @@ class Logger():
 
     def format(self, *args):
         return f"Worker: {' '.join(str(arg) for arg in args)}"
-
-
-window = pyscript.window
-get = window.get
-cache = {}
 
 logger = Logger()
 
@@ -97,29 +196,8 @@ def run_script(script, inputs):
             return pandas.DataFrame.from_dict(data)
 
         @classmethod
-        def get(cls, url):
-            xhr = window.XMLHttpRequest.new()
-            xhr.open("GET", url, False)
-            xhr.send(None)
-            return xhr.responseText
-
-        @classmethod
         def load(cls, url):
-            print("load", url)
-            if url and url[0] == "/":
-                url = f"https://{window.location.host}{url}"
-            elif not url.startswith("https://"):
-                url = f"{window.location.href}{url}"
-            bytes_or_string = cls.get(window.addToken(f"/load?u={window.encodeURIComponent(url)}"))
-            print("load =>", bytes_or_string)
-            try:
-                response = base64.b64decode(bytes_or_string)
-            except:
-                response = bytes_or_string
-            try:
-                return json.loads(response)
-            except:
-                return response
+            return load_with_trampoline(url)
 
     _globals = {}
     _globals.update(inputs)
@@ -152,7 +230,6 @@ def get_image_data(figure):
 
 
 def create_preview(result):
-    print("preview", str(result))
     if str(result) == "DataFrame":
         return str(result)
     try:
@@ -193,7 +270,8 @@ def run(job):
         return
 
     try:
-        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps([key, time.time() - start, kind, create_preview(result)]))
+        preview = create_preview(result)
+        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps([key, time.time() - start, kind, preview]))
     except Exception as e:
         publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps([key, time.time() - start, str(e), traceback.format_exc()]))
 
