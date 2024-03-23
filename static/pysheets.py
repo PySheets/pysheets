@@ -1093,8 +1093,7 @@ minimized = "minimized" if __name__ != "pysheets" else "full"
 message = f"Browser Main: Python={vm_version}. VM={state.vm_type(sys.version)}. Mode={state.mode}-{minimized}."
 logger.info(message)
 
-app_version = __name__[5:].replace("_", ".") if __name__.startswith("main_v") else "dev" 
-print("App Version:", app_version, __name__)
+app_version = "dev" 
 state.console.write(
     "welcome",
     f"PySheets {app_version} is in alpha-mode. Use only for experiments.",

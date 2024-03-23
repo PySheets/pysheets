@@ -55,18 +55,21 @@ cd static
 python3 ../bundle.py main.py  &&  mv main_min_*.py ../dist/static
 cd ..
 cat dist/static/main_min_0.py | \
+    sed "s/app_version = 'dev'/app_version = '$version'/g" | \
     sed "s/main_min_0 /main_min_0_$version /g" | \
     sed "s/main_min_1 /main_min_1_$version /g" | \
     sed "s/main_min_2 /main_min_2_$version /g" | \
     sed "s/pysheets.css/pysheets_$version.css/g" | \
     > dist/static/main_min_0_$version.py
 cat dist/static/main_min_1.py | \
+    sed "s/app_version = 'dev'/app_version = '$version'/g" | \
     sed "s/main_min_0 /main_min_0_$version /g" | \
     sed "s/main_min_1 /main_min_1_$version /g" | \
     sed "s/main_min_2 /main_min_2_$version /g" | \
     sed "s/pysheets.css/pysheets_$version.css/g" | \
     > dist/static/main_min_1_$version.py
 cat dist/static/main_min_2.py | \
+    sed "s/app_version = 'dev'/app_version = '$version'/g" | \
     sed "s/main_min_0 /main_min_0_$version /g" | \
     sed "s/main_min_1 /main_min_1_$version /g" | \
     sed "s/main_min_2 /main_min_2_$version /g" | \
