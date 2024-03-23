@@ -251,7 +251,7 @@ class Formula(Node):
     def run_in_worker(self):
         if not worker or self.loading:
             return
-        status = "Running" if state.worker_ready[id(worker)] else "Pending"
+        status = "Running" if state.worker_ready[id(worker)] else "Waiting for Worker..."
         state.console.write(
             f"worker-run-{self.key}",
             f"{self.key}: {status} {constants.ICON_HOUR_GLASS}",
