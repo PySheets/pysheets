@@ -15,14 +15,26 @@
         return new Date().getTime() / 1000.0;
     }
 
+    window.get_response_body = (request) => {
+        try {
+            const bytes = new Uint8Array(request.response);
+            for (var i = 0, len = bytes.length; i < len; ++i) {
+                bytes[i] = request.response[i];
+            }
+            return bytes;
+        } catch(exception) {
+            return request.responseText;
+        }
+    }
+
     window.get = (url) => {
         const request = new XMLHttpRequest();
         request.open("GET", addToken(url), false);
         request.send(null);
         if (request.status === 200) {
-            return request.responseText;
+            return window.get_response_body(request);
         }
-        return `Error: ${request.status}`
+        return `Get error for ${url}: ${request.status}`
     }
 
     window.post = (url, data) => {
@@ -30,9 +42,9 @@
         request.open("POST", addToken(url), false);
         request.send(data);
         if (request.status === 200) {
-            console.log(request.responseText);
-            return request.responseText;
+            return window.get_response_body(request);
         }
+        return `Post error for ${url}: ${request.status}`
     }
 
     setTimeout(() => $("py-splashscreen").text(""), 10);
