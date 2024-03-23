@@ -317,7 +317,7 @@ class Formula(Node):
             key, duration, kind, value = result
             node = Node.nodes[key]
             node.update(kind, value)
-            if value.startswith("Traceback"):
+            if value and value.startswith("Traceback"):
                 state.console.write(key, f"{key}: Error {value}")
             else:
                 counts[key] += 1
