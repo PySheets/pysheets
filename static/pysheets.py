@@ -654,7 +654,7 @@ def save_edits():
     )
 
 
-def save_file():
+def save_file(done=None):
     try:
         now = ltk.get_time()
         state.doc.timestamp = now
@@ -673,7 +673,7 @@ def save_file():
             for n, row in enumerate(ltk.find_list(".row-label"), 1)
             if round(row.height()) != constants.DEFAULT_ROW_HEIGHT
         )
-        packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
+        packages = " ".join(ltk.find("#packages").val().replace(",", " ").split())
         data = {
             constants.DATA_KEY_UID: state.doc.uid,
             constants.DATA_KEY_NAME: state.doc.name,
@@ -692,6 +692,8 @@ def save_file():
 
         def save_done(response):
             state.doc.dirty = False
+            if done:
+                done()
 
         # print("save", window.JSON.stringify(ltk.to_js(data), None, 4))
         url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
@@ -876,9 +878,8 @@ def reload_with_packages(packages):
 
 
 def save_packages(event):
-    save_file()
-    packages = ",".join(ltk.find("#packages").val().replace(",", " ").split())
-    ltk.schedule(lambda: reload_with_packages(packages), "reload-packages", 1)
+    packages = " ".join(ltk.find("#packages").val().replace(",", " ").split())
+    save_file(lambda: reload_with_packages(packages))
 
 
 def create_topbar():
