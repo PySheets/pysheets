@@ -171,7 +171,7 @@ def forget_me(event):
                 .css("background", "green")
                 .css("margin-right", "30px"),
             button
-                .on("click", lambda event: (dialog.remove(), really_forget_me()))
+                .on("click", ltk.proxy(lambda event: (dialog.remove(), really_forget_me())))
         )
     ).dialog()
     dialog.parent().css("width", 400)
