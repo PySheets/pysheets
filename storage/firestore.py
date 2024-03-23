@@ -55,7 +55,6 @@ TUTORIAL_UIDS = [
 
 admins = [
     "laffra@gmail.com",
-    "chrislaffra@gmail.com",
 ]
 password_iterations = 100000
 password_key_length = 64
