@@ -783,7 +783,6 @@ def setup_login():
 
     def register(event):
         def handle_register(data):
-            print("Handle registration")
             if not data or data.get(constants.DATA_KEY_STATUS) == "error":
                 error("Could not register with that email. Try signing in.")
             else:
