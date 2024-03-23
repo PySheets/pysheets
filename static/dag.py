@@ -6,9 +6,7 @@ import constants
 import logging
 
 logger = logging.getLogger("root")
-
 counts = collections.defaultdict(int)
-
 worker = state.start_worker()
 
 
