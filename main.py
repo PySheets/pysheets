@@ -191,7 +191,8 @@ def share():
 
 @app.route("/users", methods=["GET"])
 def users():
-    return storage.get_users(request.args.get(DATA_KEY_TOKEN))
+    response = storage.get_users(request.args.get(DATA_KEY_TOKEN))
+    return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
 
 
 @app.route("/file", methods=["GET", "POST", "DELETE"])
