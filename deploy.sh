@@ -1,9 +1,16 @@
 clear
 
-printf  "Did you update the version in app.yaml? (y/n) " yn
-read answer
+export prod=`grep APP_VERSION ../pysheets-prod/app.yaml`
+export dev=`grep APP_VERSION app.yaml`
+echo "Version in prod:" $prod
+echo "Version in dev: " $dev
+echo
 
-if [ "$answer" = "y" ] ;then 
+if [ "$prod" = "$dev" ] ;then 
+    echo "Versions in prod and dev are the same."
+    echo "Update the version in app.yaml."
+    echo "Then run this script again."
+else
     source build.sh
     (
         cd ../pysheets-prod;
