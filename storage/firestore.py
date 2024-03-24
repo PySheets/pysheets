@@ -9,8 +9,6 @@ import re
 import requests
 import time
 import uuid
-import urllib.request
-import urllib.parse
     
 
 import static.constants as constants
