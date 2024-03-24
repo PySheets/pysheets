@@ -639,7 +639,7 @@ def save_edits():
         if edit:
             edits[key] = edit
             if state.mode == constants.MODE_DEVELOPMENT:
-                state.console.write(f"edit-sent-{key}", f"{key} sent {edit}")
+                state.console.write(f"edit-sent-{key}", f"Send edit {edit}")
     state.doc.edit_count += len(edits)
     state.console.write("edits-sent", f"[Edits] Sent to server: {state.doc.edit_count}.")
     print("save edits", state.sync_edits, len(state.doc.edits))
@@ -654,6 +654,7 @@ def save_edits():
         },
         proxy(lambda response: state.doc.empty_edits()),
     )
+    save_file()
 
 
 def save_file(done=None):
@@ -685,7 +686,7 @@ def save_file(done=None):
             constants.DATA_KEY_PACKAGES: packages,
             constants.DATA_KEY_COLUMNS: columns,
             constants.DATA_KEY_ROWS: rows,
-            constants.DATA_KEY_RUNTIME: "pyodide" if ltk.find("#run-in-main").prop("checked") else "micropython",
+            constants.DATA_KEY_RUNTIME: "pyodide" if ltk.find("#run-in-main").prop("checked") == True else "micropython",
             constants.DATA_KEY_PREVIEWS: previews,
             constants.DATA_KEY_EDITOR_WIDTH: main_editor.width(),
             constants.DATA_KEY_CURRENT: SpreadsheetCell.current.key if SpreadsheetCell.current else "",
@@ -705,7 +706,6 @@ def save_file(done=None):
 
 def save_changes():
     save_edits()
-    save_file()
 
 
 def get_plot_screenshot():
@@ -896,7 +896,6 @@ def create_topbar():
 
     @saveit
     def run_in_main(event):
-        print("RUNTIME:", ltk.find(event.target).prop("checked"), "pyodide" if ltk.find(event.target).prop("checked") else "micropython")
         show_button()
         ltk.find("#run-in-main").prop("checked", ltk.find(event.target).prop("checked"))
 
