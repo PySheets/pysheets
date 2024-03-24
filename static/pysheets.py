@@ -11,7 +11,7 @@ import editor
 import sys
 import constants
 
-state.console.write("pysheets", f"Pysheets starting {constants.ICON_HOUR_GLASS}")
+state.console.write("pysheets", f"[Main] Pysheets starting {constants.ICON_HOUR_GLASS}")
 
 previews = {}
 
@@ -80,7 +80,7 @@ class SpreadsheetCell(ltk.Input):
         )
 
     def set(self, value):
-        if self.val():
+        if False and self.val():
             state.console.write(self.key, f"{self.key}: set to {repr(value)}")
         self.value = dag.create(self.key, value)
         ltk.schedule(self.update_input, f"update_input {self.key}")
@@ -434,7 +434,7 @@ def handle_edits(data):
         edit[constants.DATA_KEY_CURRENT] = data.get(constants.DATA_KEY_CURRENT, "")
         changed_cells = load_data(edit)
         for key in changed_cells:
-            if state.mode == constants.MODE_DEVELOPMENT:
+            if False and state.mode == constants.MODE_DEVELOPMENT:
                 state.console.write(f"edit-received-{key}", f"{key} received {str(SpreadsheetCell.cells[key])}")
             SpreadsheetCell.cells[key].notify()
         update_editor(edit, changed_cells)
@@ -466,7 +466,7 @@ def remove_arrows(duration=0):
 
 
 def load_cells(cells):
-    state.console.write("sheet", f"Loading [{','.join(cells.keys())}].")
+    state.console.write("sheet", f"[Main] Loading [{','.join(cells.keys())}].")
     for key, settings in cells.items():
         cell = SpreadsheetCell.get_cell(key)
         value = settings[constants.DATA_KEY_VALUE]
@@ -570,12 +570,12 @@ def restore_history(event):
         before = f"{constants.DATA_KEY_BEFORE}={window.time()}"
         after = f"{constants.DATA_KEY_AFTER}={window.time() - 3600000}"
         url = f"/history?{docid}&{before}&{after}"
-        state.console.write("history", f"Loading history {constants.ICON_HOUR_GLASS}")
+        state.console.write("history", f"[Main] Loading history {constants.ICON_HOUR_GLASS}")
         ltk.get(state.add_token(url), proxy(load_history))
 
 
 def load_history(history):
-    state.console.write("history", f"Loaded history {history.keys()}")
+    state.console.write("history", f"[History] Loaded history {history.keys()}")
     edits = sorted(
         history[constants.DATA_KEY_EDITS],
         key=lambda edit: edit.get(constants.DATA_KEY_TIMESTAMP, 0),
@@ -585,7 +585,7 @@ def load_history(history):
 
 def load_history_chunk(edits):
     if edits:
-        state.console.write("history", f"Load {len(edits)} edits in history")
+        state.console.write("history", f"[History] Load {len(edits)} edits in history")
         with dag.layer:
             for n, edit in enumerate(edits):
                 load_data(edit, False)
@@ -641,7 +641,7 @@ def save_edits():
             if state.mode == constants.MODE_DEVELOPMENT:
                 state.console.write(f"edit-sent-{key}", f"{key} sent {edit}")
     state.doc.edit_count += len(edits)
-    state.console.write("edits-sent", f"Edits sent to server: {state.doc.edit_count}.")
+    state.console.write("edits-sent", f"[Edits] Sent to server: {state.doc.edit_count}.")
     print("save edits", state.sync_edits, len(state.doc.edits))
     ltk.post(
         state.add_token(f"/edit"),
@@ -692,7 +692,7 @@ def save_file(done=None):
         }
 
         def save_done(response):
-            state.console.write("save-response", f"Save: {response[constants.DATA_KEY_STATUS]}")
+            state.console.write("save-response", f"[Edits] Save: {response[constants.DATA_KEY_STATUS]}")
             state.doc.dirty = False
             if done:
                 done()
@@ -854,7 +854,7 @@ ltk.find("#title").on("change", proxy(set_name))
 def update_cell(event):
     value = main_editor.get()
     if state.mode == constants.MODE_DEVELOPMENT:
-        state.console.write("editor-changed", f"Editor change: {repr(value)}")
+        state.console.write("editor-changed", f"[Edits] Editor change: {repr(value)}")
     cell = SpreadsheetCell.current
     if cell and cell.val() != value:
         cell.set(value)
@@ -1104,12 +1104,12 @@ def main():
 ltk.schedule(watch, "watch", 3)
 vm_version = sys.version.split()[0].replace(";", "")
 minimized = "minimized" if __name__ != "pysheets" else "full"
-message = f"Browser Main: Python={vm_version}. VM={state.vm_type(sys.version)}. Mode={state.mode}-{minimized}."
+message = f"[Main] Python={vm_version}. VM={state.vm_type(sys.version)}. Mode={state.mode}-{minimized}."
 logger.info(message)
 
 app_version = "dev" 
 state.console.write(
     "welcome",
-    f"PySheets {app_version} is in alpha-mode. Use only for experiments.",
+    f"[General] PySheets {app_version} is in alpha-mode. Use only for experiments.",
 )
 state.console.write("pysheets", message)

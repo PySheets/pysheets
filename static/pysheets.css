@@ -422,6 +422,7 @@ img.loading {
 }
 
 .py-error {
+    visibility: hidden;
     position: absolute;
     left: 0;
     bottom: 0;

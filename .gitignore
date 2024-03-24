@@ -1,2 +1,1 @@
-static/__pycache__/*
-storage/__pycache__/*
+*.pyc

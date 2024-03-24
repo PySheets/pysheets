@@ -168,14 +168,14 @@ class Formula(Node):
         ltk.schedule(self.get, f"get {self.key}")
 
     def get(self):
-        state.console.write(f"worker-run-{self.key}", f"{self.key}: Running")
+        state.console.write(f"worker-run-{self.key}", f"[DAG] {self.key}: Running")
         if self.loading:
             return f"{constants.ICON_HOUR_GLASS}"
         if cache.has(self.key):
-            state.console.write(
-                f"worker-run-{self.key}", f"{self.key}: Cached => {cache.get(self.key)}"
-            )
-            return cache.get(self.key)
+            value = cache.get(self.key)
+            render_string = str(value).replace('\n', '\\n')
+            state.console.write(f"worker-run-{self.key}", f"[DAG] {self.key}: Cached => {value.__class__.__name__}: {render_string}")
+            return value
         self.loading = True
         state.console.clear(self.key)
         try:
@@ -189,7 +189,7 @@ class Formula(Node):
                     if key in Node.nodes:
                         Node.nodes[key].reset()
                 state.console.write(
-                    f"worker-run-{self.key}", f"{self.key}: {self.value}"
+                    f"worker-run-{self.key}", f"[DAG] {self.key}: {self.value}"
                 )
                 return self.value
             inputs = dict(
@@ -200,7 +200,7 @@ class Formula(Node):
                 kind = value.__class__.__name__
                 self.update(kind, value)
                 state.console.write(
-                    f"worker-run-{self.key}", f"{self.key}: Eval => {value}"
+                    f"worker-run-{self.key}", f"[DAG] {self.key}: Eval => {value}"
                 )
             except:
 
@@ -219,12 +219,12 @@ class Formula(Node):
                     self.loading = False
                     kind = self.value
                     state.console.write(
-                        f"worker-run-{self.key}", f"{self.key}: Ran locally => {kind}"
+                        f"worker-run-{self.key}", f"[DAG] {self.key}: Ran locally => {kind}"
                     )
                     return self.value
                 except Exception as e:
                     state.console.write(
-                        f"worker-run-{self.key}", f"{self.key}: Exec => {e}"
+                        f"worker-run-{self.key}", f"[DAG] {self.key}: Exec => {e}"
                     )
                     self.invalid = True
                     self.loading = False
@@ -232,7 +232,7 @@ class Formula(Node):
             return self.value or f"{constants.ICON_HOUR_GLASS}"
         except Exception as e:
             state.console.write(
-                f"worker-run-{self.key}", f"{self.key}: Cannot run locally => {e}"
+                f"worker-run-{self.key}", f"[DAG] {self.key}: Cannot run locally => {e}"
             )
         finally:
             self.loading = False
@@ -254,7 +254,7 @@ class Formula(Node):
         status = "Running" if state.worker_ready[id(worker)] else "Waiting for Worker..."
         state.console.write(
             f"worker-run-{self.key}",
-            f"{self.key}: {status} {constants.ICON_HOUR_GLASS}",
+            f"[DAG] {self.key}: {status} {constants.ICON_HOUR_GLASS}",
         )
         self.loading = True
         inputs = dict(
@@ -321,10 +321,10 @@ class Formula(Node):
                 counts[key] += 1
                 state.console.write(
                     f"worker-run-{key}",
-                    f"{key}: {counts[key]} run{'s' if counts[key] > 1 else ''}, {duration:.3f}s => {value if kind == 'str' else kind}",
+                    f"[DAG] {key}: {counts[key]} run{'s' if counts[key] > 1 else ''}, {duration:.3f}s => {value if kind == 'str' else kind}",
                 )
         except Exception as e:
-            logger.error(f"Worker Error: {e} {str(result)[:32]}")
+            state.console.write(f"[Worker] Error: {e.__class__.__name__}")
 
     @classmethod
     def handle_cell_changed(cls, key):
@@ -373,7 +373,7 @@ def worker_ready(data):
     state.worker_ready[id(worker)] = True
     version = data[1:].split()[0]
     state.console.write(
-        "worker", f"Browser Worker: Pyton={version}. VM={state.vm_type(data)}."
+        "worker", f"[Worker: Pyton={version}. VM={state.vm_type(data)}."
     )
     for node in Node.nodes.values():
         node.reload()

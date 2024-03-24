@@ -2,7 +2,6 @@ import ltk
 from pyscript import window # type: ignore
 from polyscript import XWorker # type: ignore
 import constants
-import sys
 
 local_storage = window.localStorage
 worker_ready = {}
@@ -230,6 +229,19 @@ class ServerLogger(Logger):
 class Console():
     messages = {}
 
+    def __init__(self):
+        window.console.orig_log = window.console.log
+        window.console.orig_warn = window.console.warn
+        window.console.orig_error = window.console.error
+        window.console.log = self.console_log
+        window.console.warn = self.console_log
+        window.console.error = self.console_log
+        try:
+            import warnings
+            warnings.warn = self._console_log
+        except:
+            pass # Micropython
+
     def clear(self, key):
         if key in self.messages:
             del self.messages[key]
@@ -239,6 +251,8 @@ class Console():
         message = " ".join(str(arg) for arg in args)
         when = ltk.get_time()
         self.messages[key] = when, f"{when:4.3f}s  {message}"
+        if "RuntimeError: pystack exhausted" in message:
+            self.messages["critical"] = when, f"{when:4.3f}s  [Critical] MicroPython Error. Enable 'Run in main' and reload the page."
         self.render()
 
     def render(self):
@@ -247,6 +261,22 @@ class Console():
             clazz = "error" if "Error" in message else "warning" if "Warning" in message else ""
             console.append(ltk.Preformatted(message).element.addClass(clazz))
 
+    def console_log(self, *args):
+        message = " ".join(args)
+        if not message.startswith("💀🔒 - Possible deadlock"):
+            key = "Network" if message.startswith("[Network]") else f"{ltk.get_time()}"
+            self.write(key, message)
+        window.console.orig_log(message)
+
+    def _setup_py_error(self):
+        def find_errors():
+            py_error = ltk.find(".py-error")
+            try:
+                if py_error.length > 0:
+                    self.write("py-error", py_error.text())
+            finally:
+                py_error.remove()
+        ltk.repeat(find_errors, 1)
 
 console = Console()
 
@@ -258,7 +288,7 @@ def vm_type(sys_version):
 def start_worker():
     if not doc.uid:
         return
-    console.write("worker", f"Loading Browser Worker {constants.ICON_HOUR_GLASS}")
+    console.write("worker", f"[Worker] Starting PyOdide {constants.ICON_HOUR_GLASS}")
     url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
     packages = url_packages.split(" ") if url_packages else []
     config = {

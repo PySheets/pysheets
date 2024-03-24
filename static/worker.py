@@ -80,15 +80,23 @@ def wrap_as_file(content):
     except:
         return io.StringIO(content)
 
+network_cache = {}
 
 def load_with_trampoline(url):
     def get(url):
+        if url in network_cache:
+            when, value = network_cache[url]
+            if time.time() - when < 60:
+                return value
+
         xhr = window.XMLHttpRequest.new()
         xhr.open("GET", url, False)
         xhr.send(None)
         if xhr.status != 200:
             raise IOError(f"HTTP Error: {xhr.status} for {url}")
-        return xhr.responseText
+        value = xhr.responseText
+        network_cache[url] = time.time(), value 
+        return value
 
     if url and url[0] != "/":
         url = f"/load?u={window.encodeURIComponent(url)}"

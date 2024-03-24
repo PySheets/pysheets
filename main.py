@@ -114,9 +114,10 @@ def get_file(token):
 
 def post_file(token):
     form = request.form.to_dict()
-    app.logger.info("POST %s", list(form.keys())[0])
-    data = json.loads(list(form.keys())[0])
+    body = list(form.keys())[0]
+    data = json.loads(body)
     uid = data[DATA_KEY_UID]
+    app.logger.info("POST %s %s %s", token, uid, len(body))
     storage.save(token, uid, data)
     return jsonify({DATA_KEY_STATUS: "OK"})
 
@@ -282,7 +283,7 @@ def load():
         if url in load_cache:
             when, response = load_cache[url]
             if time.time() - when < 60:
-                app.logger.info("/load: cache hit: %s", url)
+                app.logger.info("/load: network cache hit: %s", url)
                 return response
         headers = {
             "Authorization": request.headers.get("Authorization")
@@ -300,7 +301,7 @@ def load():
         except:
             pass
         load_cache[url] = time.time(), response
-        app.logger.info("/load: cache miss: %s", url)
+        app.logger.info("/load: network cache miss: %s, %s bytes", url, len(response))
         return response # send regular string
 
     raise ValueError("Not logged in")

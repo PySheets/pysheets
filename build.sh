@@ -90,3 +90,6 @@ wc dist/static/main*.py
 rm -rf ../pysheets-prod/* ../pysheets-prod/.do
 mv dist/* dist/.do ../pysheets-prod
 rm -rf dist
+
+rm -rf static/__pycache__
+rm -rf storage/__pycache__
