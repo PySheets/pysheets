@@ -119,7 +119,8 @@ def bundle(folder, module_name, out):
     if not os.path.exists(filename):
         filename = f"{base}/__init__.py"
     if not os.path.exists(filename):
-        global_imports[module_name] = True
+        if module_name != "warnings":
+            global_imports[module_name] = True
         return False
     with open(filename, 'r') as f:
         source = f.read()
