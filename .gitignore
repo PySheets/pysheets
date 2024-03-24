@@ -1,2 +1,2 @@
-static/__pycache__/constants.cpython-310.pyc
-storage/__pycache__/firestore.cpython-310.pyc
+static/__pycache__/*
+storage/__pycache__/*
