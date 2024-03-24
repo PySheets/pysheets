@@ -540,6 +540,9 @@ def load_data(data, is_doc=True):
             state.doc.last_edit = state.doc.timestamp = data[
                 constants.DATA_KEY_TIMESTAMP
             ]
+    print("LOAD RUNTIME", data.get(constants.DATA_KEY_RUNTIME))
+    if data.get(constants.DATA_KEY_RUNTIME) == "pyodide":
+        ltk.find("#run-in-main").prop("checked", True)
     if not ltk.find("#title:focus").length:
         state.set_title(state.doc.name)
         window.document.title = state.doc.name
@@ -682,19 +685,18 @@ def save_file(done=None):
             constants.DATA_KEY_PACKAGES: packages,
             constants.DATA_KEY_COLUMNS: columns,
             constants.DATA_KEY_ROWS: rows,
+            constants.DATA_KEY_RUNTIME: "pyodide" if ltk.find("#run-in-main").prop("checked") else "micropython",
             constants.DATA_KEY_PREVIEWS: previews,
             constants.DATA_KEY_EDITOR_WIDTH: main_editor.width(),
-            constants.DATA_KEY_CURRENT: SpreadsheetCell.current.key
-            if SpreadsheetCell.current
-            else "",
+            constants.DATA_KEY_CURRENT: SpreadsheetCell.current.key if SpreadsheetCell.current else "",
         }
 
         def save_done(response):
+            state.console.write("save-response", f"Save: {response[constants.DATA_KEY_STATUS]}")
             state.doc.dirty = False
             if done:
                 done()
 
-        # print("save", window.JSON.stringify(ltk.to_js(data), None, 4))
         url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
         ltk.post(state.add_token(url), data, proxy(save_done))
     except Exception as e:
@@ -733,7 +735,8 @@ def setup_login():
             ltk.find("#login-password-reset").css("display", "block").on("click", proxy(reset_password))
 
 
-    def confirm_registration(data):
+    def confirm_registration(event):
+        ltk.find(event.target).attr('disabled', True)
         data = get_data()
         if invalid_email(data[0][constants.DATA_KEY_EMAIL]):
             error("The email looks invalid. Please enter a valid email.")
@@ -871,6 +874,7 @@ def reload_with_packages(packages):
     host = f"{window.location.protocol}//{window.location.host}"
     args = [
         f"{constants.DATA_KEY_PACKAGES}={packages}",
+        f"{constants.DATA_KEY_RUNTIME}={'pyodide' if ltk.find('#run-in-main').prop('checked') else 'micropython'}",
         f"{constants.DATA_KEY_UID}={state.doc.uid}",
     ]
     window.location = f"{host}?{'&'.join(args)}"
@@ -890,7 +894,13 @@ def create_topbar():
         remove_arrows()
         main_editor.refresh()
 
-    def show_button(event):
+    @saveit
+    def run_in_main(event):
+        print("RUNTIME:", ltk.find(event.target).prop("checked"), "pyodide" if ltk.find(event.target).prop("checked") else "micropython")
+        show_button()
+        ltk.find("#run-in-main").prop("checked", ltk.find(event.target).prop("checked"))
+
+    def show_button(event=None):
         ltk.find("#reload-button").prop("disabled", False)
 
     packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
@@ -902,13 +912,16 @@ def create_topbar():
                 ltk.HBox(
                     ltk.Text("Packages to install:"),
                     ltk.Input("")
-                    .attr("id", "packages")
-                    .css("width", 400)
-                    .on("keyup", proxy(show_button))
-                    .val(packages),
+                        .attr("id", "packages")
+                        .css("width", 250)
+                        .on("keyup", proxy(show_button))
+                        .val(packages),
+                    ltk.Switch("Run in main:", False)
+                        .on("change", proxy(run_in_main))
+                        .attr("id", "run-in-main"),
                     ltk.Button("reload", proxy(save_packages))
-                    .attr("id", "reload-button")
-                    .prop("disabled", True),
+                        .attr("id", "reload-button")
+                        .prop("disabled", True),
                 ).addClass("packages-container"),
             ),
             main_editor,
@@ -1020,14 +1033,14 @@ def show_document_list(documents):
         return logger.error(f"Error: Cannot list documents: {documents['error']}")
     local_storage.setItem("cardCount", len(documents[constants.DATA_KEY_IDS]))
 
-    def create_card(uid, index, packages, *items):
+    def create_card(uid, index, runtime, packages, *items):
         def select_doc(event):
             if event.keyCode == 13:
                 load_doc_with_packages(event, uid, packages)
 
         return (
             ltk.Card(*items)
-                .on("click", proxy(lambda event=None: load_doc_with_packages(event, uid, packages)))
+                .on("click", proxy(lambda event=None: load_doc_with_packages(event, uid, runtime, packages)))
                 .on("keydown", proxy(select_doc))
                 .attr("tabindex", 1000 + index)
                 .addClass("document-card")
@@ -1040,13 +1053,14 @@ def show_document_list(documents):
                 create_card(
                     uid,
                     index,
+                    runtime,
                     packages,
                     ltk.VBox(
                         ltk.Image(screenshot, "/screenshot.png"),
                         ltk.Text(name),
                     ),
                 )
-                for index, (uid, name, screenshot, packages) in enumerate(
+                for index, (uid, name, screenshot, runtime, packages) in enumerate(
                     sorted_documents
                 )
             ]
@@ -1060,8 +1074,8 @@ def show_document_list(documents):
     ltk.find("#menu").empty()
 
 
-def load_doc_with_packages(event, uid, packages):
-    url = f"/?{constants.DATA_KEY_UID}={uid}"
+def load_doc_with_packages(event, uid, runtime, packages):
+    url = f"/?{constants.DATA_KEY_UID}={uid}&{constants.DATA_KEY_RUNTIME}={runtime}"
     if packages:
         url += f"&{constants.DATA_KEY_PACKAGES}={packages}"
     ltk.window.location = url

@@ -569,6 +569,15 @@ td:hover .debug-info {
     flex-wrap: wrap;
 }
 
+#run-in-main {
+    margin-left: 12px;
+    margin-right: 12px;
+}
+
+#reload-button {
+    margin-top: 4px;
+}
+
 #packages {
     background-color: white;
     width: 300px;
