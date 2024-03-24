@@ -5,11 +5,10 @@ from flask import request
 from flask import send_file
 
 import base64
-import io
 import json
 import logging
-import os
 import storage
+import time
 import traceback
 import requests
 
@@ -72,7 +71,7 @@ FILES_LTK = """
 @app.route("/")
 def root():
     package_names = request.args.get(DATA_KEY_PACKAGES, "").split()
-    pyodide = package_names != []
+    pyodide = request.args.get(DATA_KEY_RUNTIME, "") == "pyodide"
     files = FILES + FILES_LTK
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
     interpreter = '' if pyodide else 'interpreter = "1.20.0-297"'
@@ -273,12 +272,18 @@ def ssl_post(url, data, headers=None):
     except Exception as e:
         return f"error: {e}"
 
+load_cache = {}
 
 @app.route("/load", methods=["GET", "POST"])
 def load():
     app.logger.info("Load, url=%s token=%s", request.args.get(DATA_KEY_URL), request.args.get(DATA_KEY_TOKEN))
     if storage.get_email(request.args.get(DATA_KEY_TOKEN)):
         url = request.args.get(DATA_KEY_URL)
+        if url in load_cache:
+            when, response = load_cache[url]
+            if time.time() - when < 60:
+                app.logger.info("/load: cache hit: %s", url)
+                return response
         headers = {
             "Authorization": request.headers.get("Authorization")
         }
@@ -291,9 +296,12 @@ def load():
         else:
             raise ValueError(f"Bad method {request.method}")
         try:
-            return base64.b64encode(response) # send base64 encoded bytes
+            response = base64.b64encode(response) # send base64 encoded bytes
         except:
-            return response # send regular string
+            pass
+        load_cache[url] = time.time(), response
+        app.logger.info("/load: cache miss: %s", url)
+        return response # send regular string
 
     raise ValueError("Not logged in")
 
