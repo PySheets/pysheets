@@ -73,7 +73,7 @@ def root():
     pyodide = request.args.get(DATA_KEY_RUNTIME, "") == "pyodide"
     files = FILES + FILES_LTK
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
-    interpreter = '' if pyodide else 'interpreter = "1.20.0-297"'
+    interpreter = '' if pyodide else 'interpreter = "1.22.0-272"'
     auto = 'experimental_create_proxy = "auto"' if pyodide else ''
     packages = f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else ""
     vm = "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}"
