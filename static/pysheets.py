@@ -1145,6 +1145,15 @@ def setup():
 
 def list_sheets():
     state.clear()
+    ltk.find(".main").append(
+        ltk.Button("New Sheet", proxy(lambda event: None)).addClass("new-button temporary"),
+        ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
+        ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
+        ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
+        ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
+        ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
+    )
+    ltk.find(".temporary").css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), 2000)
     ltk.get(state.add_token("https://pysheets.app/list"), proxy(show_document_list))
 
 
@@ -1168,7 +1177,7 @@ def show_document_list(documents):
         )
 
     sorted_documents = sorted(documents[constants.DATA_KEY_IDS], key=lambda doc: doc[1])
-    ltk.find(".main").append(
+    ltk.find(".main").empty().append(
         ltk.Container(
             *[
                 create_card(
