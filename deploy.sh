@@ -8,7 +8,7 @@ echo
 
 if [ "$prod" = "$dev" ] ;then 
     echo "Versions in prod and dev are the same."
-    echo "Update the version in app.yaml."
+    echo "Update the version. Cmd+Click here:        app.yaml"
     echo "Then run this script again."
 else
     source build.sh
@@ -23,3 +23,5 @@ else
         echo
     )
 fi
+
+date
