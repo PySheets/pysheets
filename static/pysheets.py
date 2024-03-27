@@ -1248,7 +1248,15 @@ def main():
 ltk.schedule(watch, "watch", 3)
 vm_version = sys.version.split()[0].replace(";", "")
 minimized = "minimized" if __name__ != "pysheets" else "full"
-message = f"[Main] Python={vm_version}. VM={state.vm_type(sys.version)}. Mode={state.mode}-{minimized}."
+interpreter = window.interpreter_version.split()[-1].replace('"', '')
+message = (
+    f"[Main] " +
+    f"PyScript:{window.pyscript_version} " +
+    f"VM:{state.vm_type(sys.version)} " +
+    f"Python:{vm_version} " +
+    f"Interpreter:{interpreter} " +
+    f"Mode:{state.mode}-{minimized}."
+)
 logger.info(message)
 
 app_version = "dev"

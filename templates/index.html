@@ -19,10 +19,15 @@
 
     <script defer src="leader-line.min.js"></script>
     <script src="pysheets.js" type="module"></script>
-    <script>window.app_version = '';</script>
+    <script>
+        window.pyscript_version = '2024.3.2';
+        window.interpreter_version = '{{interpreter|safe}}';
+        window.app_version = '';
+    </script>
     <link defer rel="stylesheet" href="pysheets.css">
 
     <{{runtime}}-config>
+        {{interpreter|safe}}
         {{auto|safe}}
         {{packages|safe}}
         [files]
