@@ -1193,6 +1193,7 @@ def show_document_list(documents):
     )
     ltk.find(".document-card").eq(0).focus()
     ltk.find("#menu").empty()
+    state.show_message("Select a sheet below or create a new one...")
 
 
 def load_doc_with_packages(event, uid, runtime, packages):
@@ -1213,7 +1214,6 @@ worker = state.start_worker()
 
 def worker_ready(data):
     version = data[1:].split()[0]
-    state.console.write("worker", f"[Worker: Pyton={version}. VM={state.vm_type(data)}.")
     for cell in SpreadsheetCell.cells.values():
         debug("Worker done, trigger", cell.key)
         SpreadsheetCell.cache[cell.key] = None
