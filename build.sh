@@ -82,7 +82,7 @@ mv dist/static/pysheets.css dist/static/pysheets_$version.css
 mv dist/static/pysheets.js dist/static/pysheets_$version.js
 
 echo "Original size:"
-wc static/constants.py static/pysheets.py static/dag.py static/editor.py static/main.py static/menu.py static/state.py 
+wc static/constants.py static/pysheets.py static/editor.py static/main.py static/menu.py static/state.py 
 
 echo "Compressed size for $version:"
 wc dist/static/main*.py

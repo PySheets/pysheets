@@ -202,7 +202,7 @@ def run_script(script, inputs):
     _globals["pyodide"] = pyodide
     _globals["pyscript"] = pyscript
     _globals["pysheets"] = PySheets()
-    _locals = {}
+    _locals = _globals
     exec(edit_script(script), _globals, _locals)
     return _locals["_"]
 
@@ -256,23 +256,47 @@ def run(job):
         key, script, inputs = job
         inputs.update(cache)
         result = run_script(script, inputs)
-    except Exception as e:
-        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps([key, time.time() - start, str(e), traceback.format_exc()]))
+    except:
+        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
+            "key": key, 
+            "value": None,
+            "preview": "",
+            "duration": time.time() - start,
+            "error": traceback.format_exc(),
+        }))
         return
 
     try:
         kind = result.__class__.__name__
         cache[key] = result
-    except Exception as e:
-        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps([key, time.time() - start, str(e), traceback.format_exc()]))
+    except:
+        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
+            "key": key, 
+            "value": None,
+            "preview": "",
+            "duration": time.time() - start,
+            "error": traceback.format_exc(),
+        }))
         return
 
     try:
         preview = create_preview(result)
-        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps([key, time.time() - start, kind, preview]))
-    except Exception as e:
-        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps([key, time.time() - start, str(e), traceback.format_exc()]))
-
+        base_kind = kind in ["int","str","float"]
+        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
+            "key": key, 
+            "duration": time.time() - start,
+            "value": preview if base_kind else kind,
+            "preview": "" if base_kind else preview,
+            "error": None,
+        }))
+    except:
+        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
+            "key": key, 
+            "value": None,
+            "preview": "",
+            "duration": time.time() - start,
+            "error": traceback.format_exc(),
+        }))
 
  
 polyscript.xworker.sync.handler = lambda sender, topic, data: run(json.loads(data))

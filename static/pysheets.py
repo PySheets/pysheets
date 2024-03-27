@@ -1,4 +1,4 @@
-import dag
+import collections
 import js  # type: ignore
 import json
 import ltk
@@ -14,23 +14,23 @@ import constants
 state.console.write("pysheets", f"[Main] Pysheets starting {constants.ICON_HOUR_GLASS}")
 
 previews = {}
-
 logger = logging.getLogger("root")
 logger.setLevel(
     logging.DEBUG if state.mode == constants.MODE_DEVELOPMENT else logging.INFO
 )
 local_storage = window.localStorage
 proxy = ltk.proxy
+debug = lambda *args: None #print(*args)
 
 
-def save():
+def save(force=False):
     state.doc.dirty = True
     delay = (
         constants.SAVE_DELAY_SINGLE_EDITOR
         if ltk.find(".other-editor").length == 0
         else constants.SAVE_DELAY_MULTIPLE_EDITORS
     )
-    ltk.schedule(save_changes, "send changes to server", delay)
+    ltk.schedule(lambda: save_edits(force), "send changes to server", delay)
 
 
 def saveit(func):
@@ -46,44 +46,99 @@ def rgb_to_hex(rgb):
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
+def get_col_row_from_key(key):
+    row = 0
+    col = 0
+    for c in key:
+        if c.isdigit():
+            row = row * 10 + int(c)
+        else:
+            col = col * 26 + ord(c) - ord("A") + 1
+    return col - 1, row - 1
+
+
+def get_column_name(col):
+    parts = []
+    col += 1
+    while col > 0:
+        col, remainder = divmod(col - 1, 26)
+        parts.insert(0, chr(remainder + ord("A")))
+    return "".join(parts)
+
+
+def get_key_from_col_row(col, row):
+    return f"{get_column_name(col)}{row + 1}"
+
+
 class SpreadsheetCell(ltk.Input):
     cells = {}
+    cache = {}
     current = None
+    counts = collections.defaultdict(int)
 
-    def __init__(self, value, column, row):
+    def __init__(self, column, row, script, value, preview):
         ltk.Input.__init__(self, "")
-        self.key = dag.get_key_from_col_row(column, row)
-        self.column = column
-        self.row = row
+        self.key = get_key_from_col_row(column, row)
         self.element = ltk.find(f"#{self.key}")
         SpreadsheetCell.cells[self.key] = self
-        (
-            self.on("focus", proxy(lambda event: self.select()))
-            .on("change", proxy(lambda event: self.changed()))
-            .on("keydown", proxy(lambda event: self.keydown(event)))
+        self.column = column
+        self.row = row
+        self.on("focus", proxy(lambda event: self.select())) \
+            .on("change", proxy(lambda event: self.changed())) \
+            .on("keydown", proxy(lambda event: self.keydown(event))) \
             .on("mouseenter", proxy(lambda event: self.draw_cell_arrows()))
-        )
-        self.set(value)
+        self.running = False
+        self.set(script, value, preview)
 
-    @classmethod
-    @saveit
-    def node_changed(cls, key):
-        node = dag.Node.nodes[key]
-        cell = cls.cells[node.key]
-        cell.update_input()
-        cell.add_preview()
-        ltk.publish(
-            constants.PUBSUB_SHEET_ID,
-            constants.PUBSUB_DAG_ID,
-            constants.TOPIC_CELL_CHANGED,
-            cell.key,
-        )
+    def set(self, script, value, preview=None):
+        debug("set", self.key, "=>", repr(value))
+        self.script = script
+        self.value = convert(value)
+        SpreadsheetCell.cache[self.key] = self.value
+        self.val(str(self.value))
+        self.add_preview(preview)
+        self.inputs = self.get_inputs(script)
 
-    def set(self, value):
-        if False and self.val():
-            state.console.write(self.key, f"{self.key}: set to {repr(value)}")
-        self.value = dag.create(self.key, value)
-        ltk.schedule(self.update_input, f"update_input {self.key}")
+    def update(self, duration, value, preview):
+        self.set(self.script, value, preview)
+        self.counts[self.key] += 1
+        self.store_edit()
+        state.console.write(self.key, f"[Sheet] {self.key}: runs: {self.counts[self.key]}, {duration:.3f}s {'🐌' if duration > 1.0 else '🚀'}")
+
+    def get_inputs(self, script):
+        if not isinstance(script, str) or not script or script[0] != "=" or "# no-inputs" in script:
+            return []
+        # TODO: sort first and last by min/max col/row
+        inputs = []
+        index = 0
+        is_col = lambda c: c >= "A" and c <= "Z"
+        is_row = lambda c: c.isdigit()
+        string = self.script[1:]
+        while index < len(string):
+            c = string[index]
+            if is_col(string[index]):
+                start = index
+                while index < len(string) and is_col(string[index]):
+                    index += 1
+                if index < len(string) and is_row(string[index]):
+                    while index < len(string) and is_row(string[index]):
+                        index += 1
+                    key = string[start:index]
+                    if start > 0 and string[start - 1] == ":" and inputs:
+                        inputs.extend(self.get_input_range(inputs.pop(), key))
+                    else:
+                        inputs.append(key)
+            index += 1
+        return set(inputs)
+
+    def get_input_range(self, start, end):
+        start_col, start_row = get_col_row_from_key(start)
+        end_col, end_row = get_col_row_from_key(end)
+        return [
+            get_key_from_col_row(col, row)
+            for row in range(start_row, end_row + 1)
+            for col in range(start_col, end_col + 1)
+        ]
 
     def format(self, value):
         try:
@@ -92,12 +147,14 @@ class SpreadsheetCell(ltk.Input):
             return value.__class__.__name__
 
     def update_input(self):
-        self.element.val(self.format(self.value.get()))
+        self.element.val(self.format(self.value))
+        if state.mode == constants.MODE_DEVELOPMENT:
+            state.console.write(f"update-input-{self.key}", f"[Sheet] update input {self.key} {self.element.val()}")
 
     @saveit
     def select(self):
         SpreadsheetCell.current = self
-        main_editor.set(self.value.script)
+        main_editor.set(self.script)
         ltk.find("#selection").text(f"Selected cell: {self.key}")
         ltk.find("#cell-font-family").val(self.css("font-family"))
         ltk.find("#cell-font-size").val(self.css("font-size").replace("px", ""))
@@ -115,8 +172,8 @@ class SpreadsheetCell(ltk.Input):
     def get_cell(cls, key):
         if key in SpreadsheetCell.cells:
             return SpreadsheetCell.cells[key]
-        column, row = dag.get_col_row_from_key(key)
-        cell = SpreadsheetCell.cells[key] = SpreadsheetCell("", column, row)
+        column, row = get_col_row_from_key(key)
+        cell = SpreadsheetCell.cells[key] = SpreadsheetCell(column, row, "", "", None)
         return cell
 
     @classmethod
@@ -143,7 +200,7 @@ class SpreadsheetCell(ltk.Input):
 
     @classmethod
     def copy(cls, from_cell, to_cell):
-        to_cell.set(from_cell.value.script)
+        to_cell.set(from_cell.script)
         to_cell.value.get()
         to_cell.store_edit()
         from_cell.store_edit()
@@ -161,19 +218,19 @@ class SpreadsheetCell(ltk.Input):
         def insert_column(event):
             for cell in sorted(SpreadsheetCell.cells.values(), key=lambda cell: -cell.column):
                 if cell.column >= selected_column:
-                    next_key = dag.get_key_from_col_row(cell.column + 1, cell.row)
+                    next_key = get_key_from_col_row(cell.column + 1, cell.row)
                     cls.copy(cell, SpreadsheetCell.get_cell(next_key))
                 if cell.column == selected_column:
                     cls.clear(cell)
                 if cell.column > 1:
-                    previous_key = dag.get_key_from_col_row(cell.column - 1, cell.row)
+                    previous_key = get_key_from_col_row(cell.column - 1, cell.row)
                     if not previous_key in SpreadsheetCell.cells:
                         cls.clear(cell)
 
         @saveit
         def delete_column(event):
             for cell in sorted(SpreadsheetCell.cells.values(), key=lambda cell: cell.column):
-                next_key = dag.get_key_from_col_row(cell.column + 1, cell.row)
+                next_key = get_key_from_col_row(cell.column + 1, cell.row)
                 if cell.column >= selected_column:
                     if not next_key in SpreadsheetCell.cells:
                         cls.clear(cell)
@@ -181,7 +238,7 @@ class SpreadsheetCell(ltk.Input):
 
         ltk.MenuPopup(
             ltk.MenuItem("+", f"insert column", None, proxy(insert_column)),
-            ltk.MenuItem("-", f"delete column {dag.get_column_name(selected_column)}", None, proxy(delete_column)),
+            ltk.MenuItem("-", f"delete column {get_column_name(selected_column)}", None, proxy(delete_column)),
         ).show(label)
         event.preventDefault()
 
@@ -194,19 +251,19 @@ class SpreadsheetCell(ltk.Input):
         def insert_row(event):
             for cell in sorted(SpreadsheetCell.cells.values(), key=lambda cell: -cell.row):
                 if cell.row >= selected_row:
-                    next_key = dag.get_key_from_col_row(cell.column, cell.row + 1)
+                    next_key = get_key_from_col_row(cell.column, cell.row + 1)
                     cls.copy(cell, SpreadsheetCell.get_cell(next_key))
                 if cell.row == selected_row:
                     cls.clear(cell)
                 if cell.row > 1:
-                    previous_key = dag.get_key_from_col_row(cell.column, cell.row - 1)
+                    previous_key = get_key_from_col_row(cell.column, cell.row - 1)
                     if not previous_key in SpreadsheetCell.cells:
                         cls.clear(cell)
 
         @saveit
         def delete_row(event):
             for cell in sorted(SpreadsheetCell.cells.values(), key=lambda cell: cell.row):
-                next_key = dag.get_key_from_col_row(cell.column, cell.row + 1)
+                next_key = get_key_from_col_row(cell.column, cell.row + 1)
                 if cell.row >= selected_row:
                     if not next_key in SpreadsheetCell.cells:
                         cls.clear(cell)
@@ -223,14 +280,16 @@ class SpreadsheetCell(ltk.Input):
         self.draw_arrows()
 
     def draw_arrows(self):
-        if self.value.preview:
+        if self.preview:
             window.addArrow(self.element, ltk.find(f"#preview-{self.key}"))
-        if not self.value.inputs:
+        if not self.inputs:
             return
         try:
-            first = self.cells[self.value.inputs[0]]
-            last = self.cells[self.value.inputs[-1]]
+            inputs = list(sorted(self.inputs))
+            first = self.cells[inputs[0]]
+            last = self.cells[inputs[-1]]
         except:
+            print("Cannot draw arrows", self.inputs)
             return
         window.addArrow(
             self.create_marker(first, last, "inputs-marker arrow", "#ff7f0e"),
@@ -265,8 +324,9 @@ class SpreadsheetCell(ltk.Input):
         add_marker(left, top + height, width, 1),  # bottom
         return add_marker(left, top, width, height, 0)
 
-    def add_preview(self):
-        if not self.value.preview:
+    def add_preview(self, preview):
+        self.preview = preview
+        if not self.preview:
             return
 
         def save_preview():
@@ -324,13 +384,12 @@ class SpreadsheetCell(ltk.Input):
         )
 
         try:
-            html = self.fix_preview_html(preview, self.value.preview)
+            html = self.fix_preview_html(preview, self.preview)
             ltk.find(".sheet").append(preview.append(ltk.create(html)))
         except Exception as e:
-            print(e)
             pass
-        ltk.schedule(self.make_resizable, f"resizable {self.key}")
 
+        self.make_resizable()
         self.draw_arrows()
 
     def fix_preview_html(self, preview, html):
@@ -388,28 +447,89 @@ class SpreadsheetCell(ltk.Input):
 
     @saveit
     def edited(self):
-        if isinstance(self.value, dag.Formula):
-            return
         value = self.val()
-        self.set(value)
+        if value == str(self.value) or value == constants.ICON_HOUR_GLASS:
+            return
+        self.script = value
+        self.invalidate()
         self.store_edit()
+
+    def invalidate(self):
+        self.value = self.evaluate()
         self.notify()
+
+    def evaluate(self):
+        script = self.script
+        is_formula = isinstance(script, str) and script and script[0] == "="
+        expression = script[1:] if is_formula else script
+        try:
+            if is_formula:
+                self.evaluate_locally(expression)
+            else:
+                self.set(self.script, convert(self.script))
+            debug("eval local", self.key)
+        except Exception as e:
+            if is_formula:
+                self.evaluate_in_worker(expression)
+            else:
+                self.set(self.script, convert(self.script))
+            
+    def evaluate_locally(self, expression):
+        try:
+            value = eval(expression, SpreadsheetCell.cache)
+            self.set(self.script, value)
+        except:
+            def edit_script(script):  # TODO: use ast to parse script
+                lines = script.strip().split("\n")
+                lines[-1] = f"_={lines[-1]}"
+                return "\n".join(lines)
+
+            inputs = dict(
+                (key, SpreadsheetCell.cache[key]) for key in self.inputs
+            )
+            exec(edit_script(self.script[1:]), inputs, inputs)
+            self.set(self.script, inputs["_"])
+    
+    def evaluate_in_worker(self, expression):
+        if self.running:
+            return
+        self.running = True
+        ltk.publish(
+            "Application",
+            "Worker",
+            ltk.TOPIC_WORKER_RUN,
+            [self.key, expression, SpreadsheetCell.cache],
+        )
+
+    @classmethod
+    def handle_worker_result(cls, result):
+        try:
+            cell: SpreadsheetCell = SpreadsheetCell.cells[result["key"]]
+            cell.running = False
+            cell.update(result["duration"], result["value"], result["preview"])
+            cell.notify()
+            debug("Worker", result["key"], "=>", result["value"])
+            if result["error"]:
+                state.console.write(result["key"], f"{result['key']}: {result['error']}")
+        except Exception as e:
+            state.console.write(f"[Worker] Error: {e.__class__.__name__}")
         
     def store_edit(self):
-        if self.value.script != "":
+        if self.script != "":
             state.doc.edits[constants.DATA_KEY_CELLS][self.key] = self.to_dict()
 
     def notify(self):
-        ltk.publish(
-            constants.PUBSUB_SHEET_ID,
-            constants.PUBSUB_DAG_ID,
-            constants.TOPIC_CELL_CHANGED,
-            self.key,
-        )
+        for cell in SpreadsheetCell.cells.values():
+            if self.key in cell.inputs:
+                cell.invalidate()
 
     def to_dict(self):
         result = {
-            constants.DATA_KEY_VALUE: self.value.to_dict(),
+            constants.DATA_KEY_VALUE: {
+                constants.DATA_KEY_VALUE_FORMULA: self.script,
+                constants.DATA_KEY_VALUE_KIND: self.value,
+                constants.DATA_KEY_VALUE_PREVIEW: self.preview,
+            }
         }
         if self.css("font-family") != constants.DEFAULT_FONT_FAMILY:
             result[constants.DATA_KEY_VALUE_FONT_FAMILY] = self.css("font-family")
@@ -432,18 +552,13 @@ def handle_edits(data):
     for edit in edits:
         edit[constants.DATA_KEY_UID] = data[constants.DATA_KEY_UID]
         edit[constants.DATA_KEY_CURRENT] = data.get(constants.DATA_KEY_CURRENT, "")
-        changed_cells = load_data(edit)
-        for key in changed_cells:
-            if False and state.mode == constants.MODE_DEVELOPMENT:
-                state.console.write(f"edit-received-{key}", f"{key} received {str(SpreadsheetCell.cells[key])}")
-            SpreadsheetCell.cells[key].notify()
-        update_editor(edit, changed_cells)
+        # load_data(edit)
     state.doc.last_edit = window.time()
 
 
 def check_edits():
     if state.doc.uid and state.sync_edits:
-        url = f"/edits?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_TIMESTAMP}={state.doc.last_edit}"
+        url = f"https://pysheets.app/edits?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_TIMESTAMP}={state.doc.last_edit}"
         ltk.get(state.add_token(url), proxy(lambda response: handle_edits(response)))
         remove_old_editors()
 
@@ -470,8 +585,12 @@ def load_cells(cells):
     for key, settings in cells.items():
         cell = SpreadsheetCell.get_cell(key)
         value = settings[constants.DATA_KEY_VALUE]
-        if value:
-            cell.set(value)
+        cell.set(
+            value.get(constants.DATA_KEY_VALUE_FORMULA, ""),
+            value.get(constants.DATA_KEY_VALUE_KIND, "?"),
+            value.get(constants.DATA_KEY_VALUE_PREVIEW, ""),
+        )
+        cell.invalidate()
         cell.css(
             ltk.to_js(
                 {
@@ -491,10 +610,8 @@ def load_cells(cells):
                 }
             )
         )
-        if cell.value.preview:
-            ltk.schedule(cell.add_preview, f"add preview {key}")
         if cell is SpreadsheetCell.current:
-            main_editor.set(cell.value.script)
+            main_editor.set(cell.script)
     return [key for key in cells]
 
 
@@ -516,11 +633,17 @@ def load_previews(settings):
 
 def load_data(data, is_doc=True):
     url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
+    if is_doc:
+        if not isinstance(data, dict):
+            state.console.write("network-status", "[Network] Error: Timeout. PySheet's document storage is unreachable 😵‍💫😵‍💫😵‍💫️️. Please reload the page...")
+            return
+        bytes = window.JSON.stringify(ltk.to_js(data), None, 4)
+        debug("load", len(bytes), "bytes")
+        state.console.write("network-status", f"[Network] Downloaded the sheet, {len(bytes)} bytes ✅")
+
     data_packages = data.get(constants.DATA_KEY_PACKAGES)
     if data_packages and not url_packages:
         reload_with_packages(data_packages)
-
-    # print("load", window.JSON.stringify(ltk.to_js(data), None, 4))
     SpreadsheetCell.create_spreadsheet(26, 50)
     if is_doc:
         if constants.DATA_KEY_UID not in data:
@@ -540,7 +663,6 @@ def load_data(data, is_doc=True):
             state.doc.last_edit = state.doc.timestamp = data[
                 constants.DATA_KEY_TIMESTAMP
             ]
-    print("LOAD RUNTIME", data.get(constants.DATA_KEY_RUNTIME))
     if data.get(constants.DATA_KEY_RUNTIME) == "pyodide":
         ltk.find("#run-in-main").prop("checked", True)
     if not ltk.find("#title:focus").length:
@@ -586,15 +708,20 @@ def load_history(history):
 def load_history_chunk(edits):
     if edits:
         state.console.write("history", f"[History] Load {len(edits)} edits in history")
-        with dag.layer:
-            for n, edit in enumerate(edits):
-                load_data(edit, False)
+        for n, edit in enumerate(edits):
+            load_data(edit, False)
         ltk.schedule(lambda: load_history_chunk(edits[1000:]), "load next chunk")
+
+
+def check_network():
+    if ltk.find(".cell").length == 0:
+        state.console.write("network-status", "[Network] Error: Cannot reach PySheet's document storage ️️🤬🤬🤬. Try reloading the page...")
 
 
 def load_file(event=None):
     if state.doc.uid:
-        url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_TIMESTAMP}={state.doc.timestamp}"
+        url = f"https://pysheets.app/file?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_TIMESTAMP}={state.doc.timestamp}"
+        ltk.schedule(check_network, "network-error-3", 3)
         ltk.get(state.add_token(url), proxy(load_data))
 
 
@@ -631,20 +758,18 @@ def remove_marker(email):
     ltk.find(f".marker-{email_to_class(email)}").remove()
 
 
-def save_edits():
-    if not state.sync_edits or not any(state.doc.edits.values()):
+def save_edits(force=False):
+    if not force and (not state.sync_edits or not any(state.doc.edits.values())):
         return
     edits = {}
     for key, edit in list(state.doc.edits.items()):
         if edit:
+            debug(f"edit-{key}", "save edit", key, edit)
             edits[key] = edit
-            if state.mode == constants.MODE_DEVELOPMENT:
-                state.console.write(f"edit-sent-{key}", f"Send edit {edit}")
     state.doc.edit_count += len(edits)
-    state.console.write("edits-sent", f"[Edits] Sent to server: {state.doc.edit_count}.")
-    print("save edits", state.sync_edits, len(state.doc.edits))
+    state.console.write("edits-sent", f"[Edits] Edits sent to server: {state.doc.edit_count}")
     ltk.post(
-        state.add_token(f"/edit"),
+        state.add_token(f"https://pysheets.app/edit"),
         {
             constants.DATA_KEY_UID: state.doc.uid,
             constants.DATA_KEY_EDIT: edits,
@@ -664,7 +789,6 @@ def save_file(done=None):
         cells = dict(
             (key, cell.to_dict())
             for key, cell in SpreadsheetCell.cells.items()
-            # if cell.value.value
         )
         columns = dict(
             (n, {constants.DATA_KEY_WIDTH: column.width()})
@@ -693,19 +817,16 @@ def save_file(done=None):
         }
 
         def save_done(response):
-            state.console.write("save-response", f"[Edits] Save: {response[constants.DATA_KEY_STATUS]}")
+            status = response[constants.DATA_KEY_STATUS]
+            state.console.write("save-response", f"[Edits] Full document backup: {status} {'😡' if 'error' in status else '✅'}")
             state.doc.dirty = False
             if done:
                 done()
 
-        url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
+        url = f"https://pysheets.app/file?{constants.DATA_KEY_UID}={state.doc.uid}"
         ltk.post(state.add_token(url), data, proxy(save_done))
     except Exception as e:
         logger.error("Error saving file %s", e)
-
-
-def save_changes():
-    save_edits()
 
 
 def get_plot_screenshot():
@@ -857,10 +978,8 @@ def update_cell(event):
         state.console.write("editor-changed", f"[Edits] Editor change: {repr(value)}")
     cell = SpreadsheetCell.current
     if cell and cell.val() != value:
-        cell.set(value)
-        cell.val(value)
-        cell.edited()
-        cell.value.get()
+        cell.set(value, value)
+        cell.invalidate()
         state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
 
 
@@ -927,7 +1046,12 @@ def create_topbar():
         )
         .addClass("editor-container")
         .on("resize", proxy(resize_editor)),
-        ltk.Div().addClass("console"),
+        ltk.VBox(
+            ltk.Input("")
+                .addClass("console-filter")
+                .attr("placeholder", "filter the console"),
+            ltk.Div().addClass("console"),
+        ).addClass("console-container"),
         "editor-and-console",
     )
     ltk.schedule(getattr(vsp, "resize"), "resize vsp", 0.5)
@@ -989,6 +1113,7 @@ def create_topbar():
             .on("change", proxy(sync)),
             ltk.Button("restore", restore_history).css("margin-right", 20),
         )
+    state.console.setup()
 
 
 def watch():
@@ -1007,15 +1132,12 @@ def logout(event=None):
 
 def setup():
     if state.doc.uid:
-        print(f"Setup: Loading document {state.doc.uid}")
         state.clear()
         create_topbar()
         load_file()
     elif state.user.token:
-        print(f"Setup: Loading document list")
         list_sheets()
     else:
-        print(f"Setup: Show login UI")
         state.set_title("")
         ltk.find("#login-container").css("display", "block")
     ltk.find(".main").css("opacity", 1)
@@ -1023,7 +1145,7 @@ def setup():
 
 def list_sheets():
     state.clear()
-    ltk.get(state.add_token("/list"), proxy(show_document_list))
+    ltk.get(state.add_token("https://pysheets.app/list"), proxy(show_document_list))
 
 
 def show_document_list(documents):
@@ -1085,7 +1207,24 @@ def repeat(function, timeout_seconds=1):
     window.setInterval(proxy(function), ms)
 
 
-window.sheetResized = lambda column: save()
+window.sheetResized = ltk.proxy(lambda: save(True))
+
+worker = state.start_worker()
+
+def worker_ready(data):
+    version = data[1:].split()[0]
+    state.console.write("worker", f"[Worker: Pyton={version}. VM={state.vm_type(data)}.")
+    for cell in SpreadsheetCell.cells.values():
+        debug("Worker done, trigger", cell.key)
+        SpreadsheetCell.cache[cell.key] = None
+        cell.running = False
+        cell.invalidate()
+
+
+ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.pubsub.TOPIC_WORKER_READY, worker_ready)
+ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_WORKER_RESULT, SpreadsheetCell.handle_worker_result)
+
+
 
 
 def main():
@@ -1095,9 +1234,6 @@ def main():
 
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_INFO, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_ERROR, print)
-    ltk.subscribe(
-        "Application", constants.TOPIC_NODE_CHANGED, SpreadsheetCell.node_changed
-    )
 
 
 ltk.schedule(watch, "watch", 3)
@@ -1106,9 +1242,16 @@ minimized = "minimized" if __name__ != "pysheets" else "full"
 message = f"[Main] Python={vm_version}. VM={state.vm_type(sys.version)}. Mode={state.mode}-{minimized}."
 logger.info(message)
 
-app_version = "dev" 
+app_version = "dev"
 state.console.write(
     "welcome",
-    f"[General] PySheets {app_version} is in alpha-mode. Use only for experiments.",
+    f"[General] PySheets {app_version} is in alpha-mode 😱. Use only for experiments 🚧.",
 )
 state.console.write("pysheets", message)
+
+
+def convert(value):
+    try:
+        return float(value) if "." in value else int(value)
+    except:
+        return value

@@ -91,7 +91,7 @@
                                 handles: "e",
                                 alsoResize: `.col-${column}`,
                             })
-                            .on("resize", function(event) { sheetResized($(this).attr("id")) }) 
+                            .on("resize", function(event) { sheetResized(); }) 
                     )
                 );
             }
@@ -111,7 +111,7 @@
                             handles: "s",
                             alsoResize: `.row-${row}`,
                         })
-                        .on("resize", function(event) { sheetResized($(this).attr("id")) }) 
+                        .on("resize", function(event) { sheetResized(); }) 
                         .css({
                             width: 45,
                             padding: "2px 6px 0 6px",

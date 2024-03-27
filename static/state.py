@@ -1,7 +1,12 @@
+import builtins
 import ltk
 from pyscript import window # type: ignore
 from polyscript import XWorker # type: ignore
 import constants
+import sys
+
+pyodide = "Clang" in sys.version
+micropython = "Clang" not in sys.version
 
 local_storage = window.localStorage
 worker_ready = {}
@@ -236,11 +241,19 @@ class Console():
         window.console.log = self.console_log
         window.console.warn = self.console_log
         window.console.error = self.console_log
-        try:
+        if pyodide:
             import warnings
-            warnings.warn = self._console_log
-        except:
-            pass # Micropython
+            warnings.warn = self.console_log
+        builtins.print = self.print
+    
+    def setup(self):
+        ltk.find(".console-filter").on(
+            "keyup",
+            ltk.proxy(lambda event: self.render())
+        )
+    
+    def print(self, *args):
+        self.write(f"{ltk.get_time()}", " ".join(str(arg).replace("<", "&lt;") for arg in args))
 
     def clear(self, key):
         if key in self.messages:
@@ -248,7 +261,10 @@ class Console():
         self.render()
 
     def write(self, key, *args):
-        message = " ".join(str(arg) for arg in args)
+        try:
+            message = " ".join(args)
+        except Exception as e:
+            message = f"Error writing {key}: {e}"
         when = ltk.get_time()
         self.messages[key] = when, f"{when:4.3f}s  {message}"
         if "RuntimeError: pystack exhausted" in message:
@@ -256,13 +272,15 @@ class Console():
         self.render()
 
     def render(self):
+        filter = str(ltk.find(".console-filter").val())
         console = ltk.find(".console").empty()
         for key, (when, message) in sorted(self.messages.items(), key=lambda pair: pair[1][0]):
-            clazz = "error" if "Error" in message else "warning" if "Warning" in message else ""
+            if filter and not filter in message: continue
+            clazz = "error" if "error" in message.lower() else "warning" if "warning" in message.lower() else ""
             console.append(ltk.Preformatted(message).element.addClass(clazz))
 
     def console_log(self, *args):
-        message = " ".join(args)
+        message = " ".join(str(arg) for arg in args)
         if not message.startswith("💀🔒 - Possible deadlock"):
             key = "Network" if message.startswith("[Network]") else f"{ltk.get_time()}"
             self.write(key, message)
@@ -279,7 +297,7 @@ class Console():
         ltk.repeat(find_errors, 1)
 
 console = Console()
-
+print = console.print
 
 def vm_type(sys_version):
     return "PyOdide" if "Clang" in sys_version else "MicroPython"
@@ -292,11 +310,7 @@ def start_worker():
     url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
     packages = url_packages.split(" ") if url_packages else []
     config = {
-        "packages": [ "pandas", "matplotlib", "seaborn", "numpy", "requests" ] + packages,
-        "files": {
-            "static/constants.py": "constants.py", 
-            "https://raw.githubusercontent.com/laffra/ltk/main/ltk/jquery.py": "ltk/jquery.py",
-        }
+        "packages": [ "pandas", "matplotlib", "pyscript-ltk", "numpy", "requests" ] + packages,
     }
     worker = XWorker(f"./worker{window.app_version}.py", config=ltk.to_js(config), type="pyodide")
     ltk.register_worker("pyodide-worker", worker)
