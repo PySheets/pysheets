@@ -1,7 +1,8 @@
 import ltk
 
+ltk_Div = ltk.Div
 
-class Editor(ltk.Div):
+class Editor(ltk_Div):
     classes = [ "editor" ]
 
     def __init__(self, value=""):
@@ -29,6 +30,4 @@ class Editor(ltk.Div):
 
     def refresh(self):
         self.editor.refresh()
-
-from ltk import schedule, window, TableRow, TableData, to_js, proxy, VBox, HBox
 
