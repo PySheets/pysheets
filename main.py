@@ -309,9 +309,8 @@ def load():
 @app.route("/<path:path>")
 def send(path):
     import os
-    import sys
     if not os.path.exists("static/"+path):
-        raise ValueError(f"{os.getcwd()}/static/{path} MISSING")
+        raise ValueError(f"Cannot return requested file: /static/{path} is missing")
     return app.send_static_file(path)
 
 
