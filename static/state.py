@@ -7,9 +7,9 @@ import sys
 
 pyodide = "Clang" in sys.version
 micropython = "Clang" not in sys.version
-
 local_storage = window.localStorage
-worker_ready = {}
+worker_version = constants.WORKER_LOADING
+worker_dots = ""
 
 class Document():
     uid = ltk.get_url_parameter(constants.DATA_KEY_UID)
@@ -92,12 +92,16 @@ def logout(event=None):
 
 
 def set_title(title):
-    ltk.find("#title").val(title)
+    show_message(title)
     window.document.title = f"{title} {'- ' if title else ''}PySheets"
     email = local_storage.getItem(constants.DATA_KEY_EMAIL)
     ltk.find(".user-image-container").prepend(
         create_user_image(email, 0)
     )
+
+
+def show_message(message):
+    ltk.find("#title").val(message)
 
 
 def clear():
@@ -303,10 +307,22 @@ def vm_type(sys_version):
     return "PyOdide" if "Clang" in sys_version else "MicroPython"
 
 
+def show_worker_status():
+    global worker_dots
+    if worker_version == constants.WORKER_LOADING:
+        worker_dots += "."
+        if len(worker_dots) == 6:
+            worker_dots = "." 
+        console.write("worker-status", f"[Worker] Starting PyOdide {constants.ICON_HOUR_GLASS} {worker_dots}")
+        ltk.schedule(show_worker_status, "worker-status", 1)
+    else:
+        console.write("worker-status", f"[Worker] PyOdide; Python v{worker_version} ✅")
+
+
 def start_worker():
     if not doc.uid:
         return
-    console.write("worker", f"[Worker] Starting PyOdide {constants.ICON_HOUR_GLASS}")
+    show_worker_status()
     url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
     packages = url_packages.split(" ") if url_packages else []
     config = {
@@ -314,9 +330,15 @@ def start_worker():
     }
     worker = XWorker(f"./worker{window.app_version}.py", config=ltk.to_js(config), type="pyodide")
     ltk.register_worker("pyodide-worker", worker)
-    worker_ready[id(worker)] = False
     return worker
 
+
+def worker_ready(data):
+    global worker_version
+    worker_version = data[1:].split()[0]
+
+
+ltk.subscribe(constants.PUBSUB_STATE_ID, ltk.pubsub.TOPIC_WORKER_READY, worker_ready)
 
 def check_lastpass():
     if ltk.find("div[data-lastpass-root]").length:
