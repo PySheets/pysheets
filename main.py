@@ -55,6 +55,7 @@ FILES = """
     "static/state.py" = "state.py"
     "static/pysheets.py" = "pysheets.py"
     "static/editor.py" = "editor.py"
+    "static/api.py" = "api.py"
 """
 FILES_LTK = """
     "https://raw.githubusercontent.com/laffra/ltk/main/ltk/jquery.py" = "ltk/jquery.py"
@@ -74,6 +75,7 @@ def root():
     files = FILES + FILES_LTK
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
     interpreter = '' if pyodide else 'interpreter = "1.22.0-272"'
+    version_interpreter = 'latest' if pyodide else '1.22.0-272'
     auto = 'experimental_create_proxy = "auto"' if pyodide else ''
     packages = f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else ""
     vm = "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}"

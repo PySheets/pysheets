@@ -12,12 +12,12 @@ files = []
 module_children = {}
 global_imports = { }
 names = [
-    "Blank", "SpreadsheetCell", "progress", "hide_progress", "show_progress",
+    "Blank", "Cell", "progress", "hide_progress", "show_progress",
     "setup", "normalize_key", "add_token", "post_with_token", "get_with_token",
     "Document", "User", "Progress", "set_title", "login", "logout",
     "empty_edits", "uid", "name", "timestamp", "edits", "dirty", "last_edit",
     "email", "token", "photo", "self", "ltk", "js", "json", "logging", 
-    "pyscript", "random", "sys", "polyscript", "main", "load_doc_with_packages",
+    "base64", "io", "collections",
     "convert_from_json", "handle_job_result", "load_doc", "repeat", "doc",
     "user", "editing", "in_edit_mode", "state", "menu", "logger", 
     "create_menu", "delete_doc", "share", "close_share_dialog", 
@@ -119,7 +119,7 @@ def bundle(folder, module_name, out):
     if not os.path.exists(filename):
         filename = f"{base}/__init__.py"
     if not os.path.exists(filename):
-        if module_name != "warnings":
+        if module_name not in ["pandas", "warnings"] and not "." in module_name:
             global_imports[module_name] = True
         return False
     with open(filename, 'r') as f:

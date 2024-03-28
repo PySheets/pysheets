@@ -197,6 +197,7 @@ td {
 }
 
 .editor-container {
+    height: calc(50vh);
     overflow: hidden;
     border: 0px solid #DDD;
     border-left-width: 2px;
@@ -217,7 +218,7 @@ td {
     width: 100vw;
     height: calc(100vh - 78px);
     background-color: #f7f7f7;
-    opacity: 0.4;
+    opacity: 0;
     position: absolute;
     top: 48px;
     z-index: 1;
@@ -586,9 +587,13 @@ td:hover .debug-info {
 
 .console-container {
     background-color: lightyellow;
-    min-height: 300px;
+    height: calc(50vh - 64px);
     width: 100%;
     padding: "0 8px";
+}
+
+.right-panel {
+    width: 700px;
 }
 
 .console {

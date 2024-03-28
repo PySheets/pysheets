@@ -175,7 +175,7 @@ process main.py
 Ǔ save
 ǔ saveit
 Ǖ rgb_to_hex
-ǖ SpreadsheetCell
+ǖ Cell
 Ǘ cells
 ǘ column
 Ǚ select

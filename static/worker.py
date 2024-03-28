@@ -1,5 +1,5 @@
-import base64
-import io
+print("Worker starting")
+
 import json
 import sys
 import time
@@ -12,6 +12,8 @@ import pyscript # type: ignore
 import json
 import pyscript # type: ignore
 import requests
+
+from api import PySheets, edit_script
 
 DATA_KEY_URL = "u"
 DATA_KEY_TOKEN = "t"
@@ -71,45 +73,6 @@ class PyScriptSession(OriginalSession):
 requests.Session = PyScriptSession
 requests.session = lambda: PyScriptSession()
 
-import urllib.request
- 
-
-def wrap_as_file(content):
-    try:
-        return io.BytesIO(content)
-    except:
-        return io.StringIO(content)
-
-network_cache = {}
-
-def load_with_trampoline(url):
-    def get(url):
-        if url in network_cache:
-            when, value = network_cache[url]
-            if time.time() - when < 60:
-                return value
-
-        xhr = window.XMLHttpRequest.new()
-        xhr.open("GET", url, False)
-        xhr.send(None)
-        if xhr.status != 200:
-            raise IOError(f"HTTP Error: {xhr.status} for {url}")
-        value = xhr.responseText
-        network_cache[url] = time.time(), value 
-        return value
-
-    if url and url[0] != "/":
-        url = f"/load?u={window.encodeURIComponent(url)}"
-
-    return base64.b64decode(get(window.addToken(url)))
-   
-
-
-def urlopen(url, data=None, timeout=3, *, cafile=None, capath=None, cadefault=False, context=None):
-    return wrap_as_file(load_with_trampoline(url))
-
-
-urllib.request.urlopen = urlopen
 
 
 TOPIC_INFO = "log.info"
@@ -145,13 +108,6 @@ class Logger():
 
 logger = Logger()
 
-def get_col_row(key):
-    for index, c in enumerate(key):
-        if c.isdigit():
-            row = int(key[index:])
-            column = ord(key[index - 1]) - ord('A') + 1
-            return (column, row)
-
 
 def get_dict_table(result):
     return "".join([
@@ -166,42 +122,12 @@ def get_dict_table(result):
     ])
 
 
-
 def run_script(script, inputs):
-
-    def edit_script(script): # TODO: use ast to parse script
-        lines = script.strip().split("\n")
-        lines[-1] = f"_={lines[-1]}"
-        return "\n".join(lines)
-
-    class PySheets():
-
-        @classmethod
-        def sheet(cls, selection, headers=True):
-            import pandas
-            start, end = selection.split(":")
-            start_col, start_row = get_col_row(start)
-            end_col, end_row = get_col_row(end)
-            data = {}
-            for col in range(start_col, end_col + 1):
-                keys = [
-                    f"{chr(ord('A') + col - 1)}{row}"
-                    for row in range(start_row, end_row + 1)
-                ]
-                values = [ inputs[ key ] for key in keys ]
-                header = values.pop(0) if headers else f"col-{col}"
-                data[header] = values
-            return pandas.DataFrame.from_dict(data)
-
-        @classmethod
-        def load(cls, url):
-            return urlopen(url)
-
     _globals = {}
     _globals.update(inputs)
     _globals["pyodide"] = pyodide
     _globals["pyscript"] = pyscript
-    _globals["pysheets"] = PySheets()
+    _globals["pysheets"] = PySheets(inputs)
     _locals = _globals
     exec(edit_script(script), _globals, _locals)
     return _locals["_"]
@@ -250,7 +176,8 @@ def create_preview(result):
 
 
 
-def run(job):
+def run(data):
+    job = json.loads(data)
     start = time.time()
     try:
         key, script, inputs = job
@@ -298,8 +225,8 @@ def run(job):
             "error": traceback.format_exc(),
         }))
 
- 
-polyscript.xworker.sync.handler = lambda sender, topic, data: run(json.loads(data))
+polyscript.xworker.sync.handler = lambda sender, topic, data: run(data)
 
 subscribe("Worker", TOPIC_WORKER_RUN, "pyodide-worker")
-publish("Worker", "DAG", TOPIC_WORKER_READY, repr(sys.version))
+
+publish("Worker", "Sheet", TOPIC_WORKER_READY, repr(sys.version))

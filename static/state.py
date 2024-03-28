@@ -141,6 +141,7 @@ def forget_result(result):
 
 
 def really_forget_me():
+    window.localStorage.clear()
     ServerLogger.log("really_forget_me activated")
     ltk.get(add_token(f"/forget"), ltk.proxy(forget_result))
 
@@ -327,8 +328,11 @@ def start_worker():
     packages = url_packages.split(" ") if url_packages else []
     config = {
         "packages": [ "pandas", "matplotlib", "pyscript-ltk", "numpy", "requests" ] + packages,
+        "files": {
+            "static/api.py": "./api.py",
+        }
     }
-    worker = XWorker(f"./worker{window.app_version}.py", config=ltk.to_js(config), type="pyodide")
+    worker = XWorker(f"./worker{window.version_app}.py", config=ltk.to_js(config), type="pyodide")
     ltk.register_worker("pyodide-worker", worker)
     return worker
 
