@@ -62,7 +62,8 @@ except:
     pass
 
 class PySheets():
-    def __init__(self, inputs):
+    def __init__(self, spreadsheet, inputs):
+        self.spreadsheet = spreadsheet
         self.inputs = inputs
 
     def sheet(self, selection, headers=True):
@@ -82,7 +83,7 @@ class PySheets():
         return pandas.DataFrame.from_dict(data)
 
     def cell(self, key):
-        return window.jQuery(f"#{key}")
+        return self.spreadsheet.get(key) if self.spreadsheet else window.jQuery(key)
 
     def load(self, url):
         return urlopen(url)

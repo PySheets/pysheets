@@ -704,7 +704,7 @@ class Cell(ltk.TableData):
         
     def evaluate_locally(self, expression):
         inputs = {}
-        inputs["pysheets"] = api.PySheets(self.sheet)
+        inputs["pysheets"] = api.PySheets(self.sheet, self.sheet.cache)
         inputs.update(self.sheet.cache)
         start = ltk.get_time()
         exec(api.edit_script(self.script[1:]), inputs)
@@ -718,7 +718,7 @@ class Cell(ltk.TableData):
         self.running = True
         self.find(".loading-indicator").remove()
         self.append(ltk.Span(constants.ICON_HOUR_GLASS).addClass("loading-indicator"))
-        state.console.write(self.key, f"[Sheet] {self.key}: {self.text()} running in worker {constants.ICON_HOUR_GLASS}")
+        state.console.write(self.key, f"[Sheet] {self.key}: running in worker {constants.ICON_HOUR_GLASS}")
         ltk.publish(
             "Application",
             "Worker",

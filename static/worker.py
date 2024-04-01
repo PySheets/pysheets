@@ -135,7 +135,7 @@ def run_script(script, inputs):
     _globals.update(inputs)
     _globals["pyodide"] = pyodide
     _globals["pyscript"] = pyscript
-    _globals["pysheets"] = PySheets(inputs)
+    _globals["pysheets"] = PySheets(None, inputs)
     _locals = _globals
     exec(edit_script(script), _globals, _locals)
     return _locals["_"]
