@@ -320,12 +320,10 @@ class Spreadsheet():
         if len(event.key) == 1:
             if event.metaKey or event.ctrlKey:
                 return
-            (self.selection
-                .css("caret-color", "black").val("").focus()
-                .attr("dirty", "true"))
+            self.selection.css("caret-color", "black").val("").focus()
         else:
             if self.current and (column != self.current.column or row != self.current.row):
-                if self.selection.attr("dirty") == "true":
+                if self.selection.val() != self.current.text():
                     self.current.edited(self.selection.val())
             self.select(self.get(get_key_from_col_row(column, row)))
             event.preventDefault()
@@ -337,7 +335,6 @@ class Spreadsheet():
         selection_had_focus = ltk.find(".selection:focus").length
         cell.select()
         self.selection \
-            .attr("dirty", "false") \
             .css("position", "absolute") \
             .css("color", cell.css("color")) \
             .css("background-color", cell.css("background-color")) \
