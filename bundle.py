@@ -18,7 +18,7 @@ names = [
     "empty_edits", "uid", "name", "timestamp", "edits", "dirty", "last_edit",
     "email", "token", "photo", "self", "ltk", "js", "json", "logging", 
     "base64", "io", "collections",
-    "convert_from_json", "handle_job_result", "load_doc", "repeat", "doc",
+    "convert_from_json", "handle_job_result", "load_doc", "doc",
     "user", "editing", "in_edit_mode", "state", "menu", "logger", 
     "create_menu", "delete_doc", "share", "close_share_dialog", 
     "new_sheet", "share_sheet", "set_state", "kind", "value",
