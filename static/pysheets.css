@@ -65,11 +65,11 @@ td {
     border-width: 0 0 1px 1px;
     text-overflow: ellipsis; 
     overflow: hidden; 
+    vertical-align: middle;
 }
 
-.cell span {
-    width: 100%;
-    height: 100%;
+.cell.highlighted {
+    background-color: rgb(248, 250, 253);
 }
 
 .blank {
@@ -187,7 +187,7 @@ h3 {
 .preview {
     position: absolute;
     background-color: white;
-    z-index: 1000;
+    z-index: 2000;
     float: left;
     margin: 20px;
     width: fit-content;
@@ -450,6 +450,12 @@ td {
     vertical-align: top;
 }
 
+.loading-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+}
+
 img.loading {
     position: absolute;
     z-index: 100;
@@ -459,7 +465,6 @@ img.loading {
 }
 
 .py-error {
-    visibility: hidden;
     position: absolute;
     left: 0;
     bottom: 0;
