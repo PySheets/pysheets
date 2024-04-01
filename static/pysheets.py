@@ -88,6 +88,8 @@ class Spreadsheet():
         # ltk.find(".row-label").on("contextmenu", proxy(lambda event: self.show_row_menu(event)))
 
     def get(self, key):
+        if not key:
+            return None
         if not key in self.cells:
             column, row = get_col_row_from_key(key)
             self.cells[key] = Cell(self, column, row, "", None)
@@ -108,6 +110,7 @@ class Spreadsheet():
             script = data.get(constants.DATA_KEY_VALUE_FORMULA, "")
             if cell.script != script:
                 cell.set(script, data.get(constants.DATA_KEY_VALUE_PREVIEW, ""))
+                cell.text(data.get(constants.DATA_KEY_VALUE_KIND, ""))
             cell.css(
                 ltk.to_js(
                     {
@@ -359,10 +362,19 @@ class Spreadsheet():
         else:
             self.selection.css("caret-color", "transparent")
         self.current = cell
+
+        # remove highlights
         ltk.find(".column-label").css("background-color", "white")
-        ltk.find(f".column-label.col-{cell.column + 1}").css("background-color", "#d3e2fc")
         ltk.find(".row-label").css("background-color", "white")
+        ltk.find(f".cell.highlighted").removeClass("highlighted")
+
+        # highlight the column 
+        ltk.find(f".column-label.col-{cell.column + 1}").css("background-color", "#d3e2fc")
+        ltk.find(f".cell.col-{cell.column + 1}").addClass("highlighted")
+
+        # highlight the row
         ltk.find(f".row-label.row-{cell.row + 1}").css("background-color", "#d3e2fc")
+        ltk.find(f".cell.row-{cell.row + 1}").addClass("highlighted")
 
     def worker_ready(self, data):
         for cell in self.cells.values():
@@ -456,7 +468,6 @@ class Cell(ltk.TableData):
         self.inputs = []
         self.set(script, preview)
 
-
     def set(self, script, preview=None):
         self.script = script
         self.add_preview(preview)
@@ -474,9 +485,12 @@ class Cell(ltk.TableData):
                 speed = '🐌' if duration > 1.0 else '🚀'
                 state.console.write(self.key, f"[Sheet] {self.key}: runs: {count}, {duration:.3f}s {speed}")
         self.notify()
+        self.find(".loading-indicator").remove()
         children = self.children()
         self.text(str(value))
         self.append(children)
+        if self.sheet.current == self:
+            self.sheet.selection.val(self.text())
 
     def notify(self):
         self.sheet.notify(self)
@@ -556,10 +570,7 @@ class Cell(ltk.TableData):
         except Exception as e:
             state.console.write(f"arrows-{self.key}", f"Error in draw_arrows: {e}")
             return
-        window.addArrow(
-            create_marker(first, last, "inputs-marker arrow"),
-            self.element,
-        )
+        window.addArrow(create_marker(first, last, "inputs-marker arrow"), self.element)
         self.addClass("arrow")
         first.draw_arrows()
 
@@ -684,14 +695,16 @@ class Cell(ltk.TableData):
         if is_formula:
             try:
                 self.evaluate_locally(expression)
-            except:
+            except Exception as e:
+                if state.pyodide:
+                    print("Error:", e)
                 self.evaluate_in_worker(expression)
         else:
             self.update(0, self.script)
         
     def evaluate_locally(self, expression):
         inputs = {}
-        inputs["pysheets"] = api.PySheets(self.sheet.cache)
+        inputs["pysheets"] = api.PySheets(self.sheet)
         inputs.update(self.sheet.cache)
         start = ltk.get_time()
         exec(api.edit_script(self.script[1:]), inputs)
@@ -702,9 +715,10 @@ class Cell(ltk.TableData):
         if self.running:
             return
         self.sheet.counts[self.key] += 1
-        self.text(constants.ICON_HOUR_GLASS)
         self.running = True
-        state.console.write(self.key, f"[Sheet] {self.key}: running in worker {constants.ICON_HOUR_GLASS}")
+        self.find(".loading-indicator").remove()
+        self.append(ltk.Span(constants.ICON_HOUR_GLASS).addClass("loading-indicator"))
+        state.console.write(self.key, f"[Sheet] {self.key}: {self.text()} running in worker {constants.ICON_HOUR_GLASS}")
         ltk.publish(
             "Application",
             "Worker",
@@ -740,10 +754,16 @@ def hide_marker(event):
 
 
 def create_marker(first, last, clazz):
-    left = first.offset().left
-    top = first.offset().top
-    width = last.offset().left - first.offset().left + last.outerWidth() - 2
-    height = last.offset().top - first.offset().top + last.outerHeight() - 2
+    if not first or not last:
+        return
+    first_offset = first.offset()
+    last_offset = last.offset()
+    if not first_offset or not last_offset:
+        return
+    left = first_offset.left
+    top = first_offset.top
+    width = last_offset.left - first_offset.left + last.outerWidth() - 2
+    height = last_offset.top - first_offset.top + last.outerHeight() - 2
     return (ltk.Div()
         .addClass("marker")
         .addClass(clazz)
