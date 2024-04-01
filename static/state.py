@@ -250,6 +250,7 @@ class Console():
             import warnings
             warnings.warn = self.console_log
         builtins.print = self.print
+        self.setup_py_error()
     
     def setup(self):
         ltk.find(".console-filter") \
@@ -272,15 +273,19 @@ class Console():
         self.messages[key] = when, f"{when:4.3f}s  {message}"
         if "RuntimeError: pystack exhausted" in message:
             self.messages["critical"] = when, f"{when:4.3f}s  [Critical] MicroPython Error. Enable 'Run in main' and reload the page."
-        self.render()
+        self.render_message(key, *self.messages[key])
 
     def render(self):
         filter = str(ltk.find(".console-filter").val() or "")
-        console = ltk.find(".console").empty()
         for key, (when, message) in sorted(self.messages.items(), key=lambda pair: pair[1][0]):
-            if filter and not filter in message: continue
-            clazz = "error" if "error" in message.lower() else "warning" if "warning" in message.lower() else ""
-            console.append(ltk.Preformatted(message).element.addClass(clazz))
+            if filter and not filter in message:
+                continue
+            self.render_message(key, when, message)
+    
+    def render_message(self, key, when, message):
+        ltk.find(f"#console-{key}").remove()
+        clazz = "error" if "error" in message.lower() else "warning" if "warning" in message.lower() else ""
+        ltk.find(".console").append(ltk.Preformatted(message).attr("id", f"console-{key}").addClass(clazz))
 
     def console_log(self, *args):
         message = " ".join(str(arg) for arg in args)
@@ -289,12 +294,23 @@ class Console():
             self.write(key, message)
         window.console.orig_log(message)
 
-    def _setup_py_error(self):
+    def setup_py_error(self):
         def find_errors():
             py_error = ltk.find(".py-error")
             try:
                 if py_error.length > 0:
-                    self.write("py-error", py_error.text())
+                    text = py_error.text()
+                    if "RuntimeError: pystack exhausted" in text:
+                        window.alert("\n".join([
+                            "MicroPython reported an error: pystack exhausted.",
+                            "This is a programming error in PySheets, not your scripts.",
+                            "The sheet will reload using PyOdide when you press OK.",
+                            "This should produce better error messages for PySheets.",
+                            "",
+                        ]))
+                        window.location = window.location.href.replace(f"{constants.DATA_KEY_RUNTIME}=micropython", f"{constants.DATA_KEY_RUNTIME}=pyodide")
+                    else:
+                        self.write("py-error", text)
             finally:
                 py_error.remove()
         ltk.repeat(find_errors, 1)
