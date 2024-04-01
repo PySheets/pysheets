@@ -83,7 +83,7 @@ class PySheets():
         return pandas.DataFrame.from_dict(data)
 
     def cell(self, key):
-        return self.spreadsheet.get(key) if self.spreadsheet else window.jQuery(key)
+        return self.spreadsheet.get(key) if self.spreadsheet else window.jQuery(f"#{key}")
 
     def load(self, url):
         return urlopen(url)
