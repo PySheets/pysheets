@@ -129,14 +129,18 @@
     $("#main").css("display", "block");
 
     window.addArrow = (from, to, label) => {
-        const start = from[0];
-        const end = to[0];
-        if (start && end) {
-            return $(new LeaderLine(start, end, {
-                dash: { },
-                size: 3,
-                middleLabel: LeaderLine.pathLabel(label || "")
-            }));
+        try {
+            const start = from[0];
+            const end = to[0];
+            if (start && end) {
+                return $(new LeaderLine(start, end, {
+                    dash: { },
+                    size: 3,
+                    middleLabel: LeaderLine.pathLabel(label || "")
+                }));
+            }
+        } catch(e) {
+            // ignore
         }
     }
 
