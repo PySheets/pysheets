@@ -47,27 +47,34 @@
     padding: 0 0 0 8px;
 }
 
-.blank,
-.row-label {
-    padding: 3px 6px 0 6px;
-    width: 30px;
-    height: 22px;
-    margin: 0 0 0 0;
-    color: black;
-    border: 0 solid transparent;
-    border-width: 0 0 4px 0;
-    background-color: transparent;
-    margin-bottom: -2px;
+.sheet {
+    width: 100%;
+    border-spacing: 0px;
 }
 
-.row-label:hover {
-    border-color: #AAF;
+.sheet th,
+td {
+    padding: 0px;
 }
 
 .cell {
     background-color: white;
-    padding: 2px 8px;
+    padding: 3px 3px;
     width: 92px;
+    border: 1px solid #e1e1e1;
+    border-width: 0 0 1px 1px;
+    text-overflow: ellipsis; 
+    overflow: hidden; 
+}
+
+.cell span {
+    width: 100%;
+    height: 100%;
+}
+
+.blank {
+    border: 1px solid #e1e1e1;
+    border-width: 0 1px 1px 0;
 }
 
 input.arrow {
@@ -75,8 +82,24 @@ input.arrow {
     border: 1px solid rgb(255, 115, 0);
 }
 
-.inputs-marker {
+.marker {
+    z-index: 2;
     position: absolute;
+}
+
+.inputs-marker {
+    border: 2px solid #ff7f0e;
+}
+
+.selected {
+    border: 2px solid #1a73e8;
+}
+
+.selection {
+    border: 2px solid #1a73e8;
+    position: absolute;
+    z-index: 1900;
+    background: white;
 }
 
 .current-marker {
@@ -84,19 +107,40 @@ input.arrow {
 }
 
 .column-label {
-    width: calc(100% - 4px);
+    width: 125px;
     padding: 4px 8px;
     color: black;
     text-align: center;
-    border: 0 solid transparent;
-    border-width: 0 4px 0 0;
-    background-color: transparent;
+    border: 0 solid #e1e1e1;
+    border-width: 0 2px 1px 0;
+    border-bottom-color: #afafaf;
+    background-color: white;
+    font-family: Arial, Helvetica, sans-serif;
     margin-right: -2px;
+    margin-left: 1px;
+    font-weight: normal;
 }
 
 .column-label:hover {
     border-color: #AAF;
     background-color: #EEE;
+}
+
+.row-label {
+    width: 92px;
+    height: 24px;
+    margin: 0 0 0 0;
+    color: black;
+    border: 0 solid transparent;
+    border-width: 0 1px 1px 0;
+    border-right-color: #afafaf;
+    border-bottom-color: #afafaf;
+    background-color: white;
+    padding: 2px 18px 0 18px;
+}
+
+.row-label:hover {
+    border-color: #AAF;
 }
 
 h3 {
@@ -116,15 +160,6 @@ h3 {
     box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
     border-radius: 2px;
     border: 1px solid gray;
-}
-
-.sheet {
-    border-spacing: 0px;
-}
-
-.sheet th,
-td {
-    padding: 0px;
 }
 
 .main-editor-container {
@@ -215,13 +250,15 @@ td {
 
 #main {
     display: block;
-    width: 100vw;
-    height: calc(100vh - 78px);
-    background-color: #f7f7f7;
     opacity: 0;
+    width: 100vw;
+    height: calc(100vh - 51px);
+    overflow: hidden;
+    background-color: #f7f7f7;
     position: absolute;
     top: 48px;
     z-index: 1;
+    outline: none;
 }
 
 #dashboard {
@@ -230,8 +267,7 @@ td {
     top: 0px;
 }
 
-.leader-line,
-.inputs-marker {
+.leader-line {
     z-index: 2;
 }
 
@@ -594,11 +630,13 @@ td:hover .debug-info {
 
 .right-panel {
     width: 700px;
+    height: calc(100vh - 51px);
 }
 
 .console {
     background-color: lightyellow;
     width: 100%;
+    overflow: scroll;
 }
 
 .console-filter {

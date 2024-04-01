@@ -1,5 +1,6 @@
 print("Worker starting")
 
+import builtins
 import json
 import sys
 import time
@@ -86,12 +87,19 @@ TOPIC_RESPONSE = "app.response"
 TOPIC_WORKER_READY = "worker.ready"
 TOPIC_WORKER_RUN = "worker.run"
 TOPIC_WORKER_RESULT = "worker.result"
+TOPIC_WORKER_PRINT = "worker.print"
 
 
 sender = "Worker"
 receiver = "Application"
 subscribe = polyscript.xworker.sync.subscribe
 publish = polyscript.xworker.sync.publish
+
+orig_print = builtins.print
+def worker_print(*args):
+    publish(sender, receiver, TOPIC_WORKER_PRINT, f"[Worker] {' '.join(str(arg) for arg in args)}")
+    orig_print(*args)
+builtins.print = worker_print
 
 
 js.document = pyscript.document  # patch for matplotlib inside workers

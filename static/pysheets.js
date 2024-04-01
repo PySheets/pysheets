@@ -62,7 +62,9 @@
             })
             .append($("<tr>")
                 .attr("id", "sheet-header")
-                .append($("<td>"))
+                .append(
+                    $("<th>").addClass("blank")
+                )
             )
             .appendTo($(`#${parentId}`));
     }
@@ -79,19 +81,12 @@
                             .addClass(`col-${column}`)
                             .attr("id", `col-${column}`)
                             .attr("col", column)
-                            .css({
-                                width: 125,
-                                marginRight: -4,
-                                backgroundColor: "transparent",
-                                borderWidth: "0 4px 0 0",
-                                fontWeight: "normal",
-                            })
                             .text(String.fromCharCode("A".charCodeAt(0) + column - 1))
                             .resizable({
                                 handles: "e",
                                 alsoResize: `.col-${column}`,
                             })
-                            .on("resize", function(event) { sheetResized(); }) 
+                            .on("resize", function(event) { columnResized(event); })
                     )
                 );
             }
@@ -111,13 +106,8 @@
                             handles: "s",
                             alsoResize: `.row-${row}`,
                         })
-                        .on("resize", function(event) { sheetResized(); }) 
-                        .css({
-                            width: 45,
-                            padding: "2px 6px 0 6px",
-                            border: "0 0 4px 0",
-                            marginBottom: -4,
-                        }));
+                        .on("resize", function(event) { rowResized(event); })
+                    )
             }
             function key(col, row) {
                 return `${String.fromCharCode("A".charCodeAt(0) + col - 1)}${row}`
@@ -125,20 +115,10 @@
             for (var column=1; column <= column_count; column++) {
                 if ($(`#td-${column}-${row}`).length == 0) {
                     tr.append($("<td>")
-                        .attr("id", `td-${column}-${row}`)
-                        .addClass("ltk-table-cell")
-                        .addClass(`row-${row}`)
-                        .append($("<input>")
-                            .addClass("ltk-input cell")
-                            .addClass(`col-${column}`)
-                            .addClass(`row-${row}`)
-                            .attr("col", column)
-                            .attr("row", row)
-                            .attr("id", key(column, row))
-                            .css({
-                                width: "87%",
-                            })
-                        )
+                        .attr("id", key(column, row))
+                        .addClass(`cell row-${row} col-${column}`)
+                        .attr("col", column)
+                        .attr("row", row)
                     );
                 }
             }

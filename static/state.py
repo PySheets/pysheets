@@ -252,10 +252,8 @@ class Console():
         builtins.print = self.print
     
     def setup(self):
-        ltk.find(".console-filter").on(
-            "keyup",
-            ltk.proxy(lambda event: self.render())
-        )
+        ltk.find(".console-filter") \
+            .on("keyup", ltk.proxy(lambda event: self.render()))
     
     def print(self, *args):
         self.write(f"{ltk.get_time()}", " ".join(str(arg).replace("<", "&lt;") for arg in args))
@@ -277,7 +275,7 @@ class Console():
         self.render()
 
     def render(self):
-        filter = str(ltk.find(".console-filter").val())
+        filter = str(ltk.find(".console-filter").val() or "")
         console = ltk.find(".console").empty()
         for key, (when, message) in sorted(self.messages.items(), key=lambda pair: pair[1][0]):
             if filter and not filter in message: continue
