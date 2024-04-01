@@ -111,25 +111,18 @@ class Spreadsheet():
             if cell.script != script:
                 cell.set(script, data.get(constants.DATA_KEY_VALUE_PREVIEW, ""))
                 cell.text(data.get(constants.DATA_KEY_VALUE_KIND, ""))
-            cell.css(
-                ltk.to_js(
-                    {
-                        "font-family": settings.get(
-                            constants.DATA_KEY_VALUE_FONT_FAMILY,
-                            constants.DEFAULT_FONT_FAMILY,
-                        ),
-                        "font-size": settings.get(
-                            constants.DATA_KEY_VALUE_FONT_SIZE, constants.DEFAULT_FONT_SIZE
-                        ),
-                        "color": settings.get(
-                            constants.DATA_KEY_VALUE_COLOR, constants.DEFAULT_COLOR
-                        ),
-                        "background-color": settings.get(
-                            constants.DATA_KEY_VALUE_FILL, constants.DEFAULT_FILL
-                        ),
-                    }
-                )
-            )
+            fill = settings.get(constants.DATA_KEY_VALUE_FILL, constants.DEFAULT_FILL)
+            if fill != constants.DEFAULT_FILL:
+                cell.css("background-color", fill)
+            font_family = settings.get(constants.DATA_KEY_VALUE_FONT_FAMILY, constants.DEFAULT_FONT_FAMILY)
+            if font_family != constants.DEFAULT_FONT_FAMILY:
+                cell.css("font-family", font_family)
+            color = settings.get(constants.DATA_KEY_VALUE_COLOR, constants.DEFAULT_COLOR)
+            if color != constants.DEFAULT_COLOR:
+                cell.css("color", color)
+            font_size = settings.get(constants.DATA_KEY_VALUE_FONT_SIZE, constants.DEFAULT_FONT_SIZE)
+            if font_size != constants.DEFAULT_FONT_SIZE:
+                cell.css("font-size", font_size)
         return [key for key in cells]
 
     def copy(self, from_cell, to_cell):
