@@ -115,25 +115,6 @@ def clear():
     doc = Document()
 
 
-def switch_logger(event=None):
-    logger = local_storage.getItem("logger") != "true"
-    local_storage.setItem("logger", "true" if logger else "false")
-    window.location.reload()
-    
-
-def logger_enabled():
-    return local_storage.getItem("logger") == "true"
-
-
-def show_logger():
-    if mode == constants.MODE_DEVELOPMENT:
-        if logger_enabled():
-            ltk.jQuery(window.document.body).append(ltk.Logger().element)
-        else:
-            ltk.find(".ltk-log-list").remove()
-            ServerLogger()
-
-
 def forget_result(result):
     if "removed" in result:
         logout()
@@ -142,7 +123,7 @@ def forget_result(result):
 
 def really_forget_me():
     window.localStorage.clear()
-    ServerLogger.log("really_forget_me activated")
+    print("User activated really_forget_me")
     ltk.get(add_token(f"/forget"), ltk.proxy(forget_result))
 
     
@@ -192,15 +173,8 @@ def show_settings(event):
         ltk.MenuItem("👋", "Sign out", "", ltk.proxy(logout)),
         ltk.MenuItem("💀", "Forget me", "", ltk.proxy(forget_me)),
     )
-    if mode == constants.MODE_DEVELOPMENT:
-        popup.append(
-            ltk.MenuItem("🐞", "Hide logger" if logger_enabled() else "Show logger", "", switch_logger).element
-        )
     popup.css("display", "block")
     popup.show(button.parent())
-
-
-from ltk import Logger
 
 
 def add_token(url):
@@ -208,32 +182,9 @@ def add_token(url):
     return f"{url}{sep}{constants.DATA_KEY_TOKEN}={user.token}"
 
 
-class ServerLogger(Logger):
-    ignore = False
-    instance = None
-
-    def __init__(self):
-        ServerLogger.instance = self
-
+class ConsoleLogger(ltk.Logger):
     def _add(self, level, *args, **argv):
-        if self.ignore or not sync_edits:
-            return
-        def done(response):
-            self.ignore = False
-        self.ignore = True
-        message = " ".join(args)
-        ltk.post(add_token("/log"), { 
-            constants.DATA_KEY_UID: doc.uid,
-            constants.DATA_KEY_ENTRY: {
-                constants.DATA_KEY_MESSAGE: message,
-                constants.DATA_KEY_WHEN: ltk.get_time(),
-            }
-        }, ltk.proxy(done))
-
-    @classmethod
-    def log(cls, *args, **argv):
-        if cls.instance:
-            cls.instance._add("", *args, **argv)
+        console.print(args)
 
 
 class Console():
@@ -255,12 +206,27 @@ class Console():
     def setup(self):
         ltk.find(".console-filter") \
             .on("keyup", ltk.proxy(lambda event: self.render()))
+        self.render()
     
     def print(self, *args):
-        self.write(f"{ltk.get_time()}", " ".join(str(arg).replace("<", "&lt;") for arg in args))
+        self.write(f"{ltk.get_time()}", self.format(args))
+    
+    def format(self, *args):
+        return " ".join(str(arg).replace("<", "&lt;") for arg in args)
+        
+    def save(self, message):
+        ltk.post(add_token("/log"), { 
+            constants.DATA_KEY_UID: doc.uid,
+            constants.DATA_KEY_ENTRY: {
+                constants.DATA_KEY_MESSAGE: message,
+                constants.DATA_KEY_WHEN: ltk.get_time(),
+            }
+        }, lambda response: None)
 
-    def clear(self, key):
-        if key in self.messages:
+    def clear(self, key=None):
+        if key is None:
+            self.messages.clear()
+        elif key in self.messages:
             del self.messages[key]
         self.render()
 
@@ -269,20 +235,27 @@ class Console():
             message = " ".join(args)
         except Exception as e:
             message = f"Error writing {key}: {e}"
+        if message.startswith("[Network]"):
+            return
         when = ltk.get_time()
         self.messages[key] = when, f"{when:4.3f}s  {message}"
         if "RuntimeError: pystack exhausted" in message:
             self.messages["critical"] = when, f"{when:4.3f}s  [Critical] MicroPython Error. Enable 'Run in main' and reload the page."
         self.render_message(key, *self.messages[key])
+        self.save(message)
 
     def render(self):
-        filter = str(ltk.find(".console-filter").val() or "")
+        ltk.find(".console pre").remove()
         for key, (when, message) in sorted(self.messages.items(), key=lambda pair: pair[1][0]):
-            if filter and not filter in message:
-                continue
             self.render_message(key, when, message)
     
+    def get_filter(self):
+        return str(ltk.find(".console-filter").val() or "")
+    
     def render_message(self, key, when, message):
+        filter = self.get_filter()
+        if filter and not filter in message:
+            return
         ltk.find(f"#console-{key}").remove()
         clazz = "error" if "error" in message.lower() else "warning" if "warning" in message.lower() else ""
         ltk.find(".console").append(ltk.Preformatted(message).attr("id", f"console-{key}").addClass(clazz))
@@ -364,5 +337,4 @@ def check_lastpass():
 
 ltk.find(".menu-button").on("click", ltk.proxy(show_settings))
 ltk.window.addEventListener("popstate", lambda event: print("popstate"))
-show_logger()
 check_lastpass()

@@ -650,6 +650,11 @@ td:hover .debug-info {
     margin-bottom: 4px;
 }
 
+.console-clear {
+    min-width: 28px;
+    width: 28px;
+}
+
 .console pre {
     margin: 0;
 }

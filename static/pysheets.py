@@ -102,7 +102,8 @@ class Spreadsheet():
         self.counts = collections.defaultdict(int)
 
     def load_cells(self, cells):
-        state.console.write("sheet", f"[Main] Loading [{','.join(cells.keys())}].")
+        if cells:
+            state.console.write("sheet", f"[Main] Loading [{','.join(cells.keys())}].")
         for key, settings in cells.items():
             if key in ["0", "1"]: continue
             cell: Cell = self.get(key)
@@ -339,6 +340,7 @@ class Spreadsheet():
     def select(self, cell):
         if not cell:
             return
+        state.console.write("sheet-selection", f"Select {cell}")
         selection_had_focus = ltk.find(".selection:focus").length
         cell.select()
         self.selection \
@@ -576,23 +578,16 @@ class Cell(ltk.TableData):
         if not preview:
             return
 
+        def get_dimension():
+            return (preview.css("left"), preview.css("top"), preview.css("width"), preview.css("height"))
+        
         def save_preview():
-            preview = ltk.find(f"#preview-{self.key}")
-            state.doc.edits[constants.DATA_KEY_PREVIEWS][self.key] = previews[
-                self.key
-            ] = (
-                preview.css("left"),
-                preview.css("top"),
-                preview.css("width"),
-                preview.css("height"),
-            )
-
-        def dragstart(*args):
-            pass
+            state.doc.edits[constants.DATA_KEY_PREVIEWS][self.key] = previews[self.key] = get_dimension()
+            state.console.write("preview-changed", f"Preview for {self} changed to {repr(get_dimension())}")
 
         @saveit
         def dragstop(*args):
-            save_preview()
+            ltk.schedule(save_preview, "save-preview", 1)
 
         @saveit
         def resize(event, *args):
@@ -600,7 +595,7 @@ class Cell(ltk.TableData):
             preview.find("img, iframe").css("width", preview.width()).css(
                 "height", preview.height()
             )
-            save_preview()
+            ltk.schedule(save_preview, "save-preview", 1)
 
         left, top, width, height = previews.get(
             self.key,
@@ -626,7 +621,6 @@ class Cell(ltk.TableData):
             .on("mousemove", proxy(lambda event: self.draw_cell_arrows()))
             .on("mouseleave", proxy(lambda event: remove_arrows()))
             .on("resize", proxy(resize))
-            .on("dragstart", proxy(dragstart))
             .on("dragstop", proxy(dragstop))
         )
 
@@ -1106,9 +1100,14 @@ def create_sheet():
         .addClass("editor-container")
         .on("resize", proxy(resize_editor)),
         ltk.VBox(
-            ltk.Input("")
-                .addClass("console-filter")
-                .attr("placeholder", "filter the console"),
+            ltk.HBox(
+                ltk.Input("")
+                    .addClass("console-filter")
+                    .attr("placeholder", "filter the console"),
+                ltk.Button("X", proxy(lambda event: state.console.clear()))
+                    .addClass("console-clear")
+                    .attr("title", "Clear the console")
+            ),
             ltk.Div().addClass("console"),
         ).addClass("console-container"),
         "editor-and-console",
