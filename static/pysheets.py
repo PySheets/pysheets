@@ -217,25 +217,8 @@ class Spreadsheet():
                 other.invalidate(f"notify from '{cell.key}'")
 
     def setup(self, data, is_doc=True):
-        def select(event):
-            target = ltk.find(event.target)
-            if target.hasClass("selection"):
-                self.selection.css("caret-color", "black").focus()
-            else:
-                self.select(self.get(target.attr("id")))
-            event.preventDefault()
-
-        def activate(event):
-            if ltk.find(".selection:focus").length == 0:
-                (self.selection
-                    .val("")
-                    .val(self.current.text())
-                    .css("caret-color", "black")
-                    .focus())
-            event.preventDefault()
-
-        ltk.find(".cell").on("dblclick", proxy(activate)).on("click", proxy(select))
         self.load_data(data, is_doc)
+        self.setup_selection()
 
     def load_data(self, data, is_doc=True):
         url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
@@ -289,6 +272,27 @@ class Spreadsheet():
         ltk.find(".main").focus()
         return cells
 
+    def setup_selection(self):
+        def select(event):
+            target = ltk.find(event.target)
+            if target.hasClass("selection"):
+                self.selection.css("caret-color", "black").focus()
+            else:
+                self.copy_selection()
+                self.select(self.get(target.attr("id")))
+            event.preventDefault()
+
+        def activate(event):
+            if ltk.find(".selection:focus").length == 0:
+                (self.selection
+                    .val("")
+                    .val(self.current.text())
+                    .css("caret-color", "black")
+                    .focus())
+            event.preventDefault()
+
+        ltk.find(".cell").on("dblclick", proxy(activate)).on("click", proxy(select))
+
     def navigate(self, event):
         target = ltk.find(event.target)
         if target.hasClass("selection"):
@@ -304,6 +308,10 @@ class Spreadsheet():
         else:
             return
         ltk.find(".main").focus()
+
+    def copy_selection(self):
+        if self.current and self.selection.val() != self.current.text():
+            self.current.edited(self.selection.val())
 
     def navigate_main(self, event):
         column, row = self.current.column, self.current.row
@@ -323,8 +331,7 @@ class Spreadsheet():
             self.selection.css("caret-color", "black").val("").focus()
         else:
             if self.current and (column != self.current.column or row != self.current.row):
-                if self.selection.val() != self.current.text():
-                    self.current.edited(self.selection.val())
+                self.copy_selection()
             self.select(self.get(get_key_from_col_row(column, row)))
             event.preventDefault()
 
@@ -343,7 +350,7 @@ class Spreadsheet():
             .css("left", 0) \
             .css("top", 0) \
             .appendTo(cell.element) \
-            .css("width", cell.width() - 1) \
+            .css("width", cell.width() - 2) \
             .css("height", cell.height()) \
             .attr("class", self.current.attr("class").replace("cell", "selection")) \
             .val(cell.text())
@@ -701,13 +708,16 @@ class Cell(ltk.TableData):
         duration = ltk.get_time() - start
         self.update(duration, inputs["_"])
     
+    def show_loading(self):
+        self.find(".loading-indicator").remove()
+        self.append(ltk.Span(constants.ICON_HOUR_GLASS).addClass("loading-indicator"))
+
     def evaluate_in_worker(self, expression):
         if self.running:
             return
         self.sheet.counts[self.key] += 1
         self.running = True
-        self.find(".loading-indicator").remove()
-        self.append(ltk.Span(constants.ICON_HOUR_GLASS).addClass("loading-indicator"))
+        self.show_loading()
         state.console.write(self.key, f"[Sheet] {self.key}: running in worker {constants.ICON_HOUR_GLASS}")
         ltk.publish(
             "Application",
@@ -750,10 +760,10 @@ def create_marker(first, last, clazz):
     last_offset = last.offset()
     if not first_offset or not last_offset:
         return
-    left = first_offset.left
+    left = first_offset.left + 1
     top = first_offset.top
-    width = last_offset.left - first_offset.left + last.outerWidth() - 2
-    height = last_offset.top - first_offset.top + last.outerHeight() - 2
+    width = last_offset.left - first_offset.left + last.outerWidth() - 5
+    height = last_offset.top - first_offset.top + last.outerHeight() - 5
     return (ltk.Div()
         .addClass("marker")
         .addClass(clazz)
