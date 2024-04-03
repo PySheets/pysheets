@@ -87,3 +87,17 @@ class PySheets():
 
     def load(self, url):
         return urlopen(url)
+
+
+def get_dict_table(result):
+    return "".join([
+        "<table border='1' class='dict_table'>",
+            "<thead>",
+                "<tr><th>key</th><th>value</th></tr>",
+            "</thead>",
+            "<tbody>",
+                "".join(f"<tr><td>{key}</td><td>{get_dict_table(value)}</td></tr>" for key, value in result.items()),
+            "</thead>",
+        "</table>",
+    ]) if isinstance(result, dict) else repr(result)
+
