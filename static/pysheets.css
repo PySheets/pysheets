@@ -376,7 +376,7 @@ input {
 }
 
 #login-container #login-login {
-    background-color: var(--ltk-primary);
+    background-color: var(--ltk-success);
     width: 334px;
 }
 
@@ -627,7 +627,7 @@ td:hover .debug-info {
 }
 
 .console-container {
-    background-color: lightyellow;
+    background-color: #f9f9ff;
     height: calc(50vh - 64px);
     width: 100%;
     padding: "0 8px";
@@ -639,7 +639,7 @@ td:hover .debug-info {
 }
 
 .console {
-    background-color: lightyellow;
+    background-color: #f9f9ff;
     width: 100%;
     overflow: scroll;
 }
@@ -653,6 +653,11 @@ td:hover .debug-info {
 .console-clear {
     min-width: 28px;
     width: 28px;
+    height: 27px;
+}
+
+.console .ltk-table {
+    width: 100%
 }
 
 .console pre {
@@ -663,7 +668,44 @@ td:hover .debug-info {
     color: red;
 }
 
+.console .debug {
+    color: rgb(46, 158, 178);
+}
+
+.console .sheet {
+    color: rgb(51, 74, 227);
+}
+
+.console .worker {
+    color: rgb(123, 36, 149);
+}
+
 .console .warning {
     color: rgb(207, 112, 3);
 }
 
+.dict_table td {
+    max-width: 800px;
+}
+
+.history .ltk-hbox {
+    border: 0 solid gray;
+    border-bottom-width: 1px;
+}
+
+.history .timestamp {
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.history .copy {
+    min-width: 65px;
+    margin-right: 10px;
+}
+
+.history .formula {
+    height: 20px;
+    max-height: 20px;
+    overflow: hidden;
+    color: navy;
+}
