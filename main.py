@@ -240,6 +240,17 @@ def edit():
     )
 
 
+@app.route("/logs", methods=["GET"])
+def logs():
+    response = storage.get_logs(
+        request.args.get(DATA_KEY_TOKEN),
+        request.args.get(DATA_KEY_UID),
+        request.args.get(DATA_KEY_TIMESTAMP),
+    )
+    print("Logs", request.args.get(DATA_KEY_UID), "=>", response)
+    return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
+
+
 @app.route("/log", methods=["POST"])
 def log():
     form = request.form.to_dict()
