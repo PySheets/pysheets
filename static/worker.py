@@ -1,5 +1,3 @@
-print("Worker starting")
-
 import builtins
 import json
 import sys
@@ -14,7 +12,10 @@ import json
 import pyscript # type: ignore
 import requests
 
-from api import PySheets, edit_script
+try:
+    from api import edit_script, PySheets, get_dict_table
+except:
+    pass
 
 DATA_KEY_URL = "u"
 DATA_KEY_TOKEN = "t"
@@ -117,27 +118,16 @@ class Logger():
 logger = Logger()
 
 
-def get_dict_table(result):
-    return "".join([
-        "<table border='1' class='dataframe'>",
-            "<thead>",
-                "<tr><th>key</th><th>value</th></tr>",
-            "</thead>",
-            "<tbody>",
-                "".join(f"<tr><td>{key}</td><td>{str(value)}</td></tr>" for key, value in result.items()),
-            "</thead>",
-        "</table>",
-    ])
 
-
-def run_script(script, inputs):
+def run_in_worker(script, inputs):
     _globals = {}
     _globals.update(inputs)
     _globals["pyodide"] = pyodide
     _globals["pyscript"] = pyscript
     _globals["pysheets"] = PySheets(None, inputs)
     _locals = _globals
-    exec(edit_script(script), _globals, _locals)
+    print(f"[Worker] run '{script}'")
+    exec(script, _globals, _locals)
     return _locals["_"]
 
 
@@ -183,21 +173,30 @@ def create_preview(result):
     return str(result)
 
 
-
 def run(data):
     job = json.loads(data)
     start = time.time()
     try:
         key, script, inputs = job
         inputs.update(cache)
-        result = run_script(script, inputs)
-    except:
+        result = run_in_worker(script, inputs)
+    except Exception as e:
+        import re
+        tb = traceback.format_exc()
+        try:
+            lines = re.sub('Traceback.*<string>"," line ', "", tb).split("\n")
+            line = int(lines[3].split(" ")[-1])
+            stack = "\n".join(lines[4:])
+            error = f"{lines[-2]}: At line {line + 1} {stack}"
+        except Exception as e:
+            print("oops", e)
+            error = tb
         publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "value": None,
             "preview": "",
             "duration": time.time() - start,
-            "error": traceback.format_exc(),
+            "error": error,
         }))
         return
 
