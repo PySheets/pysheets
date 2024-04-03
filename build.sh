@@ -1,8 +1,19 @@
 clear
-echo "Building production folder in dist:"
+echo "Running unit tests:"
 echo
 
 export version=`grep APP_VERSION app.yaml | sed "s/.* /v/" | sed "s/\\./_/g"`
+
+export PYTHONPATH=./static:./tests
+python3 -m unittest discover
+if [[ $? -eq 0 ]]; then
+    echo "Unit tests succeeded"
+else
+    echo "Unit tests failed"
+    exit 1
+fi
+
+echo "Building production folder in dist"
 
 mkdir dist
 mkdir dist/static/
@@ -35,7 +46,8 @@ cp static/*.png dist/static
 cp static/*.ico dist/static
 
 cat static/api.py static/worker.py | \
-    grep -v "from api import PySheets, edit_script" | \
+    grep -v "import api" | \
+    grep -v "from api import PySheets, edit_script" \
     > dist/static/worker_$version.py
 
 cp static/api.py dist/static/api_$version.py
@@ -43,7 +55,7 @@ cp static/constants.py dist/static/constants_$version.py
 cp storage/__init__.py dist/storage_$version
 cat storage/firestore.py | \
     sed "s/constants as constants/constants_$version as constants/" | \
-    sed "s/constants import/constants_$version import/" | \
+    sed "s/constants import/constants_$version import/" \
     > dist/storage_$version/firestore.py
 cat main.py | \
     sed "s/8081/8080/" | \
@@ -63,32 +75,28 @@ cat dist/static/main_min_0.py | \
     sed "s/main_min_0 /main_min_0_$version /g" | \
     sed "s/main_min_1 /main_min_1_$version /g" | \
     sed "s/main_min_2 /main_min_2_$version /g" | \
-    sed "s/pysheets.css/pysheets_$version.css/g" | \
+    sed "s/pysheets.css/pysheets_$version.css/g" \
     > dist/static/main_min_0_$version.py
 cat dist/static/main_min_1.py | \
     sed "s/version_app = 'dev'/version_app = '$version'/g" | \
     sed "s/main_min_0 /main_min_0_$version /g" | \
     sed "s/main_min_1 /main_min_1_$version /g" | \
     sed "s/main_min_2 /main_min_2_$version /g" | \
-    sed "s/pysheets.css/pysheets_$version.css/g" | \
+    sed "s/pysheets.css/pysheets_$version.css/g" \
     > dist/static/main_min_1_$version.py
 cat dist/static/main_min_2.py | \
     sed "s/version_app = 'dev'/version_app = '$version'/g" | \
     sed "s/main_min_0 /main_min_0_$version /g" | \
     sed "s/main_min_1 /main_min_1_$version /g" | \
     sed "s/main_min_2 /main_min_2_$version /g" | \
-    sed "s/pysheets.css/pysheets_$version.css/g" | \
+    sed "s/pysheets.css/pysheets_$version.css/g" \
     > dist/static/main_$version.py
+echo "Before/After adding version $version:"
+wc dist/static/main_min_0.py dist/static/main_min_0_$version.py dist/static/main_min_1.py dist/static/main_min_1_$version.py dist/static/main_min_2.py dist/static/main_$version.py
 rm dist/static/main_min_0.py
 rm dist/static/main_min_1.py
 mv dist/static/pysheets.css dist/static/pysheets_$version.css
 mv dist/static/pysheets.js dist/static/pysheets_$version.js
-
-echo "Original size:"
-wc static/constants.py static/pysheets.py static/editor.py static/api.py static/main.py static/menu.py static/state.py 
-
-echo "Compressed size for $version:"
-wc dist/static/main*.py
 
 rm -rf ../pysheets-prod/* ../pysheets-prod/.do
 mv dist/* dist/.do ../pysheets-prod
