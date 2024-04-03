@@ -181,8 +181,9 @@ def add_token(url):
     sep = "&" if "?" in url else "?"
     return f"{url}{sep}{constants.DATA_KEY_TOKEN}={user.token}"
 
+Logger = ltk.Logger  # TODO: needed workaround for bundle.py
 
-class ConsoleLogger(ltk.Logger):
+class ConsoleLogger(Logger):
     def _add(self, level, *args, **argv):
         console.print(args)
 
@@ -208,8 +209,8 @@ class Console():
             .on("keyup", ltk.proxy(lambda event: self.render()))
         self.render()
     
-    def print(self, *args):
-        self.write(f"{ltk.get_time()}", self.format(args))
+    def print(self, *args, **vargs):
+        self.write(f"{ltk.get_time()}", f"{self.format(*args)}")
     
     def format(self, *args):
         return " ".join(str(arg).replace("<", "&lt;") for arg in args)
@@ -235,7 +236,7 @@ class Console():
             message = " ".join(args)
         except Exception as e:
             message = f"Error writing {key}: {e}"
-        if message.startswith("[Network]"):
+        if message.startswith("[Console] [Network]"):
             return
         when = ltk.get_time()
         self.messages[key] = when, f"{when:4.3f}s  {message}"
@@ -245,7 +246,7 @@ class Console():
         self.save(message)
 
     def render(self):
-        ltk.find(".console pre").remove()
+        ltk.find(".console .ltk-tr").remove()
         for key, (when, message) in sorted(self.messages.items(), key=lambda pair: pair[1][0]):
             self.render_message(key, when, message)
     
@@ -257,14 +258,22 @@ class Console():
         if filter and not filter in message:
             return
         ltk.find(f"#console-{key}").remove()
-        clazz = "error" if "error" in message.lower() else "warning" if "warning" in message.lower() else ""
-        ltk.find(".console").append(ltk.Preformatted(message).attr("id", f"console-{key}").addClass(clazz))
+        parts = message.split()
+        clazz = parts[1][1:-1].lower() # [Debug] becomes debug
+        ltk.find(".console table").append(
+            ltk.TableRow(
+                ltk.TableData(ltk.Preformatted(parts[0])),
+                ltk.TableData(ltk.Preformatted(parts[1])),
+                ltk.TableData(ltk.Preformatted(" ".join(parts[2:]))).css("width", "100%"),
+            )
+            .attr("id", f"console-{key}").addClass(clazz)
+        )
 
     def console_log(self, *args):
         message = " ".join(str(arg) for arg in args)
         if not message.startswith("💀🔒 - Possible deadlock"):
             key = "Network" if message.startswith("[Network]") else f"{ltk.get_time()}"
-            self.write(key, message)
+            self.write(key, f"[Console] {message}")
         window.console.orig_log(message)
 
     def setup_py_error(self):
