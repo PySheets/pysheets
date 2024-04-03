@@ -305,13 +305,13 @@ def add_edit(email, uid, edit):
 
 
 def get_logs(token, uid, ts):
-    if get_user_files(token).document(uid).get().exists:
-        logs = docid_to_edits.document(uid).collection("logs").where(constants.DATA_KEY_TIMESTAMP, ">", float(ts)).get()
-        return {
-            constants.DATA_KEY_UID: uid,
-            constants.DATA_KEY_TIMESTAMP: ts,
-            constants.DATA_KEY_LOGS: [ log.to_dict() for log in logs ],
-        }
+    check_admin(token)
+    logs = docid_to_logs.document(uid).collection("logs").where(constants.DATA_KEY_TIMESTAMP, ">", float(ts)).get()
+    return {
+        constants.DATA_KEY_UID: uid,
+        constants.DATA_KEY_TIMESTAMP: ts,
+        constants.DATA_KEY_LOGS: [ log.to_dict() for log in logs ],
+    }
 
 
 def log(token, uid, entry):
@@ -326,7 +326,7 @@ def check_owner(token, uid):
     try:
         get_user_files(token).document(uid).get().to_dict()[constants.DATA_KEY_UID]
     except:
-        raise ValueError("not owner")
+        raise ValueError("owner")
 
 
 def check_admin(token):
@@ -345,7 +345,13 @@ def share(token, sheet_id, email):
     
 def get_users(token):
     check_admin(token)
-    return { "users": list(filter(None, set(
+    emails = set(list(filter(None, [
         doc.to_dict().get(constants.DATA_KEY_EMAIL, "")
         for doc in token_to_email.stream()
-    )))}
+    ])))
+    def get_files(email):
+        return [
+            doc.to_dict().get(constants.DATA_KEY_UID)
+            for doc in email_to_files.document(email).collection('files').stream()
+        ]
+    return { "users": dict((email, get_files(email)) for email in emails)}
