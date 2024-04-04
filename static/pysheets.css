@@ -3,7 +3,7 @@
     justify-content: space-between;
     align-items: center;
     font-size: 14px;
-    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    font-family: Arial;
     background: #fef1e6;
     border: 0 solid #AAA;
     border-bottom-width: 1px;
@@ -58,6 +58,7 @@ td {
 }
 
 .cell {
+    font-family: Arial;
     background-color: white;
     padding: 3px 3px;
     width: 92px;
@@ -518,7 +519,7 @@ img.loading {
     margin: 4px;
     background-color: white;
     font-size: 14px;
-    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    font-family: Aria;
 }
 
 .document-card {

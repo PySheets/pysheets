@@ -454,9 +454,7 @@ class Spreadsheet():
         )
         self.save_file()
 
-TableData = ltk.TableData # TODO: needed workaround for bundle.py
-
-class Cell(TableData):
+class Cell(ltk.TableData):
 
     def __init__(self, sheet: Spreadsheet, column: int, row: int, script: str, preview: str):
         ltk.TableData.__init__(self, "")
@@ -473,7 +471,9 @@ class Cell(TableData):
         self.running = False
         self.needs_worker = False
         self.inputs = []
-        if script or preview:
+        self.script = ""
+        self.preview = None
+        if script != "" or preview:
             self.set(script, preview)
     
     def show_history(self, event):
@@ -614,10 +614,11 @@ class Cell(TableData):
         self.sheet.current = self
         main_editor.set(self.script)
         ltk.find("#selection").text(f"Selected cell: {self.key}")
-        ltk.find("#cell-font-family").val(self.css("font-family"))
-        ltk.find("#cell-font-size").val(window.parseFloat(self.css("font-size")))
-        ltk.find("#cell-font-color").val(rgb_to_hex(self.css("color")))
-        ltk.find("#cell-fill").val(rgb_to_hex(self.css("background-color")))
+        ltk.find("#cell-font-family").val(self.css("font-family") or constants.DEFAULT_FONT_FAMILY)
+        ltk.find("#cell-font-size").val(round(window.parseFloat(self.css("font-size"))) or constants.DEFAULT_FONT_SIZE)
+        print("set font", self.css("font-family"), constants.DEFAULT_FONT_FAMILY)
+        ltk.find("#cell-font-color").val(rgb_to_hex(self.css("color")) or constants.DEFAULT_COLOR)
+        ltk.find("#cell-fill").val(rgb_to_hex(self.css("background-color")) or constants.DEFAULT_FILL)
         ltk.find("#cell-attributes-container").css("display", "block")
         return self
 
@@ -651,6 +652,7 @@ class Cell(TableData):
     def add_preview(self, preview):
         self.preview = preview
         if not preview:
+            ltk.find(f"#preview-{self.key}").remove()
             return
         debug(f"add preview ", self.key, preview)
 
@@ -865,7 +867,7 @@ def handle_edits(data):
     for edit in edits:
         edit[constants.DATA_KEY_UID] = data[constants.DATA_KEY_UID]
         edit[constants.DATA_KEY_CURRENT] = None
-        debug(f" ### edit  {edit[constants.DATA_KEY_TIMESTAMP] > state.doc.last_edit} - {edit[constants.DATA_KEY_TIMESTAMP]} {state.doc.last_edit}")
+        debug(f" edit  {edit[constants.DATA_KEY_TIMESTAMP] > state.doc.last_edit} - {edit[constants.DATA_KEY_TIMESTAMP]} {state.doc.last_edit}")
         sheet.load_data(edit)
     state.doc.last_edit = window.time()
 
