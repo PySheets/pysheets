@@ -181,9 +181,8 @@ def add_token(url):
     sep = "&" if "?" in url else "?"
     return f"{url}{sep}{constants.DATA_KEY_TOKEN}={user.token}"
 
-Logger = ltk.Logger  # TODO: needed workaround for bundle.py
 
-class ConsoleLogger(Logger):
+class ConsoleLogger(ltk.Logger):
     def _add(self, level, *args, **argv):
         console.print(args)
 
@@ -290,10 +289,11 @@ class Console():
             try:
                 if py_error.length > 0:
                     text = py_error.text()
-                    if "RuntimeError: pystack exhausted" in text:
+                    print(text)
+                    if "RuntimeError: pystack exhausted" in text or "Uncaught" in text:
                         window.alert("\n".join([
-                            "MicroPython reported an error: pystack exhausted.",
-                            "This is a programming error in PySheets, not your scripts.",
+                            "The Python runtime reported a programming error in PySheets.",
+                            "This does not look like a problem with your scripts.",
                             "The sheet will reload using PyOdide when you press OK.",
                             "This should produce better error messages for PySheets.",
                             "",
