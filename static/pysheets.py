@@ -270,8 +270,7 @@ class Spreadsheet():
         ltk.find("#main").animate(ltk.to_js({"opacity": 1}), 400)
         cells = self.load_cells(data.get(constants.DATA_KEY_CELLS, {}))
         if constants.DATA_KEY_CURRENT in data and data[constants.DATA_KEY_CURRENT]:
-            self.select(self.get(data[constants.DATA_KEY_CURRENT]))
-        ltk.find(".main").focus()
+            ltk.schedule(lambda: self.select(self.get(data[constants.DATA_KEY_CURRENT])), "select-later", 0.1)
         return cells
 
     def setup_selection(self):
@@ -311,7 +310,7 @@ class Spreadsheet():
             self.navigate_main(event)
         else:
             return
-        ltk.find(".main").focus()
+        ltk.find("#main").focus()
 
     def copy_selection(self):
         debug("sheet.copy_selection", self.selection_edited, self.selection.val(), self.current and self.current.text())
@@ -322,6 +321,8 @@ class Spreadsheet():
         column, row = self.current.column, self.current.row
         if event.key == "Tab":
             column += -1 if event.shiftKey else 1 
+        elif event.key == "Delete" or event.key == "Backspace":
+            self.current.edited("")
         elif event.key == "ArrowLeft":
             column = max(0, column - 1)
         elif event.key == "ArrowRight":
@@ -346,7 +347,6 @@ class Spreadsheet():
         if not cell:
             return
         state.console.write("sheet-selection", f"[Sheet] Select {cell}")
-        selection_had_focus = ltk.find(".selection:focus").length
         cell.select()
         self.selection_edited = False
         self.selection \
@@ -362,24 +362,17 @@ class Spreadsheet():
             .css("height", cell.height()) \
             .attr("class", self.current.attr("class").replace("cell", "selection")) \
             .val(cell.text())
-        if self.current is cell and selection_had_focus:
-            self.selection.focus()
-        else:
-            self.selection.css("caret-color", "transparent")
+        self.selection.css("caret-color", "transparent")
         self.current = cell
 
         # remove highlights
         ltk.find(".column-label").css("background-color", "white")
         ltk.find(".row-label").css("background-color", "white")
         ltk.find(f".cell.highlighted").removeClass("highlighted")
-
         # highlight the column 
         ltk.find(f".column-label.col-{cell.column + 1}").css("background-color", "#d3e2fc")
-        ltk.find(f".cell.col-{cell.column + 1}").addClass("highlighted")
-
         # highlight the row
         ltk.find(f".row-label.row-{cell.row + 1}").css("background-color", "#d3e2fc")
-        ltk.find(f".cell.row-{cell.row + 1}").addClass("highlighted")
 
     def worker_ready(self, data):
         for cell in self.cells.values():
@@ -568,8 +561,7 @@ class Cell(ltk.TableData):
             self.evaluate()
 
     def store_edit(self):
-        if self.script != "":
-            state.doc.edits[constants.DATA_KEY_CELLS][self.key] = self.to_dict()
+        state.doc.edits[constants.DATA_KEY_CELLS][self.key] = self.to_dict()
 
     def get_inputs(self, script):
         if not isinstance(script, str) or not script or script[0] != "=" or "# no-inputs" in script:
@@ -1186,7 +1178,7 @@ def create_sheet():
         ).addClass("console-container"),
         "editor-and-console",
     ).addClass("right-panel")
-    ltk.find(".main").prepend(
+    ltk.find("#main").prepend(
         ltk.HorizontalSplitPane(
             ltk.Div(
                 ltk.find(".sheet"),
@@ -1200,6 +1192,7 @@ def create_sheet():
         debug("Error: createSheet did not add A1")
         raise ValueError("No A1")
     ltk.find("#menu").empty().append(menu.create_menu().element)
+    ltk.find("#main").focus()
 
     @saveit
     def set_font(index, option):
@@ -1277,7 +1270,7 @@ def setup():
 def list_sheets():
     state.clear()
     ltk.find("#main").css("opacity", 1)
-    ltk.find(".main").append(
+    ltk.find("#main").append(
         ltk.Button("New Sheet", proxy(lambda event: None)).addClass("new-button temporary"),
         ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
         ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
@@ -1309,7 +1302,7 @@ def show_document_list(documents):
         )
 
     sorted_documents = sorted(documents[constants.DATA_KEY_IDS], key=lambda doc: doc[1])
-    ltk.find(".main").empty().append(
+    ltk.find("#main").empty().append(
         ltk.Container(
             *[
                 create_card(
