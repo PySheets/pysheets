@@ -314,12 +314,13 @@ def get_logs(token, uid, ts):
     }
 
 
-def log(token, uid, entry):
-    if uid:
-        entry[constants.DATA_KEY_TOKEN] = token
-        entry[constants.DATA_KEY_TIMESTAMP] = int(time.time())
-        docid_to_logs.document(uid).collection("logs").add(entry)
-    return f'{{ "{constants.DATA_KEY_RESULT}":  "OK" }}'
+def log(token, doc_uid, time, message):
+    if doc_uid:
+        docid_to_logs.document(doc_uid).collection("logs").add({
+            constants.DATA_KEY_TOKEN: token,
+            constants.DATA_KEY_TIMESTAMP: time,
+            constants.DATA_KEY_MESSAGE: message,
+        })
 
 
 def check_owner(token, uid):
