@@ -208,6 +208,8 @@ def bundle(folder, module_name, out):
         def visit_Call(self, node: ast.Call):
             if isinstance(node.func, ast.Name):
                 node.func.id = shorten(node.func.id)
+                if node.func.id == "debug":
+                    node.args = []
             elif isinstance(node.func, ast.Attribute):
                 node.func.attr = shorten(node.func.attr)
                 self.visit(node.func.value)
@@ -221,6 +223,8 @@ def bundle(folder, module_name, out):
             remove_docstring(node)
             children.append(node)
             node.name = shorten(node.name)
+            for child in node.bases:
+                self.visit(child)
             for child in node.body:
                 self.visit(child)
                 remove_docstring(child)
