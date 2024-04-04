@@ -255,11 +255,11 @@ def logs():
 def log():
     form = request.form.to_dict()
     data = json.loads(list(form.keys())[0])
-    return storage.log(
-        request.args.get(DATA_KEY_TOKEN),
-        data[DATA_KEY_UID],
-        data[DATA_KEY_ENTRY],
-    )
+    doc_uid = data[DATA_KEY_UID]
+    token = request.args.get(DATA_KEY_TOKEN)
+    for time, message in data[DATA_KEY_ENTRIES]:
+        storage.log(token, doc_uid, time, message)
+    return f'{{ "{DATA_KEY_RESULT}":  "OK" }}'
 
 
 def ssl_get(url, headers=None):

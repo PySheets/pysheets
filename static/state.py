@@ -190,6 +190,8 @@ class ConsoleLogger(Logger):
 
 class Console():
     messages = {}
+    log_queue = []
+    ignore_log = [ "[Debug]", "[Worker] Starting PyOdide" ]
 
     def __init__(self):
         window.console.orig_log = window.console.log
@@ -216,13 +218,19 @@ class Console():
         return " ".join(str(arg).replace("<", "&lt;") for arg in args)
         
     def save(self, message):
-        ltk.post(add_token("/log"), { 
-            constants.DATA_KEY_UID: doc.uid,
-            constants.DATA_KEY_ENTRY: {
-                constants.DATA_KEY_MESSAGE: message,
-                constants.DATA_KEY_WHEN: ltk.get_time(),
-            }
-        }, lambda response: None)
+        for ignore in self.ignore_log:
+            if message.startswith(ignore):
+                return
+        self.log_queue.append((round(ltk.get_time(), 3), message))
+        ltk.schedule(self.flush_log_queue, "flush log queue", 3)
+    
+    def flush_log_queue(self):
+        if self.log_queue:
+            ltk.post(add_token("/log"), { 
+                constants.DATA_KEY_UID: doc.uid,
+                constants.DATA_KEY_ENTRIES: self.log_queue,
+            }, lambda response: None)
+            self.log_queue = []
 
     def clear(self, key=None):
         if key is None:
