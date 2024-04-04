@@ -91,8 +91,8 @@ cat dist/static/main_min_2.py | \
     sed "s/main_min_2 /main_min_2_$version /g" | \
     sed "s/pysheets.css/pysheets_$version.css/g" \
     > dist/static/main_$version.py
-echo "Before/After adding version $version:"
-wc dist/static/main_min_0.py dist/static/main_min_0_$version.py dist/static/main_min_1.py dist/static/main_min_1_$version.py dist/static/main_min_2.py dist/static/main_$version.py
+echo "After bundling $version:"
+wc dist/static/main_min_0_$version.py dist/static/main_min_1_$version.py dist/static/main_$version.py
 rm dist/static/main_min_0.py
 rm dist/static/main_min_1.py
 mv dist/static/pysheets.css dist/static/pysheets_$version.css
