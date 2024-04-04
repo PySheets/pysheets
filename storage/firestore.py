@@ -19,7 +19,7 @@ def set_logger(app_logger):
     logger = app_logger
 
 
-cred = credentials.Certificate(os.path.expanduser('config.json'))
+cred = credentials.Certificate('config.json')
 initialize_app(cred, { 'storageBucket': 'pysheets-399411.appspot.com' })
 db = firestore.client()
 
