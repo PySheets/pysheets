@@ -616,7 +616,6 @@ class Cell(ltk.TableData):
         ltk.find("#selection").text(f"Selected cell: {self.key}")
         ltk.find("#cell-font-family").val(self.css("font-family") or constants.DEFAULT_FONT_FAMILY)
         ltk.find("#cell-font-size").val(round(window.parseFloat(self.css("font-size"))) or constants.DEFAULT_FONT_SIZE)
-        print("set font", self.css("font-family"), constants.DEFAULT_FONT_FAMILY)
         ltk.find("#cell-font-color").val(rgb_to_hex(self.css("color")) or constants.DEFAULT_COLOR)
         ltk.find("#cell-fill").val(rgb_to_hex(self.css("background-color")) or constants.DEFAULT_FILL)
         ltk.find("#cell-attributes-container").css("display", "block")
