@@ -283,21 +283,26 @@ class Console():
             self.write(key, f"[Console] {message}")
         window.console.orig_log(message)
 
+    def runtime_error(self, text):
+        if "RuntimeError: pystack exhausted" in text:
+            return True
+        if "Uncaught" in text and not "<string>" in text:
+            return True
+
     def setup_py_error(self):
         def find_errors():
             py_error = ltk.find(".py-error")
             try:
                 if py_error.length > 0:
                     text = py_error.text()
-                    if "RuntimeError: pystack exhausted" in text or "Uncaught" in text:
+                    if self.runtime_error(text):
                         window.alert("\n".join([
                             "The Python runtime reported a programming error in PySheets.",
                             "This does not look like a problem with your scripts.",
-                            "The sheet will reload using PyOdide when you press OK.",
+                            "Please reload the sheet by selecting 'Run in main' and try again.",
                             "This should produce better error messages for PySheets.",
                             "",
                         ]))
-                        window.location = window.location.href.replace(f"{constants.DATA_KEY_RUNTIME}=micropython", f"{constants.DATA_KEY_RUNTIME}=pyodide")
                     else:
                         self.write("py-error", text)
             finally:
