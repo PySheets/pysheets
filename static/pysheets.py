@@ -112,20 +112,15 @@ class Spreadsheet():
         script = data.get(constants.DATA_KEY_VALUE_FORMULA, "")
         preview = data.get(constants.DATA_KEY_VALUE_PREVIEW, "")
         kind = data.get(constants.DATA_KEY_VALUE_KIND, "")
-        if cell.script != script:
-            cell.set(script, preview)
-            cell.text(kind)
+        cell.load(script, kind, preview)
 
     def load_cell(self, cell, settings):
+        debug(f"Load cell {cell.key}")
         self.load_cell_value(cell, settings)
         self.load_cell_css(cell, settings)
 
     def load_cells(self, cells):
-        if cells:
-            state.console.write("sheet", f"[Sheet] Loading cells [{','.join(cells.keys())}].")
         for key, settings in cells.items():
-            if key in ["0", "1"]:
-                continue
             try:
                 self.load_cell(self.get(key), settings)
             except Exception as e:
@@ -221,7 +216,7 @@ class Spreadsheet():
     def notify(self, cell):
         for other in self.cells.values():
             if other.key != cell.key and cell.key in other.inputs:
-                other.invalidate(f"notify from '{cell.key}'")
+                other.evaluate()
 
     def setup(self, data, is_doc=True):
         self.load_data(data, is_doc)
@@ -467,7 +462,7 @@ class Cell(TableData):
         ltk.TableData.__init__(self, "")
         self.sheet= sheet
         self.key = get_key_from_col_row(column, row)
-        debug("Cell", self.key, column, row, script[:32])
+        debug("Cell", self.key, column, row, script)
         self.element = ltk.find(f"#{self.key}")
         if not self.element.attr("id"):
             debug("Error: Cell has no element", self)
@@ -478,7 +473,8 @@ class Cell(TableData):
         self.running = False
         self.needs_worker = False
         self.inputs = []
-        self.set(script, preview)
+        if script or preview:
+            self.set(script, preview)
     
     def show_history(self, event):
         def load_history(history):
@@ -525,13 +521,18 @@ class Cell(TableData):
         self.on("contextmenu", proxy(show_menu))
 
     def set(self, script, preview=None):
-        debug("set script", self.key, script[:32])
+        debug("set", self.key, "script:", repr(script))
         self.script = script
         self.add_preview(preview)
-        self.invalidate("load from server")
+        self.evaluate()
         if self.sheet.current == self:
             main_editor.set(self.script)
             self.sheet.select(self)
+    
+    def load(self, script, kind, preview):
+        self.set(script, preview)
+        self.text(kind)
+        debug("load", self.key, kind, script, "=>", repr(self.text()))
 
     def update(self, duration, value, preview=None):
         debug("update value", self.key, value)
@@ -561,9 +562,10 @@ class Cell(TableData):
     def worker_ready(self):
         if self.needs_worker:
             debug(f"[Worker] Worker ready, run {self.key}")
-            del self.cache[self.key]
+            if self.key in self.sheet.cache:
+                del self.sheet.cache[self.key]
             self.running = False
-            self.invalidate("worker ready")
+            self.evaluate()
 
     def store_edit(self):
         if self.script != "":
@@ -650,7 +652,7 @@ class Cell(TableData):
         self.preview = preview
         if not preview:
             return
-        debug("add preview", self.key, preview[:32])
+        debug(f"add preview ", self.key, preview)
 
         def get_dimension():
             return (preview.css("left"), preview.css("top"), preview.css("width"), preview.css("height"))
@@ -681,7 +683,8 @@ class Cell(TableData):
             ),
         )
 
-        ltk.find(f"#preview-{self.key}").remove()
+        debug("remove preview", self.key)
+        ltk.find(f".preview-{self.key}").remove()
         if "# no-preview" in self.script:
             return
 
@@ -689,6 +692,7 @@ class Cell(TableData):
             ltk.create("<div>")
             .draggable()
             .addClass("preview")
+            .addClass(f"preview-{self.key}")
             .attr("id", f"preview-{self.key}")
             .css("position", "absolute")
             .css("left", left)
@@ -703,11 +707,12 @@ class Cell(TableData):
 
         try:
             html = self.fix_preview_html(preview, self.preview)
-            ltk.find(".sheet").append(preview.append(ltk.create(html)))
+            ltk.find("#main").append(preview.append(ltk.create(html)))
         except Exception as e:
             debug(f"No preview for {self}: {e}")
             pass
 
+        debug("add preview", self.key)
         self.make_resizable()
         self.draw_arrows()
 
@@ -746,17 +751,13 @@ class Cell(TableData):
 
     @saveit
     def edited(self, script):
-        debug("edited", self.key, script[:32])
+        debug("edited", self.key, script)
         self.script = script
-        self.invalidate("edited")
+        self.evaluate()
         self.store_edit()
 
-    def invalidate(self, reason):
-        debug("invalidate", self.key, reason)
-        self.evaluate()
-
     def evaluate(self):
-        debug("evaluate", self.key, self.script[:32])
+        debug("evaluate", self.key, self.script)
         script = self.script
         is_formula = isinstance(script, str) and script and script[0] == "="
         expression = api.edit_script(self.script[1:]) if is_formula else script
@@ -775,7 +776,7 @@ class Cell(TableData):
             self.update(0, self.script, self.preview)
         
     def evaluate_locally(self, expression):
-        debug("evaluate locally", self.key, expression[:32])
+        debug("evaluate locally", self.key, expression)
         inputs = {}
         inputs["pysheets"] = api.PySheets(self.sheet, self.sheet.cache)
         inputs.update(self.sheet.cache)
@@ -791,7 +792,7 @@ class Cell(TableData):
     def evaluate_in_worker(self, expression):
         if self.running:
             return
-        debug("evaluate in worker", self.key, expression[:32])
+        debug("evaluate in worker", self.key, expression)
         self.sheet.counts[self.key] += 1
         self.running = True
         self.needs_worker = True
@@ -1104,7 +1105,7 @@ def update_cell(event):
     cell = sheet.current
     if cell and cell.script != script:
         cell.set(script)
-        cell.invalidate("editor changed")
+        cell.evaluate()
         state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
 
 
