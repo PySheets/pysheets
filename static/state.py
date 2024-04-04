@@ -211,7 +211,7 @@ class Console():
         self.render()
     
     def print(self, *args, **vargs):
-        self.write(f"{ltk.get_time()}", f"{self.format(*args)}")
+        self.write(f"{ltk.get_time()}", f"[print] {self.format(*args)}")
     
     def format(self, *args):
         return " ".join(str(arg).replace("<", "&lt;") for arg in args)
@@ -289,7 +289,6 @@ class Console():
             try:
                 if py_error.length > 0:
                     text = py_error.text()
-                    print(text)
                     if "RuntimeError: pystack exhausted" in text or "Uncaught" in text:
                         window.alert("\n".join([
                             "The Python runtime reported a programming error in PySheets.",

@@ -669,6 +669,10 @@ td:hover .debug-info {
     color: red;
 }
 
+.console .print {
+    color: #ea5601;
+}
+
 .console .debug {
     color: rgb(46, 158, 178);
 }
