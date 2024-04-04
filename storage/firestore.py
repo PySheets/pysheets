@@ -45,10 +45,11 @@ EXPIRATION_WEEK_SECONDS = 7 * EXPIRATION_DAY_SECONDS
 
 TUTORIAL_UIDS = [
     "u2b23OTLgKn91dOKi8UC",
-    "LW45BlFyP5yKfd7qPFjV",
+    "hFxE6WVMpX5A7kb2CjVL",
     "0Ych1f6Qfq76eNajGbrz",
     "gOmzk2oWGBlcOK4U4M8m",
     "8TzCv0pjrwZU1jj4XE0c",
+    "iKyXEDL2ZgaqoAVKEbqL",
 ]
 
 admins = [
