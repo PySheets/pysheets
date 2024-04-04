@@ -271,7 +271,7 @@ class Console():
             ltk.TableRow(
                 ltk.TableData(ltk.Preformatted(parts[0])),
                 ltk.TableData(ltk.Preformatted(parts[1])),
-                ltk.TableData(ltk.Preformatted(" ".join(parts[2:]))).css("width", "100%"),
+                ltk.TableData(ltk.Preformatted(" ".join(parts[2:]).replace("<", "&lt;"))).css("width", "100%"),
             )
             .attr("id", f"console-{key}").addClass(clazz)
         )
