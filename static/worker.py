@@ -3,14 +3,13 @@ import json
 import sys
 import time
 import traceback
+import re
+import requests
 
 import js # type: ignore
 import polyscript # type: ignore
 import pyodide # type: ignore
 import pyscript # type: ignore
-import json
-import pyscript # type: ignore
-import requests
 
 try:
     from api import edit_script, PySheets, get_dict_table
@@ -19,10 +18,13 @@ except:
 
 DATA_KEY_URL = "u"
 DATA_KEY_TOKEN = "t"
+DATA_KEY_PROMPT = "v"
+DATA_KEY_COMPLETION = "w"
 
 window = pyscript.window
 get = window.get
 cache = {}
+token = window.localStorage.getItem(DATA_KEY_TOKEN)
 
 OriginalSession = requests.Session
 
@@ -89,6 +91,7 @@ TOPIC_WORKER_READY = "worker.ready"
 TOPIC_WORKER_RUN = "worker.run"
 TOPIC_WORKER_RESULT = "worker.result"
 TOPIC_WORKER_PRINT = "worker.print"
+TOPIC_WORKER_COMPLETION = "worker.completion"
 
 
 sender = "Worker"
@@ -102,8 +105,9 @@ def worker_print(*args):
     orig_print(*args)
 builtins.print = worker_print
 
-
 js.document = pyscript.document  # patch for matplotlib inside workers
+
+completions = {}
 
 class Logger():
     def info(self, *args):
@@ -172,6 +176,44 @@ def create_preview(result):
     return str(result)
 
 
+def normalize_dataframe(dataframe):
+    return re.sub("[0-9][0-9.]+", "1", dataframe)
+
+
+def complete(key, kind):
+    if kind != "DataFrame":
+        return
+    dataframe = normalize_dataframe(str(cache[key]))
+    if dataframe in completions:
+        return completions[dataframe]
+    generate_completion(key, kind, dataframe)
+
+
+def generate_completion(key, kind, dataframe):
+    data = {
+        DATA_KEY_PROMPT: f"""
+            Given the following dataframe, show the Python code to visualize.
+            Include an explanation at the start, formatted as a Python comment.
+            Assume I have the dataframe stored already in a variable called "{key}".
+            Create a matplotlib figure in the code and call it "figure".
+
+            {dataframe}
+        """
+    }
+    start = time.time()
+    url = f"complete?{DATA_KEY_TOKEN}={window.getToken()}"
+    def success(data, status, xhr):
+        completion = json.loads(window.JSON.stringify(data))
+        text = completion["text"].replace("plt.show()", "figure")
+        completions[dataframe] = completion
+        publish(sender, receiver, TOPIC_WORKER_COMPLETION, json.dumps({
+            "key": key, 
+            "text": text,
+            "duration": time.time() - start,
+        }))
+    window.ltk_post(url, json.dumps(data), pyodide.ffi.create_proxy(success), "json")
+
+
 def run(data):
     job = json.loads(data)
     start = time.time()
@@ -222,6 +264,7 @@ def run(data):
             "preview": "" if base_kind else preview,
             "error": None,
         }))
+        complete(key, kind)
     except:
         publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 

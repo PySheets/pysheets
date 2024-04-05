@@ -114,9 +114,7 @@ def get_file(token):
 
 
 def post_file(token):
-    form = request.form.to_dict()
-    body = list(form.keys())[0]
-    data = json.loads(body)
+    data = get_form_data()
     uid = data[DATA_KEY_UID]
     app.logger.info("POST %s %s %s", token, uid, len(body))
     storage.save(token, uid, data)
@@ -137,7 +135,7 @@ FILE_ACTIONS = {
 
 def get_form_data():
     form = request.form.to_dict()
-    return json.loads(list(form.keys())[0])[0]
+    return json.loads(list(form.keys())[0])
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -190,6 +188,14 @@ def share():
     return jsonify({ DATA_KEY_STATUS: "OK" })
 
 
+@app.route("/complete", methods=["POST"])
+def complete():
+    data = get_form_data()
+    token = request.args.get(DATA_KEY_TOKEN)
+    prompt = data[DATA_KEY_PROMPT]
+    return storage.complete(prompt, token)
+
+
 @app.route("/users", methods=["GET"])
 def users():
     response = storage.get_users(request.args.get(DATA_KEY_TOKEN))
@@ -230,8 +236,7 @@ def forget():
 
 @app.route("/edit", methods=["POST"])
 def edit():
-    form = request.form.to_dict()
-    data = json.loads(list(form.keys())[0])
+    data = get_form_data()
     email = storage.get_email(request.args.get(DATA_KEY_TOKEN))
     return storage.add_edit(
         email,
@@ -253,8 +258,7 @@ def logs():
 
 @app.route("/log", methods=["POST"])
 def log():
-    form = request.form.to_dict()
-    data = json.loads(list(form.keys())[0])
+    data = get_form_data()
     doc_uid = data[DATA_KEY_UID]
     token = request.args.get(DATA_KEY_TOKEN)
     for time, message in data[DATA_KEY_ENTRIES]:
@@ -303,8 +307,7 @@ def load():
         if request.method == "GET":
             response = ssl_get(url, headers=headers)
         elif request.method == "POST":
-            form = request.form.to_dict()
-            data = json.loads(list(form.keys())[0])
+            data = get_form_data()
             response = ssl_post(url, data, headers=headers)
         else:
             raise ValueError(f"Bad method {request.method}")

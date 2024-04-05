@@ -27,7 +27,13 @@ class Editor(ltk_Div):
     def set(self, value):
         self.create_editor()
         self.editor.setValue(str(value))
+        return self
+
+    def focus(self):
+        self.editor.focus()
+        return self
 
     def refresh(self):
         self.editor.refresh()
+        return self
 

@@ -15,6 +15,7 @@ from pyscript import window  # type: ignore
 state.console.write("pysheets", f"[Main] Pysheets starting {constants.ICON_HOUR_GLASS}")
 
 previews = {}
+completions = {}
 logger = logging.getLogger("root")
 logger.setLevel(
     logging.DEBUG if state.mode == constants.MODE_DEVELOPMENT else logging.INFO
@@ -271,7 +272,47 @@ class Spreadsheet():
         cells = self.load_cells(data.get(constants.DATA_KEY_CELLS, {}))
         if constants.DATA_KEY_CURRENT in data and data[constants.DATA_KEY_CURRENT]:
             ltk.schedule(lambda: self.select(self.get(data[constants.DATA_KEY_CURRENT])), "select-later", 0.1)
+        if is_doc:
+            sheet.find_frames()
         return cells
+
+    def find_frames(self):
+        visited = set()
+        def get_width(cell: Cell):
+            col = cell.column
+            while True:
+                col += 1
+                key = get_key_from_col_row(col, cell.row)
+                visited.add(key)
+                if not key in self.cells:
+                    break
+            return col - cell.column
+
+        def get_height(cell: Cell):
+            row = cell.row
+            while True:
+                row += 1
+                key = get_key_from_col_row(cell.column, row)
+                visited.add(key)
+                if not key in self.cells:
+                    break
+            return row - cell.row
+
+        def add_frame(key, width, height):
+            for col in range(cell.column, cell.column + width):
+                for row in range(cell.row, cell.row + height):
+                    other_key = get_key_from_col_row(col, row)
+                    visited.add(other_key)
+            add_completion_button(cell.key, lambda: insert_completion(f'pysheets.sheet("{key}:{other_key}")'))
+
+        for key in sorted(self.cells.keys()):
+            cell = self.cells[key]
+            if cell.key in visited:
+                continue
+            width = get_width(cell)
+            height = get_height(cell)
+            if width > 1 and height > 1:
+                add_frame(cell.key, width, height)
 
     def setup_selection(self):
         def select(event):
@@ -678,6 +719,7 @@ class Cell(ltk.TableData):
 
         debug("remove preview", self.key)
         ltk.find(f".preview-{self.key}").remove()
+        ltk.find(f".completion-{self.key}").remove()
         if "# no-preview" in self.script:
             return
 
@@ -746,6 +788,9 @@ class Cell(ltk.TableData):
     def edited(self, script):
         debug("edited", self.key, script)
         self.script = script
+        if script == "":
+            self.preview = None
+            ltk.find(f"#preview-{self.key}").remove()
         self.evaluate()
         self.store_edit()
 
@@ -1093,8 +1138,6 @@ ltk.find("#title").on("change", proxy(set_name))
 @saveit
 def update_cell(event):
     script = main_editor.get()
-    if state.mode == constants.MODE_DEVELOPMENT:
-        state.console.write("editor-changed", f"[Edits] Editor change: {repr(script)}")
     cell = sheet.current
     if cell and cell.script != script:
         cell.set(script)
@@ -1150,7 +1193,7 @@ def create_sheet():
                     ltk.Text("Packages to install:"),
                     ltk.Input("")
                         .attr("id", "packages")
-                        .css("width", 250)
+                        .css("width", 150)
                         .on("keyup", proxy(show_button))
                         .val(packages),
                     ltk.Switch("Run in main:", False)
@@ -1330,16 +1373,39 @@ def show_document_list(documents):
     state.show_message("Select a sheet below or create a new one...")
 
 
+def handle_completion(completion):
+    key = completion["key"]
+    text = completion["text"]
+    completions[key] = text
+    if ltk.find(f"#completion-{key}").length == 0:
+        add_completion_button(key, lambda: insert_completion(completions[key]))
+
+
+def insert_completion(text):
+    if main_editor.get() == "":
+        main_editor.set(f"=\n{text}").focus()
+    else:
+        window.alert("Please select an empty cell and try again.")
+
+
+def add_completion_button(key, handler):
+    ltk.find(f"#completion-{key}").remove()
+    ltk.find(".packages-container").append(
+        ltk.Button(
+            f"{constants.ICON_STAR} {key}", 
+            proxy(lambda event: handler())
+        )
+        .addClass("completion-button")
+        .attr("id", f"completion-{key}")
+    )
+    state.console.write(f"ai-{key}", f"[AI] The AI suggested a completion for {key}. See the {constants.ICON_STAR} button")
+
+
 def load_doc_with_packages(event, uid, runtime, packages):
     url = f"/?{constants.DATA_KEY_UID}={uid}&{constants.DATA_KEY_RUNTIME}={runtime}"
     if packages:
         url += f"&{constants.DATA_KEY_PACKAGES}={packages}"
     ltk.window.location = url
-
-
-def repeat(function, timeout_seconds=1):
-    ms = int(timeout_seconds * 1000)
-    window.setInterval(proxy(function), ms)
 
 
 def resize_selection():
@@ -1357,6 +1423,7 @@ def column_resized(event):
     ltk.find(f".cell.col-{column.attr('col')}").css("max-width", column.width())
     sheet_resized()
 
+
 def row_resized(event):
     row = ltk.find(event.target)
     ltk.find(f".cell.row-{row.attr('row')}").css("max-height", row.height())
@@ -1372,6 +1439,7 @@ def main():
     ltk.inject_css("pysheets.css")
     setup_login()
     ltk.schedule(setup, "setup")
+    ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_COMPLETION, handle_completion)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_PRINT, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_INFO, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_ERROR, print)

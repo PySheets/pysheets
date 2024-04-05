@@ -3,13 +3,16 @@ from firebase_admin import initialize_app
 from firebase_admin import firestore
 
 import hashlib
-import os
+import json
+import openai
 import random
 import re
 import requests
 import time
 import uuid
-    
+
+
+openai.api_key = json.loads(open("openai.json").read())["api_key"]
 
 import static.constants as constants
 
@@ -33,6 +36,10 @@ reset = db.collection('reset')
 email_to_files = db.collection('email_to_files')
 docid_to_doc = db.collection('docid_to_doc')
 docid_to_edits = db.collection('docid_to_edits')
+
+# AI Completion
+email_to_completion_budget = db.collection('email_to_completion_budget')
+prompt_to_completion = db.collection('prompt_to_completion')
 
 # Observability
 docid_to_logs = db.collection('docid_to_logs')
@@ -72,6 +79,61 @@ def hash_password(password):
         dklen=password_key_length
     )
 
+
+class CompletionBudgetException(Exception): pass
+
+
+def get_completion_budget(email):
+    budget = email_to_completion_budget.document(email).get().to_dict()
+    if not budget:
+        budget = {
+            "total": 0,
+            "last": 0,
+        }
+        email_to_completion_budget.document(email).set(budget)
+    return budget
+
+    
+def check_completion_budget(email):
+    budget = get_completion_budget(email)
+    if budget["total"] > 100:
+        raise CompletionBudgetException("You reached the lifetime maximum of 100 free completions.")
+    seconds = time.time() - budget["last"]
+    if seconds < 60:
+        raise CompletionBudgetException(f"Slow down. You can ask for completions again in {60 - seconds}s.")
+    return budget
+
+
+def increment_budget(email, budget):
+    budget["total"] += 1
+    budget["last"] = time.time()
+    email_to_completion_budget.document(email).set(budget)
+
+
+def complete(prompt, token):
+    email = get_email(token)
+    if not email:
+        raise ValueError("login")
+    budget = check_completion_budget(email)
+    completion = prompt_to_completion.document(prompt).get().to_dict()
+    if not completion:
+        completion = openai.Completion.create(
+                model="gpt-3.5-turbo-instruct",
+                prompt=prompt,
+                temperature=0,
+                max_tokens=1000,
+                top_p=1.0,
+                frequency_penalty=0.0,
+                presence_penalty=0.0,
+                stop=["\"\"\""]
+        )
+        prompt_to_completion.document(prompt).set(completion)
+        increment_budget(email, budget)
+    return {
+        "budget": budget,
+        "text": completion["choices"][0]["text"]
+    }
+    
 
 def get_email(token):
     return token_to_email.document(token).get().to_dict()[constants.DATA_KEY_EMAIL] if token else None

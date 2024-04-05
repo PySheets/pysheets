@@ -1,3 +1,4 @@
+from .firestore import complete
 from .firestore import delete
 from .firestore import list_files
 from .firestore import get_file

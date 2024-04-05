@@ -622,6 +622,13 @@ td:hover .debug-info {
     margin-top: 4px;
 }
 
+.completion-button {
+    min-width: 41px;
+    margin-left: 10px;
+    margin-top: 4px;
+    font-size: 9px;
+}
+
 #packages {
     background-color: white;
     width: 300px;
