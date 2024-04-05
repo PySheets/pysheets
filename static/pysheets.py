@@ -204,15 +204,18 @@ class Spreadsheet():
 
     def handle_worker_result(self, result):
         try:
-            cell = self.cells[result["key"]]
+            key = result["key"]
+            cell = self.cells[key]
+            if not cell.script:
+                return
             cell.update(result["duration"], result["value"], result["preview"])
             cell.running = False
             cell.notify()
-            debug("Worker", result["key"], "=>", result["value"])
+            debug("Worker", key, "=>", result["value"])
             if result["error"]:
-                state.console.write(result["key"], f"[Error] {result['key']}: {result['error']}")
+                state.console.write(key, f"[Error] {key}: {result['error']}")
         except Exception as e:
-            state.console.write(result["key"], f"[Error] {e}")
+            state.console.write(key, f"[Error] {e}")
 
     def notify(self, cell):
         for other in self.cells.values():
@@ -303,7 +306,8 @@ class Spreadsheet():
                 for row in range(cell.row, cell.row + height):
                     other_key = get_key_from_col_row(col, row)
                     visited.add(other_key)
-            add_completion_button(cell.key, lambda: insert_completion(f'pysheets.sheet("{key}:{other_key}")'))
+            text = f'\n# Create a Pandas DataFrame from values found in the current sheet\npysheets.sheet("{key}:{other_key}")'
+            add_completion_button(cell.key, lambda: insert_completion(text))
 
         for key in sorted(self.cells.keys()):
             cell = self.cells[key]
@@ -363,7 +367,7 @@ class Spreadsheet():
         if event.key == "Tab":
             column += -1 if event.shiftKey else 1 
         elif event.key == "Delete" or event.key == "Backspace":
-            self.current.edited("")
+            self.current.delete()
         elif event.key == "ArrowLeft":
             column = max(0, column - 1)
         elif event.key == "ArrowRight":
@@ -456,12 +460,16 @@ class Spreadsheet():
 
             def save_done(response):
                 status = response[constants.DATA_KEY_STATUS]
-                state.console.write("save-response", f"[Edits] Full document backup: {status} {'😡' if 'error' in status else '✅'}")
-                state.doc.dirty = False
+                if "error" in status:
+                    message = f"Full document backup failed {response}"
+                else:
+                    message = f"Full document backed up ✅"
+                    state.doc.dirty = False
+                state.console.write("save-response", f"[Edits] {message}")
                 if done:
                     done()
 
-            url = f"https://pysheets.app/file?{constants.DATA_KEY_UID}={state.doc.uid}"
+            url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
             ltk.post(state.add_token(url), data, proxy(save_done))
         except Exception as e:
             logger.error("Error saving file %s", e)
@@ -478,7 +486,7 @@ class Spreadsheet():
         state.doc.edit_count += len(edits)
         state.console.write("edits-sent", f"[Edits] Edits sent to server: {state.doc.edit_count}")
         ltk.post(
-            state.add_token(f"https://pysheets.app/edit"),
+            state.add_token(f"/edit"),
             {
                 constants.DATA_KEY_UID: state.doc.uid,
                 constants.DATA_KEY_EDIT: edits,
@@ -654,11 +662,18 @@ class Cell(ltk.TableData):
         ltk.find("#cell-attributes-container").css("display", "block")
         return self
 
+    def delete(self):
+        ltk.find(f"#completion-{self.key}").remove()
+        self.clear()
+        self.edited("")
+        del self.sheet.cells[self.key]
+
     def clear(self):
         self.set("")
-        self.css("font-family", "")
-        self.css("font-size", "")
+        self.inputs = []
         self.css("color", "")
+        self.css("font-size", "")
+        self.css("font-family", "")
         self.css("background-color", "")
 
     def draw_cell_arrows(self):
@@ -702,9 +717,7 @@ class Cell(ltk.TableData):
         @saveit
         def resize(event, *args):
             preview = ltk.find(event.target)
-            preview.find("img, iframe").css("width", preview.width()).css(
-                "height", preview.height()
-            )
+            preview.find("img, iframe").css("width", preview.width()).css("height", preview.height())
             ltk.schedule(save_preview, "save-preview", 1)
 
         left, top, width, height = previews.get(
@@ -719,25 +732,24 @@ class Cell(ltk.TableData):
 
         debug("remove preview", self.key)
         ltk.find(f".preview-{self.key}").remove()
-        ltk.find(f".completion-{self.key}").remove()
         if "# no-preview" in self.script:
             return
 
         preview = (
             ltk.create("<div>")
-            .draggable()
             .addClass("preview")
             .addClass(f"preview-{self.key}")
             .attr("id", f"preview-{self.key}")
             .css("position", "absolute")
             .css("left", left)
             .css("top", top)
-            .css("width", width)
-            .css("height", height)
+            .css("width", max(window.parseFloat(width), 100))
+            .css("height", max(window.parseFloat(height), 100))
             .on("mousemove", proxy(lambda event: self.draw_cell_arrows()))
             .on("mouseleave", proxy(lambda event: remove_arrows()))
             .on("resize", proxy(resize))
             .on("dragstop", proxy(dragstop))
+            .draggable()
         )
 
         try:
@@ -911,7 +923,7 @@ def handle_edits(data):
 def check_edits():
     if state.doc.uid and state.sync_edits:
         debug(f"Check edits since {state.doc.last_edit}")
-        url = f"https://pysheets.app/edits?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_TIMESTAMP}={round(state.doc.last_edit)}"
+        url = f"/edits?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_TIMESTAMP}={round(state.doc.last_edit)}"
         ltk.get(state.add_token(url), proxy(lambda response: handle_edits(response)))
         remove_old_editors()
 
@@ -967,7 +979,7 @@ def check_network():
 
 def load_file(event=None):
     if state.doc.uid:
-        url = f"https://pysheets.app/file?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_TIMESTAMP}={state.doc.timestamp}"
+        url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_TIMESTAMP}={state.doc.timestamp}"
         ltk.schedule(check_network, "network-error-3", 3)
         ltk.get(state.add_token(url), proxy(sheet.setup))
 
@@ -1322,7 +1334,7 @@ def list_sheets():
         ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
     )
     ltk.find(".temporary").css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), 2000)
-    ltk.get(state.add_token("https://pysheets.app/list"), proxy(show_document_list))
+    ltk.get(state.add_token("/list"), proxy(show_document_list))
 
 
 def show_document_list(documents):
@@ -1375,10 +1387,12 @@ def show_document_list(documents):
 
 def handle_completion(completion):
     key = completion["key"]
+    if sheet.cells[key].script == "":
+        return
     text = completion["text"]
-    completions[key] = text
-    if ltk.find(f"#completion-{key}").length == 0:
-        add_completion_button(key, lambda: insert_completion(completions[key]))
+    completions[key] = f"# The following code is entirely AI-generated. It may contain errors.\n{text}"
+    ltk.find(f"#completion-{key}").remove()
+    add_completion_button(key, lambda: insert_completion(completions[key]))
 
 
 def insert_completion(text):
@@ -1398,7 +1412,8 @@ def add_completion_button(key, handler):
         .addClass("completion-button")
         .attr("id", f"completion-{key}")
     )
-    state.console.write(f"ai-{key}", f"[AI] The AI suggested a completion for {key}. See the {constants.ICON_STAR} button")
+    message = f"[AI] The AI suggested a completion for {key}. See the '{constants.ICON_STAR}{key}' button"
+    state.console.write(f"ai-{key}", message)
 
 
 def load_doc_with_packages(event, uid, runtime, packages):
