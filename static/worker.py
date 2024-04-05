@@ -247,6 +247,7 @@ def run(data):
     except:
         publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
+            "script": script,
             "value": None,
             "preview": "",
             "duration": time.time() - start,
@@ -260,6 +261,7 @@ def run(data):
         publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "duration": time.time() - start,
+            "script": script,
             "value": preview if base_kind else kind,
             "preview": "" if base_kind else preview,
             "error": None,
@@ -269,6 +271,7 @@ def run(data):
         publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "value": None,
+            "script": script,
             "preview": "",
             "duration": time.time() - start,
             "error": traceback.format_exc(),
