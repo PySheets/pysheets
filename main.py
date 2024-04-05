@@ -116,7 +116,7 @@ def get_file(token):
 def post_file(token):
     data = get_form_data()
     uid = data[DATA_KEY_UID]
-    app.logger.info("POST %s %s %s", token, uid, len(body))
+    app.logger.info("POST %s %s", token, uid)
     storage.save(token, uid, data)
     return jsonify({DATA_KEY_STATUS: "OK"})
 
@@ -135,7 +135,10 @@ FILE_ACTIONS = {
 
 def get_form_data():
     form = request.form.to_dict()
-    return json.loads(list(form.keys())[0])
+    data = json.loads(list(form.keys())[0])
+    if isinstance(data, list):
+        data = data[0]
+    return data
 
 @app.route("/login", methods=["POST"])
 def login():
