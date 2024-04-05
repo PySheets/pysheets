@@ -99,7 +99,7 @@ class Spreadsheet():
     def clear(self):
         self.cells = {}
         self.cache = {}
-        self.current: Cell = None
+        self.current = None
         self.counts = collections.defaultdict(int)
 
     def load_cell_css(self, cell, settings):
@@ -204,7 +204,7 @@ class Spreadsheet():
 
     def handle_worker_result(self, result):
         try:
-            cell: Cell = self.cells[result["key"]]
+            cell = self.cells[result["key"]]
             cell.update(result["duration"], result["value"], result["preview"])
             cell.running = False
             cell.notify()
@@ -278,7 +278,7 @@ class Spreadsheet():
 
     def find_frames(self):
         visited = set()
-        def get_width(cell: Cell):
+        def get_width(cell):
             col = cell.column
             while True:
                 col += 1
@@ -288,7 +288,7 @@ class Spreadsheet():
                     break
             return col - cell.column
 
-        def get_height(cell: Cell):
+        def get_height(cell):
             row = cell.row
             while True:
                 row += 1
