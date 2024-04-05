@@ -7,3 +7,4 @@ firebase-admin==5.0.3
 certifi
 pyscript-ltk
 gunicorn
+openai
