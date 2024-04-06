@@ -1,0 +1,5 @@
+{
+    "dependencies": {
+        "@sourcegraph/cody-agent": "latest"
+    }
+}

@@ -27,6 +27,8 @@ cp LICENSE dist
 cp app.yaml dist
 cp firestore.json dist
 cp openai.json dist
+cp package.json dist
+cp package-lock.json dist
 cp requirements.txt dist
 
 cat Procfile | \
