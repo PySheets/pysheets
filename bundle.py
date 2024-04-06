@@ -237,7 +237,6 @@ def bundle(folder, module_name, out):
     def cleanup(source):
         source = re.sub("from __future__ import annotations", "", source)
         source = re.sub("\n\w*\n", "\n", source)
-        source = re.sub("[^']# .*\n", "\n", source)
         return source
 
     def generate():
