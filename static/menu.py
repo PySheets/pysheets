@@ -23,11 +23,19 @@ def create_menu():
              ltk.MenuItem("◱", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),
         ),
     )
+DELETE_PROMPT = """
+This will permanently delete the current sheet.
+You and anyone it has been shared with will lose access.
+We cannot recover the contents.
+
+Enter the name of the sheet to actually delete it:")
+"""
 
 
 def delete_doc():
-    url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
-    ltk.delete(state.add_token(url), lambda data: go_home())
+    if window.prompt(DELETE_PROMPT) == state.doc.name:
+        url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
+        ltk.delete(state.add_token(url), lambda data: go_home())
 
 
 def go_home():
