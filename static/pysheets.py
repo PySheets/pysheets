@@ -308,7 +308,10 @@ class Spreadsheet():
                 for row in range(cell.row, cell.row + height):
                     other_key = get_key_from_col_row(col, row)
                     visited.add(other_key)
-            text = f'\n# Create a Pandas DataFrame from values found in the current sheet\npysheets.sheet("{key}:{other_key}")'
+            text = f"""
+# Create a Pandas DataFrame from values found in the current sheet
+pysheets.sheet("{key}:{other_key}")
+"""
             add_completion_button(cell.key, lambda: insert_completion(text))
 
         for key in sorted(self.cells.keys()):
