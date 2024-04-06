@@ -80,7 +80,10 @@ class PySheets():
             values = [ self.inputs[ key ] for key in keys ]
             header = values.pop(0) if headers else f"col-{col}"
             data[header] = values
-        return pandas.DataFrame.from_dict(data)
+        df = pandas.DataFrame.from_dict(data)
+        if not isinstance(df, pandas.DataFrame):
+            return "Error: Incomplete Data"
+        return df
 
     def cell(self, key):
         return self.spreadsheet.get(key) if self.spreadsheet else window.jQuery(f"#{key}")
