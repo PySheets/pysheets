@@ -5,14 +5,17 @@ from firebase_admin import firestore
 import hashlib
 import json
 import openai
+import os
 import random
 import re
 import requests
+import subprocess
 import time
 import uuid
 
 
 openai.api_key = json.loads(open("openai.json").read())["api_key"]
+sourcegraph = json.loads(open("sourcegraph.json").read())
 
 import static.constants as constants
 
@@ -111,6 +114,42 @@ def increment_budget(email, budget):
     email_to_completion_budget.document(email).set(budget)
 
 
+def openai_complete(prompt):
+    return openai.Completion.create(
+        model="gpt-3.5-turbo-instruct",
+        prompt=prompt,
+        temperature=0,
+        max_tokens=1000,
+        top_p=1.0,
+        frequency_penalty=0.0,
+        presence_penalty=0.0,
+        stop=["\"\"\""]
+    )["choices"][0]
+
+class SourceGraphError(TypeError): pass
+
+def sourcegraph_complete(prompt):
+    os.putenv("SRC_ENDPOINT", "https://sourcegraph.com")
+    os.putenv("SRC_ACCESS_TOKEN", sourcegraph["token"])
+    command = [
+        "node_modules/.bin/cody-agent",
+        "experimental-cli",
+        "chat",
+        "-m",
+        prompt,
+    ]
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = process.communicate()
+    text = f'{out.decode("utf-8")}{err.decode("utf-8")}'
+    if not "```" in text:
+        raise SourceGraphError(text)
+    text = re.sub(".*```", "", text)
+    text = re.sub("```.*", "", text)
+    return {
+        "text": text
+    }
+
+
 def complete(prompt, token):
     email = get_email(token)
     if not email:
@@ -118,22 +157,17 @@ def complete(prompt, token):
     budget = check_completion_budget(email)
     completion = prompt_to_completion.document(prompt).get().to_dict()
     if not completion:
-        completion = openai.Completion.create(
-                model="gpt-3.5-turbo-instruct",
-                prompt=prompt,
-                temperature=0,
-                max_tokens=1000,
-                top_p=1.0,
-                frequency_penalty=0.0,
-                presence_penalty=0.0,
-                stop=["\"\"\""]
-        )
+        try:
+            completion = sourcegraph_complete(prompt)
+        except:
+            completion = openai_complete(prompt)
         prompt_to_completion.document(prompt).set(completion)
         increment_budget(email, budget)
-    return {
-        "budget": budget,
-        "text": completion["choices"][0]["text"]
-    }
+    print("###### COMPLETION #########")
+    print(type(completion))
+    print(completion)
+    completion["budget"] = budget
+    return completion
     
 
 def get_email(token):
