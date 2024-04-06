@@ -10,6 +10,6 @@ import time
 ltk.get_time = lambda: time.time()
 ltk.post = lambda url, data, done: "OK"
 
-from pyscript import window
+import pyscript
 
-window.parseFloat = lambda s: 0
+pyscript.window.parseFloat = lambda s: 0
