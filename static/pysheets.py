@@ -116,6 +116,8 @@ class Spreadsheet():
         cell.load(script, kind, preview)
 
     def load_cell(self, cell, settings):
+        if cell is self.current:
+            return
         debug(f"Load cell {cell.key}")
         self.load_cell_value(cell, settings)
         self.load_cell_css(cell, settings)
@@ -233,7 +235,6 @@ class Spreadsheet():
                 state.console.write("network-status", "[I/O] Error: Timeout. PySheet's document storage is unreachable 😵‍💫😵‍💫😵‍💫️️. Please reload the page...")
                 return
             bytes = window.JSON.stringify(ltk.to_js(data), None, 4)
-            state.console.write("network-status", f"[I/O] Downloaded the sheet, {len(bytes)} bytes ✅")
 
         data_packages = data.get(constants.DATA_KEY_PACKAGES)
         if data_packages and not url_packages:
@@ -271,12 +272,13 @@ class Spreadsheet():
         if constants.DATA_KEY_EDITOR_WIDTH in data:
             ltk.find(".main-editor-container").width(data[constants.DATA_KEY_EDITOR_WIDTH])
         ltk.schedule(lambda: remove_arrows(1000), "remove arrows", 2.5)
-        ltk.find("#main").animate(ltk.to_js({"opacity": 1}), 400)
         cells = self.load_cells(data.get(constants.DATA_KEY_CELLS, {}))
         if constants.DATA_KEY_CURRENT in data and data[constants.DATA_KEY_CURRENT]:
             ltk.schedule(lambda: self.select(self.get(data[constants.DATA_KEY_CURRENT])), "select-later", 0.1)
         if is_doc:
             sheet.find_frames()
+        state.console.write("network-status", f"[I/O] Loaded '{state.doc.name}', {len(bytes)} bytes ✅")
+        ltk.find("#main").animate(ltk.to_js({"opacity": 1}), 400)
         return cells
 
     def find_frames(self):
@@ -326,7 +328,7 @@ class Spreadsheet():
                 self.selection_edited = True
             else:
                 debug("sheet.setup.selection", target.attr("id"))
-                self.copy_selection()
+                self.save_selection()
                 self.select(self.get(target.attr("id")))
             event.preventDefault()
 
@@ -354,20 +356,27 @@ class Spreadsheet():
         elif event.key == "Tab" or event.key == "Enter":
             self.navigate_main(event)
         else:
+            ltk.schedule(self.copy_selection_to_main_editor, "copy-to-editor")
             return
         ltk.find("#main").focus()
 
-    def copy_selection(self):
-        debug("sheet.copy_selection", self.selection_edited, self.selection.val(), self.current and self.current.text())
+    def save_selection(self, event=None):
+        debug("sheet.save_selection", self.selection_edited, self.selection.val(), self.current and self.current.text())
         if self.selection_edited and self.current and self.selection.val() != self.current.text():
             self.current.edited(self.selection.val())
+    
+    def copy_selection_to_main_editor(self):
+        debug("copy", self.selection.val())
+        main_editor.set(self.selection.val())
 
     def navigate_main(self, event):
+        if not self.current:
+            return
         column, row = self.current.column, self.current.row
         if event.key == "Tab":
             column += -1 if event.shiftKey else 1 
         elif event.key == "Delete" or event.key == "Backspace":
-            self.current.delete()
+            self.current.edited("")
         elif event.key == "ArrowLeft":
             column = max(0, column - 1)
         elif event.key == "ArrowRight":
@@ -381,9 +390,10 @@ class Spreadsheet():
                 return
             self.selection_edited = True
             self.selection.css("caret-color", "black").val("").focus()
+            ltk.schedule(self.copy_selection_to_main_editor, "copy-to-editor")
         else:
             if self.current and (column != self.current.column or row != self.current.row):
-                self.copy_selection()
+                self.save_selection()
             self.select(self.get(get_key_from_col_row(column, row)))
             event.preventDefault()
 
@@ -481,7 +491,6 @@ class Spreadsheet():
         edits = {}
         for key, edit in list(state.doc.edits.items()):
             if edit:
-                debug(f"edit-{key}", "save edit", key, edit)
                 edits[key] = edit
         state.doc.edit_count += len(edits)
         state.console.write("edits-sent", f"[Edits] Edits sent to server: {state.doc.edit_count}")
@@ -565,6 +574,8 @@ class Cell(ltk.TableData):
     def set(self, script, preview=None):
         debug("set", self.key, "script:", repr(script))
         self.script = script
+        if script == "":
+            self.clear()
         self.add_preview(preview)
         self.evaluate()
         if self.sheet.current == self:
@@ -662,19 +673,15 @@ class Cell(ltk.TableData):
         ltk.find("#cell-attributes-container").css("display", "block")
         return self
 
-    def delete(self):
-        ltk.find(f"#completion-{self.key}").remove()
-        self.clear()
-        self.edited("")
-        del self.sheet.cells[self.key]
-
     def clear(self):
-        self.set("")
         self.inputs = []
         self.css("color", "")
         self.css("font-size", "")
         self.css("font-family", "")
         self.css("background-color", "")
+        ltk.find(f"#preview-{self.key}").remove()
+        ltk.find(f"#completion-{self.key}").remove()
+        del self.sheet.cells[self.key]
 
     def draw_cell_arrows(self):
         remove_arrows()
@@ -730,7 +737,6 @@ class Cell(ltk.TableData):
             ),
         )
 
-        debug("remove preview", self.key)
         ltk.find(f".preview-{self.key}").remove()
         if "# no-preview" in self.script:
             return
@@ -799,11 +805,7 @@ class Cell(ltk.TableData):
     @saveit
     def edited(self, script):
         debug("edited", self.key, script)
-        self.script = script
-        if script == "":
-            self.preview = None
-            ltk.find(f"#preview-{self.key}").remove()
-        self.evaluate()
+        self.set(script)
         self.store_edit()
 
     def evaluate(self):
@@ -911,7 +913,7 @@ def handle_edits(data):
     if "Error" in data or not constants.DATA_KEY_EDITS in data:
         return
     edits = data[constants.DATA_KEY_EDITS]
-    debug(f"Handle {len(edits)}")
+    debug(f"Handle edits {len(edits)}")
     for edit in edits:
         edit[constants.DATA_KEY_UID] = data[constants.DATA_KEY_UID]
         edit[constants.DATA_KEY_CURRENT] = None
@@ -1148,7 +1150,7 @@ ltk.find("#title").on("change", proxy(set_name))
 
 
 @saveit
-def update_cell(event):
+def update_cell(event=None):
     script = main_editor.get()
     cell = sheet.current
     if cell and cell.script != script:
@@ -1398,6 +1400,7 @@ def handle_completion(completion):
 def insert_completion(text):
     if main_editor.get() == "":
         main_editor.set(f"=\n{text}").focus()
+        update_cell()
     else:
         window.alert("Please select an empty cell and try again.")
 
