@@ -156,7 +156,7 @@
         window.CodeMirror.simpleHint(cm, window.CodeMirror.pythonHint);
     } 
 
-    window.create_editor = function (element, config) {
+    window.create_codemirror_editor = function (element, config) {
         const editor = window.CodeMirror(element, config);
         editor.on('inputRead', function onChange(editor, input) {
             if (input.text[0] === ';' || input.text[0] === ' ' || input.text[0] === ":") {

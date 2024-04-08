@@ -14,7 +14,7 @@ class Editor(ltk_Div):
     
     def create_editor(self):
         if self.editor == None:
-            self.editor = ltk.window.create_editor(self.element[0], ltk.to_js({
+            self.editor = ltk.window.create_codemirror_editor(self.element[0], ltk.to_js({
                 "mode": {
                     "name": "python",
                     "version": 3,
