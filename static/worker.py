@@ -12,13 +12,15 @@ import pyodide # type: ignore
 import pyscript # type: ignore
 
 try:
-    from api import edit_script, PySheets, get_dict_table
+    from api import edit_script, PySheets, get_dict_table, get_prompt
 except:
     pass
 
 DATA_KEY_URL = "u"
+DATA_KEY_ERROR = "G"
 DATA_KEY_TOKEN = "t"
 DATA_KEY_PROMPT = "v"
+DATA_KEY_STATUS = "S"
 DATA_KEY_COMPLETION = "w"
 
 window = pyscript.window
@@ -92,6 +94,7 @@ TOPIC_WORKER_RUN = "worker.run"
 TOPIC_WORKER_RESULT = "worker.result"
 TOPIC_WORKER_PRINT = "worker.print"
 TOPIC_WORKER_COMPLETION = "worker.completion"
+TOPIC_WORKER_COMPLETE = "worker.complete"
 
 
 sender = "Worker"
@@ -107,7 +110,7 @@ builtins.print = worker_print
 
 js.document = pyscript.document  # patch for matplotlib inside workers
 
-completions = {}
+completion_cache = {}
 
 class Logger():
     def info(self, *args):
@@ -176,61 +179,61 @@ def create_preview(result):
     return str(result)
 
 
-def normalize_dataframe(dataframe):
-    return re.sub("[0-9][0-9.]+", "1", dataframe)
-
-
 def complete(key, kind):
     if kind != "DataFrame":
         return
-    dataframe = normalize_dataframe(str(cache[key]))
-    if dataframe in completions:
-        return completions[dataframe]
-    generate_completion(key, kind, dataframe)
+    prompt = get_prompt(key, cache[key].columns.values)
+    if prompt in completion_cache:
+        return completion_cache[prompt]
+    generate_completion(key, prompt)
 
 
-def generate_completion(key, kind, dataframe):
-    data = {
-        DATA_KEY_PROMPT: f"""
-            Given the following dataframe, show the Python code to visualize.
-            Include an explanation at the start, formatted as a Python comment.
-            Assume I have the dataframe stored already in a variable called "{key}".
-            Create a matplotlib figure in the code and call it "figure".
-
-            {dataframe}
-        """
-    }
+def generate_completion(key, prompt):
+    data = { DATA_KEY_PROMPT: prompt }
     start = time.time()
     url = f"complete?{DATA_KEY_TOKEN}={window.getToken()}"
-    def success(data, status, xhr):
-        completion = json.loads(window.JSON.stringify(data))
-        text = completion["text"].replace("plt.show()", "figure")
-        completions[dataframe] = completion
+
+    def success(response, status, xhr):
+        data = json.loads(window.JSON.stringify(response))
+        if data.get(DATA_KEY_STATUS, "ok") == "error":
+            text = data[DATA_KEY_ERROR]
+        else:
+            text = data["text"].replace("plt.show()", "figure")
+            completion_cache[prompt] = data
         publish(sender, receiver, TOPIC_WORKER_COMPLETION, json.dumps({
             "key": key, 
+            "prompt": prompt,
             "text": text,
             "duration": time.time() - start,
         }))
-    window.ltk_post(url, json.dumps(data), pyodide.ffi.create_proxy(success), "json")
+
+    def error(data, status, xhr):
+        print("Send completion error to app", data)
+
+    window.ltk_post(
+        url, 
+        json.dumps(data), 
+        pyodide.ffi.create_proxy(success), 
+        "json", 
+        pyodide.ffi.create_proxy(error)
+    )
 
 
 def run(data):
-    job = json.loads(data)
     start = time.time()
     try:
-        key, script, inputs = job
+        key, script, inputs = data
         inputs.update(cache)
         result = run_in_worker(script, inputs)
     except Exception as e:
         import re
         tb = traceback.format_exc()
         try:
-            lines = re.sub('Traceback.*<string>"," line ', "", tb).split("\n")
-            line = int(lines[3].split(" ")[-1])
-            stack = "\n".join(lines[4:])
-            error = f"{lines[-2]}: At line {line + 1} {stack}"
+            lines = tb.strip().split("\n")
+            line = [line for line in lines if "<string>" in line][0]
+            line_number = int(re.sub("[^0-9]", "", line))
+            error = f"At line {line_number + 1}: {lines[-1]}"
         except Exception as e:
-            print("oops", e)
             error = tb
         publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
@@ -277,8 +280,21 @@ def run(data):
             "error": traceback.format_exc(),
         }))
 
-polyscript.xworker.sync.handler = lambda sender, topic, data: run(data)
+def handle_request(sender, topic, request):
+    try:
+        data = json.loads(request)
+        if topic == TOPIC_WORKER_COMPLETE:
+            generate_completion(data["key"], data["prompt"])
+        elif topic == TOPIC_WORKER_RUN:
+            run(data)
+        else:
+            print("Error: Unexpect topic request", topic)
+    except Exception as e:
+        print("Error: Handling topic", topic, e, repr(data))
+
+polyscript.xworker.sync.handler = handle_request
 
 subscribe("Worker", TOPIC_WORKER_RUN, "pyodide-worker")
+subscribe("Worker", TOPIC_WORKER_COMPLETE, "pyodide-worker")
 
 publish("Worker", "Sheet", TOPIC_WORKER_READY, repr(sys.version))

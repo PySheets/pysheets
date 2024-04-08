@@ -248,7 +248,7 @@ class Console():
         when = ltk.get_time()
         self.messages[key] = when, f"{when:4.3f}s  {message}"
         if "RuntimeError: pystack exhausted" in message:
-            self.messages["critical"] = when, f"{when:4.3f}s  [Critical] MicroPython Error. Enable 'Run in main' and reload the page."
+            self.messages["critical"] = when, f"{when:4.3f}s  [Critical] MicroPython Error. Enable 'PyOdide' and reload the page."
         self.render_message(key, *self.messages[key])
         self.save(message)
 
@@ -299,7 +299,7 @@ class Console():
                         window.alert("\n".join([
                             "The Python runtime reported a programming error in PySheets.",
                             "This does not look like a problem with your scripts.",
-                            "Please reload the sheet by selecting 'Run in main' and try again.",
+                            "Please reload the sheet by selecting 'PyOdide' and trying again.",
                             "This should produce better error messages for PySheets.",
                             "",
                         ]))

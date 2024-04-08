@@ -206,9 +206,14 @@ h3 {
 
 .preview td, .preview th {
     padding: 4px 8px;
-    text-wrap: wrap;
     border-color: lightgray;
-    max-width: 200px;
+}
+
+.preview td div, .preview th div {
+    max-height: 22px;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .preview thead > tr > th {
@@ -222,6 +227,21 @@ h3 {
 .ltk-input {
     border-color: transparent;
     height: 23px;
+}
+
+#completion-dialog .ltk-textarea, #completion-dialog pre {
+    width: calc(100% - 20px);
+    height: 200px;
+    margin: 4px 0 28px 0;
+    background-color: #fffef7;
+    border: 1px solid purple;
+    padding: 8px;
+    overflow: auto;
+}
+
+#completion-dialog button {
+    margin-right: 10px;
+    min-width: 0;
 }
 
 .header {
@@ -620,6 +640,13 @@ td:hover .debug-info {
 
 #reload-button {
     margin-top: 4px;
+    min-width: 45px;
+    margin-right: 12px;
+}
+
+#run-button {
+    margin-top: 4px;
+    min-width: 45px;
 }
 
 .completion-button {

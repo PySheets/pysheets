@@ -2,6 +2,7 @@ import api
 import collections
 import constants
 import js  # type: ignore
+import json
 import ltk
 import logging
 import menu
@@ -15,7 +16,7 @@ from pyscript import window  # type: ignore
 state.console.write("pysheets", f"[Main] Pysheets starting {constants.ICON_HOUR_GLASS}")
 
 previews = {}
-completions = {}
+completion_cache = {}
 logger = logging.getLogger("root")
 logger.setLevel(
     logging.DEBUG if state.mode == constants.MODE_DEVELOPMENT else logging.INFO
@@ -99,7 +100,7 @@ class Spreadsheet():
     def clear(self):
         self.cells = {}
         self.cache = {}
-        self.current = None
+        self.current: Cell = None
         self.counts = collections.defaultdict(int)
 
     def load_cell_css(self, cell, settings):
@@ -207,7 +208,7 @@ class Spreadsheet():
     def handle_worker_result(self, result):
         try:
             key = result["key"]
-            cell = self.cells[key]
+            cell: Cell = self.cells[key]
             if not cell.script:
                 return
             cell.update(result["duration"], result["value"], result["preview"])
@@ -312,7 +313,7 @@ class Spreadsheet():
 # Create a Pandas DataFrame from values found in the current sheet
 pysheets.sheet("{key}:{other_key}")
 """
-            add_completion_button(cell.key, lambda: insert_completion(text))
+            add_completion_button(cell.key, lambda: insert_completion(key, "", text))
 
         for key in sorted(self.cells.keys()):
             cell = self.cells[key]
@@ -471,10 +472,10 @@ pysheets.sheet("{key}:{other_key}")
                 constants.DATA_KEY_CURRENT: self.current.key if self.current else "",
             }
 
-            def save_done(response):
-                status = response[constants.DATA_KEY_STATUS]
+            def save_done(data):
+                status = data[constants.DATA_KEY_STATUS]
                 if "error" in status:
-                    message = f"Full document backup failed {response}"
+                    message = f"Full document backup failed {data}"
                 else:
                     message = f"Full document backed up ✅"
                     state.doc.dirty = False
@@ -668,7 +669,7 @@ class Cell(ltk.TableData):
         remove_arrows()
         self.sheet.current = self
         main_editor.set(self.script)
-        ltk.find("#selection").text(f"Selected cell: {self.key}")
+        ltk.find("#selection").text(f"Cell: {self.key}")
         ltk.find("#cell-font-family").val(self.css("font-family") or constants.DEFAULT_FONT_FAMILY)
         ltk.find("#cell-font-size").val(round(window.parseFloat(self.css("font-size"))) or constants.DEFAULT_FONT_SIZE)
         ltk.find("#cell-font-color").val(rgb_to_hex(self.css("color")) or constants.DEFAULT_COLOR)
@@ -685,6 +686,8 @@ class Cell(ltk.TableData):
         ltk.find(f"#preview-{self.key}").remove()
         ltk.find(f"#completion-{self.key}").remove()
         del self.sheet.cells[self.key]
+        if self.key in previews:
+            del previews[self.key]
 
     def draw_cell_arrows(self):
         remove_arrows()
@@ -752,17 +755,14 @@ class Cell(ltk.TableData):
             .css("position", "absolute")
             .css("left", left)
             .css("top", top)
-            .css("width", width)
-            .css("height", height)
-            .css("min-width", 100)
-            .css("min-height", 100)
+            .css("width", "fit-content")
+            .css("height", "fit-content")
             .on("mousemove", proxy(lambda event: self.draw_cell_arrows()))
             .on("mouseleave", proxy(lambda event: remove_arrows()))
             .on("resize", proxy(resize))
             .on("dragstop", proxy(dragstop))
             .draggable()
         )
-
         try:
             html = self.fix_preview_html(preview, self.preview)
             ltk.find("#main").append(preview.append(ltk.create(html)))
@@ -773,6 +773,14 @@ class Cell(ltk.TableData):
         debug("add preview", self.key)
         self.make_resizable()
         self.draw_arrows()
+        try:
+            for td in ltk.find_list(f"#preview-{self.key} .dataframe td"):
+                content = td.text()
+                td.empty().append(ltk.Div().text(content))
+            ltk.find(f"#preview-{self.key} .dataframe tr th:first-child").remove()
+        except Exception as e:
+            print("Error adding preview for", self, e)
+
 
     def fix_preview_html(self, preview, html):
         try:
@@ -797,7 +805,7 @@ class Cell(ltk.TableData):
         preview = ltk.find(f"#preview-{self.key}")
         width = preview.css("width")
         height = preview.css("height")
-        preview.find("img, iframe").css("width", width).css("height", height)
+        # preview.find("img, iframe").css("width", width).css("height", height)
         preview.resizable(ltk.to_js({"handles": "s, e"}))
 
     def is_int(self, value):
@@ -1200,27 +1208,37 @@ def create_sheet():
         ltk.find("#run-in-main").prop("checked", ltk.find(event.target).prop("checked"))
 
     def show_button(event=None):
-        ltk.find("#reload-button").prop("disabled", False)
+        ltk.find("#reload-button").css("display", "block")
+
+    def run_current(event=None):
+        remove_arrows()
+        sheet.current.evaluate()
 
     sheet = Spreadsheet()
     packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
     vsp = ltk.VerticalSplitPane(
         ltk.VBox(
             ltk.HBox(
-                ltk.Text().attr("id", "selection").text("f(x)").css("width", 130),
+                ltk.Text().attr("id", "selection")
+                    .text("f(x)")
+                    .css("width", 70),
                 ltk.HBox(
-                    ltk.Text("Packages to install:"),
+                    ltk.Text("Packages:"),
                     ltk.Input("")
                         .attr("id", "packages")
                         .css("width", 150)
                         .on("keyup", proxy(show_button))
                         .val(packages),
-                    ltk.Switch("Run in main:", False)
+                    ltk.Switch("PyOdide:", False)
                         .on("change", proxy(run_in_main))
                         .attr("id", "run-in-main"),
-                    ltk.Button("reload", proxy(save_packages))
+                    ltk.Button("Reload", proxy(save_packages))
                         .attr("id", "reload-button")
-                        .prop("disabled", True),
+                        .css("display", "none"),
+                    ltk.Button("run", proxy(run_current))
+                        .attr("id", "run-button"),
+                    ltk.Button(constants.ICON_STAR, proxy(lambda event: insert_completion(sheet.current.key, "", "")))
+                        .addClass("completion-button"),
                 ).addClass("packages-container"),
             ),
             main_editor,
@@ -1392,22 +1410,104 @@ def show_document_list(documents):
     state.show_message("Select a sheet below or create a new one...")
 
 
+def cleanup_completion(text):
+    if "import matplotlib" in text:
+        lines = text.split("\n")
+        for line in lines[:]:
+            if line.startswith("#"):
+                return "\n".join(lines)
+            lines.pop(0)
+
+
 def handle_completion(completion):
-    key = completion["key"]
-    if sheet.cells[key].script == "":
-        return
-    text = completion["text"]
-    completions[key] = f"# The following code is entirely AI-generated. It may contain errors.\n{text}"
-    ltk.find(f"#completion-{key}").remove()
-    add_completion_button(key, lambda: insert_completion(completions[key]))
+    try:
+        import json
+        key = completion["key"]
+        prompt = completion["prompt"]
+        text = completion["text"]
+        if not "CompletionBudgetException" in text:
+            text = cleanup_completion(text)
+        debug("PySheets: handle completion", key, text)
+
+        if ltk.find("#completion-dialog-text").length:
+            ltk.find("#completion-dialog-text").text(text)
+            return
+
+        if sheet.cells[key].script == "":
+            return
+        completion_cache[key] = f"# The following code is entirely AI-generated. It may contain errors or hallucinations.\n\n{text}"
+        ltk.find(f"#completion-{key}").remove()
+        add_completion_button(key, lambda: insert_completion(key, prompt, completion_cache[key]))
+    except Exception as e:
+        print("Error in completion:", e)
 
 
-def insert_completion(text):
-    if main_editor.get() == "":
-        main_editor.set(f"=\n{text}").focus()
-        update_cell()
-    else:
-        window.alert("Please select an empty cell and try again.")
+def insert_completion(key, prompt, text):
+    def generate(event):
+        ltk.find("#completion-dialog-text").text("Loading...")
+        ltk.find("#completion-dialog-generate").attr("disabled", "true"),
+        edited_prompt = ltk.find("#completion-dialog-prompt").val()
+        debug("Generate")
+        ltk.publish(
+            "Application",
+            "Worker",
+            constants.TOPIC_WORKER_COMPLETE,
+            {
+                "key": key, 
+                "prompt": edited_prompt,
+            },
+        )
+
+    def insert(event):
+        latest_text = ltk.find("#completion-dialog-text").text()
+        if main_editor.get() == "":
+            main_editor.set(f"=\n{latest_text}").focus()
+            update_cell()
+            ltk.find("#completion-dialog").remove()
+        else:
+            window.alert("Please select an empty cell and try again.")
+    
+    def insert_to_prompt(text):
+        prompt = ltk.find("#completion-dialog-prompt").val()
+        ltk.find("#completion-dialog-prompt").val(f"{text}\n{prompt}")
+        ltk.find("#completion-dialog-generate").attr("disabled", None)
+
+    ltk.find("#completion-dialog").remove()
+    ltk.VBox(
+        ltk.HBox(
+            ltk.Text("The prompts given to the AI:"),
+            ltk.Button("bar", proxy(lambda event: insert_to_prompt("Generate a bar graph."))),
+            ltk.Button("pie", proxy(lambda event: insert_to_prompt("Generate a pie chart."))),
+            ltk.Button("hbar", proxy(lambda event: insert_to_prompt("Generate a horizontal bar graph."))),
+            ltk.Button("stem", proxy(lambda event: insert_to_prompt("Generate a stem plot."))),
+            ltk.Button("stairs", proxy(lambda event: insert_to_prompt("Generate a stairs graph."))),
+            ltk.Button("scatter", proxy(lambda event: insert_to_prompt("Generate a scatter plot."))),
+            ltk.Button("stack", proxy(lambda event: insert_to_prompt("Generate a stack plot."))),
+            ltk.Button("fill", proxy(lambda event: insert_to_prompt("Generate a fill between graph."))),
+        ),
+        ltk.TextArea(prompt)
+            .attr("id", "completion-dialog-prompt")
+            .attr("placeholder", "Enter a prompt for the AI here")
+            .on("keyup", proxy(lambda event: ltk.find("#completion-dialog-generate").attr("disabled", None)))
+            .css("height", 300),
+        ltk.HBox(
+            ltk.Button("Regenerate the code", proxy(generate))
+                .attr("disabled", "true")
+                .attr("id", "completion-dialog-generate"),
+            ltk.Text("The latest AI generated completion:"),
+        ),
+        ltk.Preformatted()
+            .attr("id", "completion-dialog-text")
+            .text(text)
+            .css("height", 300),
+        ltk.HBox(
+            ltk.Button("Insert into the Sheet", proxy(insert)),
+            ltk.Text("(you can always edit the code later)"),
+        ),
+    ).attr("id", "completion-dialog").dialog(ltk.to_js({
+        "width": 700,
+        "title": "PySheets ⭐ AI-Driven Code Generation",
+    }))
 
 
 def add_completion_button(key, handler):
@@ -1420,8 +1520,9 @@ def add_completion_button(key, handler):
         .addClass("completion-button")
         .attr("id", f"completion-{key}")
     )
-    message = f"[AI] The AI suggested a completion for {key}. See the '{constants.ICON_STAR}{key}' button"
-    state.console.write(f"ai-{key}", message)
+    if key:
+        message = f"[AI] The AI suggested a completion for {key}. See the '{constants.ICON_STAR}{key}' button"
+        state.console.write(f"ai-{key}", message)
 
 
 def load_doc_with_packages(event, uid, runtime, packages):

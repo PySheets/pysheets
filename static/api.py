@@ -1,6 +1,7 @@
 import base64
 import io
 import pyscript # type: ignore
+import re
 import time
 
 window = pyscript.window
@@ -26,6 +27,15 @@ def wrap_as_file(content):
     except:
         return io.StringIO(content)
 
+
+def get_prompt(key, columns):
+    return f"""
+Visualize a dataframe stored in a variable called "{key}".
+Include an explanation at the start, formatted as a Python comment.
+Create a matplotlib figure in the code and call it "figure".
+Here are the column names for the dataframe:
+{columns}
+    """.strip()
 
 network_cache = {}
 

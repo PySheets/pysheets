@@ -63,9 +63,9 @@ TUTORIAL_UIDS = [
     "iKyXEDL2ZgaqoAVKEbqL", # Tutorial 7️⃣ - JavaScript 🚀
 ]
 
-admins = [
+admins = set([
     "laffra@gmail.com",
-]
+])
 password_iterations = 100000
 password_key_length = 64
 password_hash_name = 'sha256'
@@ -100,11 +100,20 @@ def get_completion_budget(email):
     
 def check_completion_budget(email):
     budget = get_completion_budget(email)
+    if email in admins:
+        return budget
     if budget["total"] > 100:
         raise CompletionBudgetException("You reached the lifetime maximum of 100 free completions.")
     seconds = time.time() - budget["last"]
     if seconds < 60:
-        raise CompletionBudgetException(f"Slow down. You can ask for completions again in {60 - seconds}s.")
+        raise CompletionBudgetException(f"""
+You are asking for too many AI completions.
+You can ask for a completion again in {round(60 - seconds)}s.
+
+You have {100 - budget["total"]} lifetime completions left.
+""")
+    else:
+        increment_budget(email, budget)
     return budget
 
 
@@ -155,17 +164,16 @@ def complete(prompt, token):
     if not email:
         raise ValueError("login")
     budget = check_completion_budget(email)
-    completion = prompt_to_completion.document(prompt).get().to_dict()
-    if not completion:
+    completion = prompt_to_completion.document(prompt[:1000]).get().to_dict()
+    if completion:
+        completion["cached"] = True
+    else:
         try:
-            completion = sourcegraph_complete(prompt)
-        except:
             completion = openai_complete(prompt)
-        prompt_to_completion.document(prompt).set(completion)
-        increment_budget(email, budget)
-    print("###### COMPLETION #########")
-    print(type(completion))
-    print(completion)
+        except:
+            completion = sourcegraph_complete(prompt)
+        completion["cached"] = False
+        prompt_to_completion.document(prompt[:1000]).set(completion)
     completion["budget"] = budget
     return completion
     
