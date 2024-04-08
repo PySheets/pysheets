@@ -168,10 +168,7 @@ def complete(prompt, token):
     if completion:
         completion["cached"] = True
     else:
-        try:
-            completion = openai_complete(prompt)
-        except:
-            completion = sourcegraph_complete(prompt)
+        completion = openai_complete(prompt)
         completion["cached"] = False
         prompt_to_completion.document(prompt[:1000]).set(completion)
     completion["budget"] = budget
