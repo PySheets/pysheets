@@ -1417,6 +1417,7 @@ def cleanup_completion(text):
             if line.startswith("#"):
                 return "\n".join(lines)
             lines.pop(0)
+    return text
 
 
 def handle_completion(completion):
