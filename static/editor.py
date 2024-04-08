@@ -14,9 +14,18 @@ class Editor(ltk_Div):
     
     def create_editor(self):
         if self.editor == None:
-            self.editor = ltk.window.CodeMirror(self.element[0], ltk.to_js({
-                "mode": "python",
+            self.editor = ltk.window.create_editor(self.element[0], ltk.to_js({
+                "mode": {
+                    "name": "python",
+                    "version": 3,
+                    "singleLineStringErrors": False
+                },
                 "lineNumbers": True,
+                "indentUnit": 4,
+                "extraKeys": {
+                    "Ctrl-Space": "autocomplete"
+                },
+                "matchBrackets": True,
             }))
             self.editor.setSize("100%", "100%")
             self.editor.on("blur", ltk.proxy(lambda *args: self.trigger("change")))
