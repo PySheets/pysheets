@@ -204,6 +204,7 @@ def generate_completion(key, prompt):
             "key": key, 
             "prompt": prompt,
             "text": text,
+            "budget": data["budget"],
             "duration": time.time() - start,
         }))
 

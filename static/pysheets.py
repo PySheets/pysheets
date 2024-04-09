@@ -313,7 +313,7 @@ class Spreadsheet():
 # Create a Pandas DataFrame from values found in the current sheet
 pysheets.sheet("{key}:{other_key}")
 """
-            add_completion_button(cell.key, lambda: insert_completion(key, "", text))
+            add_completion_button(cell.key, lambda: insert_completion(key, "", text, ""))
 
         for key in sorted(self.cells.keys()):
             cell = self.cells[key]
@@ -1237,7 +1237,7 @@ def create_sheet():
                         .css("display", "none"),
                     ltk.Button("run", proxy(run_current))
                         .attr("id", "run-button"),
-                    ltk.Button(constants.ICON_STAR, proxy(lambda event: insert_completion(sheet.current.key, "", "")))
+                    ltk.Button(constants.ICON_STAR, proxy(lambda event: insert_completion(sheet.current.key, "", "", "")))
                         .addClass("completion-button"),
                 ).addClass("packages-container"),
             ),
@@ -1414,13 +1414,13 @@ def cleanup_completion(text):
     if "import matplotlib" in text:
         lines = text.split("\n")
         for line in lines[:]:
-            if line.startswith("#"):
+            if line.startswith("#") or line.startswith("import"):
                 return "\n".join(lines)
             lines.pop(0)
     return text
 
 
-def handle_completion(completion):
+def handle_completion_request(completion):
     try:
         import json
         key = completion["key"]
@@ -1436,15 +1436,20 @@ def handle_completion(completion):
 
         if sheet.cells[key].script == "":
             return
-        completion_cache[key] = f"# The following code is entirely AI-generated. It may contain errors or hallucinations.\n\n{text}"
+        completion_cache[key] = (
+            f"# The following code is entirely AI-generated. It may contain errors or hallucinations.\n\n{text}",
+            completion["budget"],
+        )
         ltk.find(f"#completion-{key}").remove()
-        add_completion_button(key, lambda: insert_completion(key, prompt, completion_cache[key]))
+        text, budget = completion_cache[key]
+        add_completion_button(key, lambda: insert_completion(key, prompt, text, budget))
     except Exception as e:
         print("Error in completion:", e)
 
 
-def insert_completion(key, prompt, text):
+def insert_completion(key, prompt, text, budget):
     def generate(event):
+        ltk.find("#completion-dialog-budget").text(f"{100 - budget['total']} runs left.")
         ltk.find("#completion-dialog-text").text("Loading...")
         ltk.find("#completion-dialog-generate").attr("disabled", "true"),
         edited_prompt = ltk.find("#completion-dialog-prompt").val()
@@ -1495,6 +1500,8 @@ def insert_completion(key, prompt, text):
             ltk.Button("Regenerate the code", proxy(generate))
                 .attr("disabled", "true")
                 .attr("id", "completion-dialog-generate"),
+            ltk.Text("")
+                .attr("id", "completion-dialog-budget"),
             ltk.Text("The latest AI generated completion:"),
         ),
         ltk.Preformatted()
@@ -1564,7 +1571,7 @@ def main():
     ltk.inject_css("pysheets.css")
     setup_login()
     ltk.schedule(setup, "setup")
-    ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_COMPLETION, handle_completion)
+    ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_COMPLETION, handle_completion_request)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_PRINT, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_INFO, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_ERROR, print)

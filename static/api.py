@@ -30,8 +30,7 @@ def wrap_as_file(content):
 
 def get_prompt(key, columns):
     return f"""
-Visualize a dataframe stored in a variable called "{key}".
-Include an explanation at the start, formatted as a Python comment.
+Visualize a dataframe. I already have it stored in a variable called "{key}".
 Create a matplotlib figure in the code and call it "figure".
 Here are the column names for the dataframe:
 {columns}
