@@ -240,7 +240,7 @@ class Console():
 
     def write(self, key, *args):
         try:
-            message = " ".join(args)
+            message = " ".join(str(arg) for arg in args)
         except Exception as e:
             message = f"Error writing {key}: {e}"
         if message.startswith("[Console] [Network]"):

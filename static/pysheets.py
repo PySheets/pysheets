@@ -217,6 +217,7 @@ class Spreadsheet():
             debug("Worker", key, "=>", result["value"])
             if result["error"]:
                 state.console.write(key, f"[Error] {key}: {result['error']}")
+                cell.update(result["duration"], result["error"])
         except Exception as e:
             state.console.write(key, f"[Error] {e}")
 
@@ -670,12 +671,18 @@ class Cell(ltk.TableData):
         self.sheet.current = self
         main_editor.set(self.script)
         ltk.find("#selection").text(f"Cell: {self.key}")
+        ltk.find("#cell-attributes-container").css("display", "block")
+        try:
+            self.set_css_editors()
+        except:
+            pass
+        return self
+    
+    def set_css_editors(self):
         ltk.find("#cell-font-family").val(self.css("font-family") or constants.DEFAULT_FONT_FAMILY)
         ltk.find("#cell-font-size").val(round(window.parseFloat(self.css("font-size"))) or constants.DEFAULT_FONT_SIZE)
         ltk.find("#cell-font-color").val(rgb_to_hex(self.css("color")) or constants.DEFAULT_COLOR)
         ltk.find("#cell-fill").val(rgb_to_hex(self.css("background-color")) or constants.DEFAULT_FILL)
-        ltk.find("#cell-attributes-container").css("display", "block")
-        return self
 
     def clear(self):
         self.inputs = []
@@ -842,7 +849,10 @@ class Cell(ltk.TableData):
             except Exception as e:
                 if state.pyodide:
                     state.console.write(self.key, f"[Sheet] {self.key}: Error: {e}")
-                if not "no-worker" in self.script:
+                if "no-worker" in self.script:
+                    state.console.write(self.key, "[Sheet] Error:", e)
+                    self.update(0, str(e))
+                else:
                     self.evaluate_in_worker(expression)
         else:
             self.update(0, self.script, self.preview)
