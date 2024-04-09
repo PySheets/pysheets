@@ -313,7 +313,7 @@ class Spreadsheet():
 # Create a Pandas DataFrame from values found in the current sheet
 pysheets.sheet("{key}:{other_key}")
 """
-            add_completion_button(cell.key, lambda: insert_completion(key, "", text, ""))
+            add_completion_button(cell.key, lambda: insert_completion(key, "", text, { "total": 0 }))
 
         for key in sorted(self.cells.keys()):
             cell = self.cells[key]
@@ -330,7 +330,7 @@ pysheets.sheet("{key}:{other_key}")
             if target.hasClass("selection"):
                 self.selection.css("caret-color", "black").focus()
                 self.selection_edited = True
-            else:
+            elif target.hasClass("cell"):
                 debug("sheet.setup.selection", target.attr("id"))
                 self.save_selection()
                 self.select(self.get(target.attr("id")))
@@ -628,7 +628,7 @@ class Cell(ltk.TableData):
         state.doc.edits[constants.DATA_KEY_CELLS][self.key] = self.to_dict()
 
     def get_inputs(self, script):
-        if not isinstance(script, str) or not script or script[0] != "=" or "# no-inputs" in script:
+        if not isinstance(script, str) or not script or script[0] != "=" or "no-inputs" in script:
             return set()
         # TODO: sort first and last by min/max col/row
         inputs = []
@@ -648,7 +648,7 @@ class Cell(ltk.TableData):
                     key = string[start:index]
                     if start > 0 and string[start - 1] == ":" and inputs:
                         inputs.extend(self.get_input_range(inputs.pop(), key))
-                    else:
+                    elif key != self.key:
                         inputs.append(key)
             index += 1
         debug("get inputs", self.key, inputs)
@@ -827,8 +827,14 @@ class Cell(ltk.TableData):
         is_formula = isinstance(script, str) and script and script[0] == "="
         expression = api.edit_script(self.script[1:]) if is_formula else script
         if is_formula:
-            self.inputs = self.get_inputs(script)
-            if not self.inputs.issubset(set(self.sheet.cache.keys())):
+            try:
+                self.inputs = self.get_inputs(script)
+            except Exception as e:
+                print(f"Cannot get inputs for {self.key}", e)
+                self.inputs = set()
+            cache_keys = set(self.sheet.cache.keys())
+            if not self.inputs.issubset(cache_keys):
+                state.console.write(self.key, f"[Sheet] Error running {self.key}. No value for inputs {self.inputs - cache_keys}")
                 return
         if is_formula:
             try:
@@ -836,7 +842,8 @@ class Cell(ltk.TableData):
             except Exception as e:
                 if state.pyodide:
                     state.console.write(self.key, f"[Sheet] {self.key}: Error: {e}")
-                self.evaluate_in_worker(expression)
+                if not "no-worker" in self.script:
+                    self.evaluate_in_worker(expression)
         else:
             self.update(0, self.script, self.preview)
         
@@ -1237,7 +1244,7 @@ def create_sheet():
                         .css("display", "none"),
                     ltk.Button("run", proxy(run_current))
                         .attr("id", "run-button"),
-                    ltk.Button(constants.ICON_STAR, proxy(lambda event: insert_completion(sheet.current.key, "", "", "")))
+                    ltk.Button(constants.ICON_STAR, proxy(lambda event: insert_completion(sheet.current.key, "", "", { "total": 0 })))
                         .addClass("completion-button"),
                 ).addClass("packages-container"),
             ),
@@ -1473,31 +1480,36 @@ def insert_completion(key, prompt, text, budget):
         else:
             window.alert("Please select an empty cell and try again.")
     
-    def insert_to_prompt(text):
+    def set_plot_kind(kind):
         prompt = ltk.find("#completion-dialog-prompt").val()
-        ltk.find("#completion-dialog-prompt").val(f"{text}\n{prompt}")
+        extra_text = f"When you create the plot, make it {kind}."
+        ltk.find("#completion-dialog-prompt").val(f"{prompt}\n\n{extra_text}")
         ltk.find("#completion-dialog-generate").attr("disabled", None)
+        prompt_changed()
+
+    def prompt_changed():
+        ltk.find("#completion-dialog-generate").attr("disabled", None)
+        ltk.find("#completion-dialog-text").text("Click the Generate button to get a new completion...")
 
     ltk.find("#completion-dialog").remove()
     ltk.VBox(
         ltk.HBox(
             ltk.Text("The prompts given to the AI:"),
-            ltk.Button("bar", proxy(lambda event: insert_to_prompt("Generate a bar graph."))),
-            ltk.Button("pie", proxy(lambda event: insert_to_prompt("Generate a pie chart."))),
-            ltk.Button("hbar", proxy(lambda event: insert_to_prompt("Generate a horizontal bar graph."))),
-            ltk.Button("stem", proxy(lambda event: insert_to_prompt("Generate a stem plot."))),
-            ltk.Button("stairs", proxy(lambda event: insert_to_prompt("Generate a stairs graph."))),
-            ltk.Button("scatter", proxy(lambda event: insert_to_prompt("Generate a scatter plot."))),
-            ltk.Button("stack", proxy(lambda event: insert_to_prompt("Generate a stack plot."))),
-            ltk.Button("fill", proxy(lambda event: insert_to_prompt("Generate a fill between graph."))),
+            ltk.Button("bar", proxy(lambda event: set_plot_kind("a bar graph"))),
+            ltk.Button("pie", proxy(lambda event: set_plot_kind("a pie chart"))),
+            ltk.Button("hbar", proxy(lambda event: set_plot_kind("a horizontal bar graph"))),
+            ltk.Button("stem", proxy(lambda event: set_plot_kind("a stem plot"))),
+            ltk.Button("stairs", proxy(lambda event: set_plot_kind("a stairs graph"))),
+            ltk.Button("scatter", proxy(lambda event: set_plot_kind("a scatter plot"))),
+            ltk.Button("stack", proxy(lambda event: set_plot_kind("a stack plot"))),
+            ltk.Button("fill", proxy(lambda event: set_plot_kind("a fill between graph"))),
         ),
         ltk.TextArea(prompt)
             .attr("id", "completion-dialog-prompt")
-            .attr("placeholder", "Enter a prompt for the AI here")
-            .on("keyup", proxy(lambda event: ltk.find("#completion-dialog-generate").attr("disabled", None)))
+            .on("keyup", proxy(lambda event: prompt_changed()))
             .css("height", 300),
         ltk.HBox(
-            ltk.Button("Regenerate the code", proxy(generate))
+            ltk.Button("Generate", proxy(generate))
                 .attr("disabled", "true")
                 .attr("id", "completion-dialog-generate"),
             ltk.Text("")

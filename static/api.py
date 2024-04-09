@@ -32,8 +32,7 @@ def get_prompt(key, columns):
     return f"""
 Visualize a dataframe. I already have it stored in a variable called "{key}".
 Create a matplotlib figure in the code and call it "figure".
-Here are the column names for the dataframe:
-{columns}
+Here are the column names for the dataframe: {columns}
     """.strip()
 
 network_cache = {}

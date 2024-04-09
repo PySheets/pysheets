@@ -28,7 +28,7 @@ names = [
     "setup_logger", "watch", "hide_main", "show_main", "show_hide_main", 
     "check_edits", "hide_header", "mousemove", "popup", "show_account_menu", 
     "list_sheets", "show_document_list", "create_topbar", "load_file", 
-    "documents", "go_home", "saveit", "cell", "cells", "event", "table", "pysheets",
+    "documents", "go_home", "saveit", "cells", "event", "table", "pysheets",
     "settings", "column", "add_label", "add_preview", "save_preview", "dragstart",
     "dragstop", "resize", "make_resizable", "email_to_class", "resize_editor", "sync",
     "motion", "switch_logger", "update_input", "node_changed", "rgb_to_hex",
