@@ -260,11 +260,14 @@ class Console():
     def get_filter(self):
         return str(ltk.find(".console-filter").val() or "")
     
+    def remove(self, key):
+        ltk.find(f"#console-{key}").remove()
+    
     def render_message(self, key, when, message):
         filter = self.get_filter()
         if filter and not filter in message:
             return
-        ltk.find(f"#console-{key}").remove()
+        self.remove(key)
         parts = message.split()
         clazz = parts[1][1:-1].lower() # [Debug] becomes debug
         ltk.find(".console table").append(
