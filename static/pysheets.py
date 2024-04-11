@@ -404,7 +404,7 @@ pysheets.sheet("{key}:{other_key}")
 
     @saveit
     def select(self, cell):
-        if not cell:
+        if not cell or not cell.hasClass("cell"):
             return
         state.console.write("sheet-selection", f"[Sheet] Select {cell}")
         cell.select()
@@ -445,7 +445,7 @@ pysheets.sheet("{key}:{other_key}")
             cells = dict(
                 (key, cell.to_dict())
                 for key, cell in self.cells.items()
-                if cell.script != ""
+                if cell.script != "" and ltk.find(f"#{key}").length
             )
             columns = dict(
                 (n, {constants.DATA_KEY_WIDTH: column.width()})
@@ -710,7 +710,7 @@ class Cell(ltk.TableData):
             first = self.sheet.get(inputs[0])
             last = self.sheet.get(inputs[-1])
         except Exception as e:
-            state.console.write(f"arrows-{self.key}", f"Error in draw_arrows: {e}")
+            state.console.write(f"arrows-{self.key}", f"[Error] Error in draw_arrows: {e}")
             return
         window.addArrow(create_marker(first, last, "inputs-marker arrow"), self.element)
         self.addClass("arrow")
@@ -841,16 +841,17 @@ class Cell(ltk.TableData):
                 self.inputs = set()
             cache_keys = set(self.sheet.cache.keys())
             if not self.inputs.issubset(cache_keys):
-                state.console.write(self.key, f"[Sheet] Error running {self.key}. No value for inputs {self.inputs - cache_keys}")
+                state.console.write(self.key, f"[Error] Error running {self.key}. No value for inputs {self.inputs - cache_keys}")
                 return
+        state.console.remove(self.key)
         if is_formula:
             try:
                 self.evaluate_locally(expression)
             except Exception as e:
                 if state.pyodide:
-                    state.console.write(self.key, f"[Sheet] {self.key}: Error: {e}")
+                    state.console.write(self.key, f"[Error] {self.key}: {e}")
                 if "no-worker" in self.script:
-                    state.console.write(self.key, "[Sheet] Error:", e)
+                    state.console.write(self.key, f"[Error] {self.key}: {e}")
                     self.update(0, str(e))
                 else:
                     self.evaluate_in_worker(expression)
@@ -895,19 +896,16 @@ class Cell(ltk.TableData):
                 constants.DATA_KEY_VALUE_PREVIEW: self.preview,
             }
         }
-        try:
-            style = window.getComputedStyle(self.element.get(0))
-            if style.getPropertyValue("font-family") != constants.DEFAULT_FONT_FAMILY:
-                result[constants.DATA_KEY_VALUE_FONT_FAMILY] = style.getPropertyValue("font-family")
-            if style.getPropertyValue("font-size") != constants.DEFAULT_FONT_SIZE:
-                result[constants.DATA_KEY_VALUE_FONT_SIZE] = style.getPropertyValue("font-size")
-            if style.getPropertyValue("color") != constants.DEFAULT_COLOR:
-                result[constants.DATA_KEY_VALUE_COLOR] = style.getPropertyValue("color")
-            if style.getPropertyValue("background-color") != constants.DEFAULT_FILL:
-                result[constants.DATA_KEY_VALUE_FILL] = style.getPropertyValue("background-color")
-            return result
-        except Exception as e:
-            print(f"Error: cannot get style for {self}", e)
+        style = window.getComputedStyle(self.element.get(0))
+        if style.getPropertyValue("font-family") != constants.DEFAULT_FONT_FAMILY:
+            result[constants.DATA_KEY_VALUE_FONT_FAMILY] = style.getPropertyValue("font-family")
+        if style.getPropertyValue("font-size") != constants.DEFAULT_FONT_SIZE:
+            result[constants.DATA_KEY_VALUE_FONT_SIZE] = style.getPropertyValue("font-size")
+        if style.getPropertyValue("color") != constants.DEFAULT_COLOR:
+            result[constants.DATA_KEY_VALUE_COLOR] = style.getPropertyValue("color")
+        if style.getPropertyValue("background-color") != constants.DEFAULT_FILL:
+            result[constants.DATA_KEY_VALUE_FILL] = style.getPropertyValue("background-color")
+        return result
 
     def __repr__(self):
         return f"cell[{self.key}]"
@@ -1267,7 +1265,7 @@ def create_sheet():
                 ltk.Input("")
                     .addClass("console-filter")
                     .attr("placeholder", "filter the console"),
-                ltk.Button("X", proxy(lambda event: state.console.clear()))
+                ltk.Button("clear", proxy(lambda event: state.console.clear()))
                     .addClass("console-clear")
                     .attr("title", "Clear the console")
             ),
@@ -1625,3 +1623,5 @@ def convert(value):
         return float(value) if "." in value else int(value)
     except:
         return value
+
+
