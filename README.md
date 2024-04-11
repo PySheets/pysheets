@@ -1,8 +1,7 @@
 # PySheets
 
-This is a spreadsheet, implemented in Python, completely running in the browser, using PyScript.
-
-This project uses PyScript to display its UI in a browser.  
+PySheets is a spreadsheet UI for Python, implemented in Python, running in the browser, using PyScript.
+ 
 
 # Setup
 
