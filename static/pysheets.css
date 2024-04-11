@@ -112,11 +112,11 @@ input.arrow {
     padding: 4px 8px;
     color: black;
     text-align: center;
+    font-family: Helvetica;
     border: 0 solid #e1e1e1;
     border-width: 0 2px 1px 0;
     border-bottom-color: #afafaf;
     background-color: white;
-    font-family: Arial, Helvetica, sans-serif;
     margin-right: -2px;
     margin-left: 1px;
     font-weight: normal;
@@ -132,6 +132,7 @@ input.arrow {
     height: 24px;
     margin: 0 0 0 0;
     color: black;
+    font-family: Helvetica;
     border: 0 solid transparent;
     border-width: 0 1px 1px 0;
     border-right-color: #afafaf;
@@ -691,7 +692,7 @@ td:hover .debug-info {
 
 .console-clear {
     min-width: 28px;
-    width: 28px;
+    width: 58px;
     height: 27px;
 }
 
