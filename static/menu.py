@@ -39,7 +39,7 @@ def delete_doc():
 
 
 def go_home():
-    window.document.location = "/"
+    window.document.location = "/go"
 
 
 def load_doc(uid):

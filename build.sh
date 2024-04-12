@@ -41,6 +41,7 @@ cat templates/index.html | \
     sed "s/pysheets.css/pysheets_$version.css/g" | \
     sed "s/pysheets.js/pysheets_$version.js/g" \
     > dist/templates/index.html
+cp templates/landing.html dist/templates
 
 cp static/*.js dist/static
 cp static/*.css dist/static

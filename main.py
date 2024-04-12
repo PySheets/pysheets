@@ -70,6 +70,13 @@ FILES_LTK = """
 
 @app.route("/")
 def root():
+    if request.args:
+        return go()
+    return render_template("landing.html")
+
+
+@app.route("/go")
+def go():
     package_names = request.args.get(DATA_KEY_PACKAGES, "").split()
     pyodide = request.args.get(DATA_KEY_RUNTIME, "") == "pyodide"
     files = FILES + FILES_LTK
