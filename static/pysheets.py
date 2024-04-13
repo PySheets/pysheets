@@ -699,6 +699,7 @@ class Cell(ltk.TableData):
     def draw_cell_arrows(self):
         remove_arrows()
         self.draw_arrows()
+        self.adjust_arrows()
 
     def draw_arrows(self):
         if self.preview:
@@ -715,6 +716,8 @@ class Cell(ltk.TableData):
         window.addArrow(create_marker(first, last, "inputs-marker arrow"), self.element)
         self.addClass("arrow")
         first.draw_arrows()
+
+    def adjust_arrows(self):
         ltk.find(".leader-line").appendTo(ltk.find("#sheet-scrollable"))
         container = ltk.find("#sheet-container")
         scroll_left = container.scrollLeft()
