@@ -676,6 +676,7 @@ td:hover .debug-info {
 .right-panel {
     width: 700px;
     height: calc(100vh - 51px);
+    z-index: 3000;
 }
 
 .console {
