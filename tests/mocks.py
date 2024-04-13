@@ -13,3 +13,6 @@ ltk.post = lambda url, data, done: "OK"
 import pyscript
 
 pyscript.window.parseFloat = lambda s: 0
+
+import state
+state.mobile = lambda: True

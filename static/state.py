@@ -115,6 +115,10 @@ def clear():
     doc = Document()
 
 
+def mobile():
+    return ltk.find("body").width() < 800
+
+
 def forget_result(result):
     if "removed" in result:
         logout()

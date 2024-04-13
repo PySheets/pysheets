@@ -702,7 +702,7 @@ class Cell(ltk.TableData):
         self.adjust_arrows()
 
     def draw_arrows(self):
-        if ltk.find("body").width() < 800:
+        if state.mobile():
             return
         if self.preview:
             window.addArrow(self.element, ltk.find(f"#preview-{self.key}"))
@@ -800,7 +800,7 @@ class Cell(ltk.TableData):
             ltk.find(f"#preview-{self.key} .dataframe tr th:first-child").remove()
         except Exception as e:
             print("Error adding preview for", self, e)
-        if ltk.find("body").width() < 800:
+        if state.mobile():
             ltk.find(".dataframe").closest(".preview").remove()
 
 
