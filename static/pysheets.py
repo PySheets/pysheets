@@ -33,7 +33,7 @@ def save(force=False):
         if ltk.find(".other-editor").length == 0
         else constants.SAVE_DELAY_MULTIPLE_EDITORS
     )
-    ltk.schedule(lambda: sheet.save_edits(force), "send changes to server", delay)
+    ltk.schedule(lambda: sheet.save_edits(force), "send edits to server", delay)
 
 
 def saveit(func):
@@ -498,7 +498,7 @@ pysheets.sheet("{key}:{other_key}")
             if edit:
                 edits[key] = edit
         state.doc.edit_count += len(edits)
-        state.console.write("edits-sent", f"[Edits] Edits sent to server: {state.doc.edit_count}")
+        debug(f"[Edits] Sent edits: {edits}")
         ltk.post(
             state.add_token(f"/edit"),
             {
@@ -739,15 +739,14 @@ class Cell(ltk.TableData):
         def get_dimension():
             return (preview.css("left"), preview.css("top"), preview.css("width"), preview.css("height"))
         
+        @saveit
         def save_preview():
             state.doc.edits[constants.DATA_KEY_PREVIEWS][self.key] = previews[self.key] = get_dimension()
             state.console.write("preview-changed", f"[Sheet] Preview position for {self} changed")
 
-        @saveit
         def dragstop(*args):
             ltk.schedule(save_preview, "save-preview", 1)
 
-        @saveit
         def resize(event, *args):
             preview = ltk.find(event.target)
             preview.find("img, iframe").css("width", preview.width()).css("height", preview.height())
@@ -956,8 +955,8 @@ def handle_edits(data):
     if "Error" in data or not constants.DATA_KEY_EDITS in data:
         return
     edits = data[constants.DATA_KEY_EDITS]
-    debug(f"Handle edits {len(edits)}")
     for edit in edits:
+        debug(f"Handle edits {edit}")
         edit[constants.DATA_KEY_UID] = data[constants.DATA_KEY_UID]
         edit[constants.DATA_KEY_CURRENT] = None
         debug(f" edit  {edit[constants.DATA_KEY_TIMESTAMP] > state.doc.last_edit} - {edit[constants.DATA_KEY_TIMESTAMP]} {state.doc.last_edit}")
