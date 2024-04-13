@@ -66,14 +66,14 @@ td {
     padding: 0px;
 }
 
-tr:first-child {
+#sheet tr:first-child {
     position: sticky;
     top: 0;
     background: white;
     z-index: 2100;
 }
 
-tr:first-child th:first-child {
+#sheet tr:first-child th:first-child {
     background: #efefef;
     z-index: 2100;
 }
