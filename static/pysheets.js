@@ -137,7 +137,7 @@
                     dash: { },
                     size: 3,
                     middleLabel: LeaderLine.pathLabel(label || "")
-                }));
+                })).appendTo($("#sheet-scrollable"));
             }
         } catch(e) {
             // ignore

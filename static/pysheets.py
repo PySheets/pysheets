@@ -715,6 +715,14 @@ class Cell(ltk.TableData):
         window.addArrow(create_marker(first, last, "inputs-marker arrow"), self.element)
         self.addClass("arrow")
         first.draw_arrows()
+        ltk.find(".leader-line").appendTo(ltk.find("#sheet-scrollable"))
+        container = ltk.find("#sheet-container")
+        scroll_left = container.scrollLeft()
+        scroll_top = container.scrollTop()
+        for arrow_line in ltk.find_list(".leader-line"):
+            arrow_line \
+                .css("top", window.parseFloat(arrow_line.css("top")) + scroll_top - 49) \
+                .css("left", window.parseFloat(arrow_line.css("left")) + scroll_left)
 
     def add_preview(self, preview):
         self.preview = preview
@@ -772,7 +780,7 @@ class Cell(ltk.TableData):
         )
         try:
             html = self.fix_preview_html(preview, self.preview)
-            ltk.find("#main").append(preview.append(ltk.create(html)))
+            ltk.find("#sheet-scrollable").append(preview.append(ltk.create(html)))
         except Exception as e:
             debug(f"No preview for {self}: {e}")
             pass
@@ -922,8 +930,8 @@ def create_marker(first, last, clazz):
     last_offset = last.offset()
     if not first_offset or not last_offset:
         return
-    left = first_offset.left + 1
-    top = first_offset.top
+    left = first_offset.left + 1 + ltk.find("#sheet-container").scrollLeft()
+    top = first_offset.top - 49 + ltk.find("#sheet-container").scrollTop()
     width = last_offset.left - first_offset.left + last.outerWidth() - 5
     height = last_offset.top - first_offset.top + last.outerHeight() - 5
     return (ltk.Div()
@@ -934,7 +942,7 @@ def create_marker(first, last, clazz):
         .width(width)
         .height(height)
         .on("mousemove", proxy(hide_marker))
-        .appendTo(ltk.jQuery(window.document.body))
+        .appendTo(ltk.find("#sheet-scrollable"))
     )
 
 def handle_edits(data):
@@ -1276,13 +1284,15 @@ def create_sheet():
     ltk.find("#main").prepend(
         ltk.HorizontalSplitPane(
             ltk.Div(
-                ltk.find(".sheet"),
+                ltk.Div(
+                    ltk.find(".sheet"),
+                ).attr("id", "sheet-scrollable")
             ).attr("id", "sheet-container"),
             vsp,
             "sheet-and-editor",
         ).element
     )
-    window.createSheet(26, 50, "sheet-container")
+    window.createSheet(26, 50, "sheet-scrollable")
     if not ltk.find("#A1").attr("id"):
         debug("Error: createSheet did not add A1")
         raise ValueError("No A1")

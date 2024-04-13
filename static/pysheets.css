@@ -47,6 +47,15 @@
     padding: 0 0 0 8px;
 }
 
+#sheet-container {
+    height: calc(100vh - 68px);
+    overflow: auto;
+}
+
+#sheet-scrollable {
+    position: relative;
+}
+
 .sheet {
     width: 100%;
     border-spacing: 0px;
@@ -55,6 +64,18 @@
 .sheet th,
 td {
     padding: 0px;
+}
+
+tr:first-child {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 2100;
+}
+
+tr:first-child th:first-child {
+    background: #efefef;
+    z-index: 2100;
 }
 
 .cell {
@@ -260,8 +281,6 @@ h3 {
 .editor-container {
     height: calc(50vh);
     overflow: hidden;
-    border: 0px solid #DDD;
-    border-left-width: 2px;
     background-color: #f7f7f7;
 }
 
@@ -671,6 +690,11 @@ td:hover .debug-info {
     height: calc(50vh - 64px);
     width: 100%;
     padding: "0 8px";
+}
+
+.ltk-horizontal-split-pane-middle {
+    width: 5px;
+    background-color: #efefef;
 }
 
 .right-panel {
