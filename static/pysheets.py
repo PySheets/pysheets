@@ -702,6 +702,8 @@ class Cell(ltk.TableData):
         self.adjust_arrows()
 
     def draw_arrows(self):
+        if ltk.find("body").width() < 800:
+            return
         if self.preview:
             window.addArrow(self.element, ltk.find(f"#preview-{self.key}"))
         if not self.inputs:
@@ -798,6 +800,8 @@ class Cell(ltk.TableData):
             ltk.find(f"#preview-{self.key} .dataframe tr th:first-child").remove()
         except Exception as e:
             print("Error adding preview for", self, e)
+        if ltk.find("body").width() < 800:
+            ltk.find(".dataframe").closest(".preview").remove()
 
 
     def fix_preview_html(self, preview, html):
@@ -1284,17 +1288,30 @@ def create_sheet():
         ).addClass("console-container"),
         "editor-and-console",
     ).addClass("right-panel")
-    ltk.find("#main").prepend(
-        ltk.HorizontalSplitPane(
-            ltk.Div(
+    if ltk.find("body").width() < 800:
+        ltk.find("#main").prepend(
+            ltk.VerticalSplitPane(
                 ltk.Div(
-                    ltk.find(".sheet"),
-                ).attr("id", "sheet-scrollable")
-            ).attr("id", "sheet-container"),
-            vsp,
-            "sheet-and-editor",
-        ).element
-    )
+                    ltk.Div(
+                        ltk.find(".sheet"),
+                    ).attr("id", "sheet-scrollable")
+                ).attr("id", "sheet-container"),
+                vsp,
+                "sheet-and-editor",
+            ).css("height", "100vh")
+        )
+    else:
+        ltk.find("#main").prepend(
+            ltk.HorizontalSplitPane(
+                ltk.Div(
+                    ltk.Div(
+                        ltk.find(".sheet"),
+                    ).attr("id", "sheet-scrollable")
+                ).attr("id", "sheet-container"),
+                vsp,
+                "sheet-and-editor",
+            ).element
+        )
     window.createSheet(26, 50, "sheet-scrollable")
     if not ltk.find("#A1").attr("id"):
         debug("Error: createSheet did not add A1")
