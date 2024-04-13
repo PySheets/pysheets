@@ -148,6 +148,30 @@
         console.log("No worker for", job)
     }
 
+    window.check_loaded = () => {
+        if ($('#sheet-containter').length === 0) {
+            const params = new URLSearchParams(document.location.search);
+            const uid = params.get("U");
+            const protocol = document.location.protocol;
+            const host = document.location.host;
+            const url = `${protocol}//${host}/?U=${uid}`;
+            if (url !== document.location.href) {
+                $("body").append(
+                    $("<div>")
+                        .css("margin", 8)
+                        .text("It looks like PySheets ould not load the document with the packages you specified."),
+                    $("<div>")
+                        .css("margin", 8)
+                        .text("Edit the URL to remove the package that are not pure Python wheels."),
+                    $("<div>")
+                        .css("margin", 8)
+                        .text("You can also try going to the previous document in your browser history.")
+                )
+            }
+        }
+    }
+    setTimeout(window.check_loaded, 10000);
+
     window.log = (message) => {
         console.log(message);
     }
