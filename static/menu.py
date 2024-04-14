@@ -83,4 +83,4 @@ def share_sheet():
     ).dialog().addClass("share-popup").parent().width(350)
 
 
-ltk.find(".logo").on("click", ltk.proxy(lambda event: go_home()))
+ltk.find(".logo").on("click", ltk.proxy(lambda event: go_go()))
