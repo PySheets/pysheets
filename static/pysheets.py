@@ -867,7 +867,11 @@ class Cell(ltk.TableData):
         height = preview.height()
         preview.find("img, iframe").css("width", "100%").css("height", f"calc(100% - {constants.PREVIEW_HEADER_HEIGHT})")
         preview.resizable(ltk.to_js({"handles": "se"}))
-        preview.find(".ui-resizable-handle").css("display", "block" if height > constants.PREVIEW_HEADER_HEIGHT else "none")
+        try:
+            display = "block" if height > constants.PREVIEW_HEADER_HEIGHT else "none"
+        except:
+            display = "block"
+        preview.find(".ui-resizable-handle").css("display", display)
 
     def is_int(self, value):
         try:
