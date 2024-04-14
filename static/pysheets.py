@@ -474,12 +474,15 @@ pysheets.sheet("{key}:{other_key}")
             }
 
             def save_done(data):
-                status = data[constants.DATA_KEY_STATUS]
-                if "error" in status:
+                if not isinstance(data, dict):
                     message = f"Full document backup failed {data}"
                 else:
-                    message = f"Full document backed up ✅"
-                    state.doc.dirty = False
+                    status = data[constants.DATA_KEY_STATUS]
+                    if "error" in status:
+                        message = f"Full document backup failed {data}"
+                    else:
+                        message = f"Full document backed up ✅"
+                        state.doc.dirty = False
                 state.console.write("save-response", f"[Edits] {message}")
                 if done:
                     done()
@@ -861,7 +864,6 @@ class Cell(ltk.TableData):
 
     def make_resizable(self):
         preview = ltk.find(f"#preview-{self.key}")
-        width = preview.width()
         height = preview.height()
         preview.find("img, iframe").css("width", "100%").css("height", f"calc(100% - {constants.PREVIEW_HEADER_HEIGHT})")
         preview.resizable(ltk.to_js({"handles": "se"}))
