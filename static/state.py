@@ -70,7 +70,7 @@ def login(email, token):
 
             
 def create_user_image(email, timestamp):
-    if not email or ltk.find(f'.other-editor[{constants.DATA_KEY_EMAIL}="{email}"]').length != 0:
+    if not email or ltk.find(f'.person[{constants.DATA_KEY_EMAIL}="{email}"]').length != 0:
         return
     first_letter = email[0].upper()
     color = constants.IMAGE_COLORS[ord(first_letter) % len(constants.IMAGE_COLORS)]
@@ -80,7 +80,7 @@ def create_user_image(email, timestamp):
             .attr(constants.DATA_KEY_TIMESTAMP, timestamp)
             .attr("title", f"{email} - {timestamp}")
             .css("background", color)
-            .addClass("other-editor"))
+            .addClass("person"))
     )
 
 
@@ -127,7 +127,7 @@ def forget_result(result):
 
 def really_forget_me():
     window.localStorage.clear()
-    print("User activated really_forget_me")
+    console.write("main", "User activated really_forget_me")
     ltk.get(add_token(f"/forget"), ltk.proxy(forget_result))
 
     
@@ -361,7 +361,7 @@ ltk.subscribe(constants.PUBSUB_STATE_ID, ltk.pubsub.TOPIC_WORKER_READY, worker_r
 
 def check_lastpass():
     if ltk.find("div[data-lastpass-root]").length:
-        console.write("lastpass", f"Warning: Lastpass was detected. It slows down PySheets. Please disable it for this page.")
+        console.write("lastpass", f"[Error] Lastpass was detected. It slows down PySheets. Please disable it for this page.")
 
 ltk.find(".menu-button").on("click", ltk.proxy(show_settings))
 ltk.window.addEventListener("popstate", lambda event: print("popstate"))

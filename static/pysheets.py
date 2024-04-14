@@ -30,7 +30,7 @@ def save(force=False):
     state.doc.dirty = True
     delay = (
         constants.SAVE_DELAY_SINGLE_EDITOR
-        if ltk.find(".other-editor").length == 0
+        if ltk.find(".person").length == 0
         else constants.SAVE_DELAY_MULTIPLE_EDITORS
     )
     ltk.schedule(lambda: sheet.save_edits(force), "send edits to server", delay)
@@ -493,6 +493,10 @@ pysheets.sheet("{key}:{other_key}")
     def save_edits(self, force=False):
         if not force and (not state.sync_edits or not any(state.doc.edits.values())):
             return
+        for key, cell in list(state.doc.edits[constants.DATA_KEY_CELLS].items()):
+            state.doc.edits[constants.DATA_KEY_CELLS][key] = cell.to_dict()
+        for key in list(state.doc.edits[constants.DATA_KEY_PREVIEWS]):
+            state.doc.edits[constants.DATA_KEY_PREVIEWS][key] = previews[key]
         edits = {}
         for key, edit in list(state.doc.edits.items()):
             if edit:
@@ -626,7 +630,8 @@ class Cell(ltk.TableData):
             self.evaluate()
 
     def store_edit(self):
-        state.doc.edits[constants.DATA_KEY_CELLS][self.key] = self.to_dict()
+        state.doc.edits[constants.DATA_KEY_CELLS][self.key] = self
+        state.doc.last_edit = window.time()
 
     def get_inputs(self, script):
         if not isinstance(script, str) or not script or script[0] != "=" or "no-inputs" in script:
@@ -737,20 +742,30 @@ class Cell(ltk.TableData):
         debug(f"add preview ", self.key, preview)
 
         def get_dimension():
-            return (preview.css("left"), preview.css("top"), preview.css("width"), preview.css("height"))
+            return (
+                window.parseInt(preview.css("left")),
+                window.parseInt(preview.css("top")),
+                window.parseInt(preview.css("width")),
+                window.parseInt(preview.css("height"))
+            )
         
         @saveit
         def save_preview():
-            state.doc.edits[constants.DATA_KEY_PREVIEWS][self.key] = previews[self.key] = get_dimension()
-            state.console.write("preview-changed", f"[Sheet] Preview position for {self} changed")
+            previews[self.key] = get_dimension()
+            state.doc.edits[constants.DATA_KEY_PREVIEWS][self.key] = preview
+            state.doc.last_edit = window.time()
+            state.console.write(
+                "preview-changed", 
+                f"[Sheet] Preview position for {self} saved: {previews[self.key]}"
+            )
 
         def dragstop(*args):
-            ltk.schedule(save_preview, "save-preview", 1)
+            ltk.schedule(save_preview, "save-preview", 3)
 
         def resize(event, *args):
             preview = ltk.find(event.target)
-            preview.find("img, iframe").css("width", preview.width()).css("height", preview.height())
-            ltk.schedule(save_preview, "save-preview", 1)
+            preview.find("img, iframe").css("width", "100%").css("height", f"calc(100% - {constants.PREVIEW_HEADER_HEIGHT})")
+            ltk.schedule(save_preview, "save-preview", 3)
 
         left, top, width, height = previews.get(
             self.key,
@@ -774,21 +789,43 @@ class Cell(ltk.TableData):
             .css("position", "absolute")
             .css("left", left)
             .css("top", top)
-            .css("width", "fit-content")
-            .css("height", "fit-content")
+            .css("width", width)
+            .css("height", height)
             .on("mousemove", proxy(lambda event: self.draw_cell_arrows()))
             .on("mouseleave", proxy(lambda event: remove_arrows()))
             .on("resize", proxy(resize))
             .on("dragstop", proxy(dragstop))
             .draggable()
         )
+
+        def toggle(event):
+            minimize = preview.height() > constants.PREVIEW_HEADER_HEIGHT
+            height = constants.PREVIEW_HEADER_HEIGHT if minimize else "fit-content"
+            width = constants.PREVIEW_HEADER_WIDTH if minimize else "fit-content"
+            preview \
+                .attr("minimized", minimize) \
+                .height(height) \
+                .width(width) \
+                .find(".ui-resizable-handle") \
+                    .css("display", "none" if minimize else "block")
+            ltk.find(event.target).text("+" if minimize else "-")
+            ltk.schedule(save_preview, "save-preview", 3)
+
         try:
             html = self.fix_preview_html(preview, self.preview)
-            ltk.find("#sheet-scrollable").append(preview.append(ltk.create(html)))
+            ltk.find("#sheet-scrollable").append(
+                preview.append(
+                    ltk.HBox(
+                        ltk.Text(self.key),
+                        ltk.Button("-" if preview.height() > constants.PREVIEW_HEADER_HEIGHT else "+", ltk.proxy(toggle)).addClass("toggle")
+                    ).addClass("preview-header"),
+                    ltk.create(html)
+                )
+            )
         except Exception as e:
-            debug(f"No preview for {self}: {e}")
+            state.console.write("sheet", f"[Error] No preview for {self}: {e}")
             pass
-
+            
         debug("add preview", self.key)
         self.make_resizable()
         self.draw_arrows()
@@ -798,7 +835,7 @@ class Cell(ltk.TableData):
                 td.empty().append(ltk.Div().text(content))
             ltk.find(f"#preview-{self.key} .dataframe tr th:first-child").remove()
         except Exception as e:
-            print("Error adding preview for", self, e)
+            state.console.write("sheet", "[Error] Cannot add preview for", self, e)
         if state.mobile():
             ltk.find(".dataframe").closest(".preview").remove()
 
@@ -824,10 +861,11 @@ class Cell(ltk.TableData):
 
     def make_resizable(self):
         preview = ltk.find(f"#preview-{self.key}")
-        width = preview.css("width")
-        height = preview.css("height")
-        # preview.find("img, iframe").css("width", width).css("height", height)
-        preview.resizable(ltk.to_js({"handles": "s, e"}))
+        width = preview.width()
+        height = preview.height()
+        preview.find("img, iframe").css("width", "100%").css("height", f"calc(100% - {constants.PREVIEW_HEADER_HEIGHT})")
+        preview.resizable(ltk.to_js({"handles": "se"}))
+        preview.find(".ui-resizable-handle").css("display", "block" if height > constants.PREVIEW_HEADER_HEIGHT else "none")
 
     def is_int(self, value):
         try:
@@ -851,7 +889,7 @@ class Cell(ltk.TableData):
             try:
                 self.inputs = self.get_inputs(script)
             except Exception as e:
-                print(f"Cannot get inputs for {self.key}", e)
+                state.console.write("sheet", f"[Error] Cannot get inputs for {self.key}", e)
                 self.inputs = set()
             cache_keys = set(self.sheet.cache.keys())
             if not self.inputs.issubset(cache_keys):
@@ -956,12 +994,13 @@ def handle_edits(data):
         return
     edits = data[constants.DATA_KEY_EDITS]
     for edit in edits:
-        debug(f"Handle edits {edit}")
+        email = edit[constants.DATA_KEY_EMAIL]
+        timestamp = edit[constants.DATA_KEY_TIMESTAMP]
         edit[constants.DATA_KEY_UID] = data[constants.DATA_KEY_UID]
         edit[constants.DATA_KEY_CURRENT] = None
-        debug(f" edit  {edit[constants.DATA_KEY_TIMESTAMP] > state.doc.last_edit} - {edit[constants.DATA_KEY_TIMESTAMP]} {state.doc.last_edit}")
         sheet.load_data(edit)
-    state.doc.last_edit = window.time()
+    if edits:
+        state.create_user_image(email, timestamp)
 
 
 def check_edits():
@@ -1035,7 +1074,7 @@ def email_to_class(email):
 
 def remove_old_editors():
     now = window.time()
-    for editor in ltk.find_list(".other-editor"):
+    for editor in ltk.find_list(".person"):
         timestamp = int(editor.attr(constants.DATA_KEY_TIMESTAMP))
         if timestamp and now - timestamp > constants.OTHER_EDITOR_TIMEOUT:
             editor.remove()
@@ -1186,6 +1225,7 @@ def setup_login():
 @saveit
 def set_name(event):
     state.doc.edits[constants.DATA_KEY_NAME] = state.doc.name = ltk.find("#title").val()
+    state.doc.last_edit = window.time()
 
 
 ltk.find("#title").on("change", proxy(set_name))
@@ -1199,6 +1239,7 @@ def update_cell(event=None):
         cell.set(script)
         cell.evaluate()
         state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
+        state.doc.last_edit = window.time()
 
 
 main_editor = editor.Editor()
@@ -1224,7 +1265,7 @@ def save_packages(event):
 
 def create_sheet():
     if not state.user.token:
-        return
+        return Spreadsheet()
 
     @saveit
     def resize_editor(*args):
@@ -1324,6 +1365,7 @@ def create_sheet():
         cell.css("font-family", option.text())
         sheet.selection.css("font-family", option.text())
         state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
+        state.doc.last_edit = window.time()
 
     @saveit
     def set_font_size(index, option):
@@ -1331,6 +1373,7 @@ def create_sheet():
         cell.css("font-size", f"{option.text()}px")
         sheet.selection.css("font-size", f"{option.text()}px")
         state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
+        state.doc.last_edit = window.time()
 
     @saveit
     def set_color(event):
@@ -1347,6 +1390,7 @@ def create_sheet():
         cell.css("background-color", color)
         sheet.selection.css("background-color", color)
         state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
+        state.doc.last_edit = window.time()
 
     ltk.find("#cell-attributes-container").empty().append(
         ltk.ColorPicker()
@@ -1488,7 +1532,7 @@ def handle_completion_request(completion):
         text, budget = completion_cache[key]
         add_completion_button(key, lambda: insert_completion(key, prompt, text, budget))
     except Exception as e:
-        print("Error in completion:", e)
+        state.console.write("sheet", "[Error] Cannot complete:", e)
 
 
 def insert_completion(key, prompt, text, budget):

@@ -11,7 +11,7 @@ def create_menu():
     return ltk.MenuBar(
         ltk.Menu("File",
              ltk.MenuItem("➕", "New", "", lambda item: new_sheet()),
-             ltk.MenuItem("📂", "Open", "Cmd+O", lambda item: go_home()),
+             ltk.MenuItem("📂", "Open", "Cmd+O", lambda item: go_go()),
              ltk.MenuItem("🎁", "Share", "", lambda item: share_sheet()),
              ltk.MenuItem("🗑", "Delete", "", lambda item: delete_doc()),
         ),
@@ -35,10 +35,14 @@ Enter the name of the sheet to actually delete it:")
 def delete_doc():
     if window.prompt(DELETE_PROMPT) == state.doc.name:
         url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
-        ltk.delete(state.add_token(url), lambda data: go_home())
+        ltk.delete(state.add_token(url), lambda data: go_go())
 
 
 def go_home():
+    window.document.location = "/"
+
+
+def go_go():
     window.document.location = "/go"
 
 
