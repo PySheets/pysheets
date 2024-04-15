@@ -159,13 +159,14 @@
                 $("body").append(
                     $("<div>")
                         .css("margin", 8)
-                        .text("It looks like PySheets ould not load the document with the packages you specified."),
-                    $("<div>")
+                        .text("It looks like PySheets could not load the document. Things you can try:"),
+                    $("<ul>")
                         .css("margin", 8)
-                        .text("Edit the URL to remove the package that are not pure Python wheels."),
-                    $("<div>")
-                        .css("margin", 8)
-                        .text("You can also try going to the previous document in your browser history.")
+                        .append(
+                            $("<li>Edit the URL to remove the packages that are not pure Python wheels.</li>"),
+                            $("<li>Edit the URL to use 'pyodide' instead of 'micropython'.</li>"),
+                            $("<li>Go to the previous document in your browser history.</li>")
+                        )
                 )
             }
         }

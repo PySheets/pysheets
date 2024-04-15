@@ -2,10 +2,10 @@ import api
 import collections
 import constants
 import js  # type: ignore
-import json
 import ltk
 import logging
 import menu
+import random
 import re
 import state
 import editor
@@ -497,7 +497,7 @@ pysheets.sheet("{key}:{other_key}")
         if not force and (not state.sync_edits or not any(state.doc.edits.values())):
             return
         for key, cell in list(state.doc.edits[constants.DATA_KEY_CELLS].items()):
-            state.doc.edits[constants.DATA_KEY_CELLS][key] = cell.to_dict()
+            state.doc.edits[constants.DATA_KEY_CELLS][key] = cell if isinstance(cell, dict) else cell.to_dict()
         for key in list(state.doc.edits[constants.DATA_KEY_PREVIEWS]):
             state.doc.edits[constants.DATA_KEY_PREVIEWS][key] = previews[key]
         edits = {}
@@ -529,7 +529,7 @@ class Cell(ltk.TableData):
             debug("Error: Cell has no element", self)
         self.column = column
         self.row = row
-        self.on("mouseenter", proxy(lambda event: self.draw_cell_arrows()))
+        self.on("mouseenter", proxy(lambda event: self.enter()))
         self.setup_menu()
         self.running = False
         self.needs_worker = False
@@ -538,6 +538,10 @@ class Cell(ltk.TableData):
         self.preview = None
         if script != "" or preview:
             self.set(script, preview)
+        
+    def enter(self):
+        self.draw_cell_arrows()
+        self.raise_preview()
     
     def show_history(self, event):
         def load_history(history):
@@ -607,7 +611,8 @@ class Cell(ltk.TableData):
             count = self.sheet.counts[self.key]
             if count:
                 speed = '🐌' if duration > 1.0 else '🚀'
-                state.console.write(self.key, f"[Sheet] {self.key}: runs: {count}, {duration:.3f}s {speed}")
+                if isinstance(value, str) and not "Error" in value:
+                    state.console.write(self.key, f"[Sheet] {self.key}: runs: {count}, {duration:.3f}s {speed}")
         self.notify()
         self.find(".loading-indicator").remove()
         children = self.children()
@@ -708,6 +713,10 @@ class Cell(ltk.TableData):
         remove_arrows()
         self.draw_arrows()
         self.adjust_arrows()
+    
+    def raise_preview(self):
+        preview = ltk.find(f"#preview-{self.key}")
+        preview.appendTo(preview.parent())
 
     def draw_arrows(self):
         if state.mobile():
@@ -769,6 +778,12 @@ class Cell(ltk.TableData):
             preview = ltk.find(event.target)
             preview.find("img, iframe").css("width", "100%").css("height", f"calc(100% - {constants.PREVIEW_HEADER_HEIGHT})")
             ltk.schedule(save_preview, "save-preview", 3)
+        
+        def move():
+            self.draw_cell_arrows()
+            
+        def click():
+            preview.appendTo(preview.parent())  # raise
 
         left, top, width, height = previews.get(
             self.key,
@@ -794,11 +809,12 @@ class Cell(ltk.TableData):
             .css("top", top)
             .css("width", width)
             .css("height", height)
-            .on("mousemove", proxy(lambda event: self.draw_cell_arrows()))
+            .on("click", proxy(lambda event: click()))
+            .on("mousemove", proxy(lambda event: move()))
             .on("mouseleave", proxy(lambda event: remove_arrows()))
             .on("resize", proxy(resize))
             .on("dragstop", proxy(dragstop))
-            .draggable()
+            .draggable(ltk.to_js({ "containment": "parent" }))
         )
 
         def toggle(event):
@@ -820,7 +836,7 @@ class Cell(ltk.TableData):
                 preview.append(
                     ltk.HBox(
                         ltk.Text(self.key),
-                        ltk.Button("-" if preview.height() > constants.PREVIEW_HEADER_HEIGHT else "+", ltk.proxy(toggle)).addClass("toggle")
+                        ltk.Button("-" if preview.height() > constants.PREVIEW_HEADER_HEIGHT or preview.height() == 0 else "+", ltk.proxy(toggle)).addClass("toggle")
                     ).addClass("preview-header"),
                     ltk.create(html)
                 )
@@ -899,7 +915,7 @@ class Cell(ltk.TableData):
                 self.inputs = set()
             cache_keys = set(self.sheet.cache.keys())
             if not self.inputs.issubset(cache_keys):
-                state.console.write(self.key, f"[Error] Error running {self.key}. No value for inputs {self.inputs - cache_keys}")
+                state.console.write(self.key, f"[Warning] While running {self.key}. No value for inputs {self.inputs - cache_keys}")
                 return
         state.console.remove(self.key)
         if is_formula:
@@ -1246,6 +1262,7 @@ def update_cell(event=None):
         cell.evaluate()
         state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
         state.doc.last_edit = window.time()
+        sheet.selection.css("height", cell.height())
 
 
 main_editor = editor.Editor()
@@ -1526,6 +1543,7 @@ def handle_completion_request(completion):
 
         if ltk.find("#completion-dialog-text").length:
             ltk.find("#completion-dialog-text").text(text)
+            ltk.find("#completion-dialog-insert").removeAttr("disabled")
             return
 
         if sheet.cells[key].script == "":
@@ -1564,6 +1582,8 @@ def insert_completion(key, prompt, text, budget):
             main_editor.set(f"=\n{latest_text}").focus()
             update_cell()
             ltk.find("#completion-dialog").remove()
+            color = f"hsla({(360 * random.random())}, 70%,  72%, 0.8)"
+            sheet.current.css("background-color", color)
         else:
             window.alert("Please select an empty cell and try again.")
     
@@ -1571,11 +1591,11 @@ def insert_completion(key, prompt, text, budget):
         prompt = ltk.find("#completion-dialog-prompt").val()
         extra_text = f"When you create the plot, make it {kind}."
         ltk.find("#completion-dialog-prompt").val(f"{prompt}\n\n{extra_text}")
-        ltk.find("#completion-dialog-generate").attr("disabled", None)
         prompt_changed()
 
     def prompt_changed():
-        ltk.find("#completion-dialog-generate").attr("disabled", None)
+        ltk.find("#completion-dialog-generate").removeAttr("disabled")
+        ltk.find("#completion-dialog-insert").attr("disabled", "true"),
         ltk.find("#completion-dialog-text").text("Click the Generate button to get a new completion...")
 
     ltk.find("#completion-dialog").remove()
@@ -1583,8 +1603,8 @@ def insert_completion(key, prompt, text, budget):
         ltk.HBox(
             ltk.Text("The prompts given to the AI:"),
             ltk.Button("bar", proxy(lambda event: set_plot_kind("a bar graph"))),
+            ltk.Button("barh", proxy(lambda event: set_plot_kind("a horizontal bar graph"))),
             ltk.Button("pie", proxy(lambda event: set_plot_kind("a pie chart"))),
-            ltk.Button("hbar", proxy(lambda event: set_plot_kind("a horizontal bar graph"))),
             ltk.Button("stem", proxy(lambda event: set_plot_kind("a stem plot"))),
             ltk.Button("stairs", proxy(lambda event: set_plot_kind("a stairs graph"))),
             ltk.Button("scatter", proxy(lambda event: set_plot_kind("a scatter plot"))),
@@ -1608,7 +1628,8 @@ def insert_completion(key, prompt, text, budget):
             .text(text)
             .css("height", 300),
         ltk.HBox(
-            ltk.Button("Insert into the Sheet", proxy(insert)),
+            ltk.Button("Insert into the Sheet", proxy(insert))
+                .attr("id", "completion-dialog-insert"),
             ltk.Text("(you can always edit the code later)"),
         ),
     ).attr("id", "completion-dialog").dialog(ltk.to_js({
@@ -1692,7 +1713,7 @@ logger.info(message)
 version_app = "dev"
 state.console.write(
     "welcome",
-    f"[Main] PySheets {version_app} is in alpha-mode 😱. Use only for experiments 🚧.",
+    f"[Main] PySheets {version_app} is in beta-mode 😱. Use only for experiments.",
 )
 state.console.write("pysheets", message)
 

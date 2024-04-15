@@ -100,11 +100,14 @@ def get_file(token):
         return "{}"
     uid = request.args.get(DATA_KEY_UID)
     if not uid:
-        return jsonify({ DATA_KEY_UID: storage.new(token) })
+        return jsonify({
+            DATA_KEY_UID: storage.new(token),
+            DATA_KEY_NAME: "Untitled Sheet",
+        })
     else:
         timestamp = float(request.args.get(DATA_KEY_TIMESTAMP, "0"))
         data = storage.get_file(token, uid) or {
-            DATA_KEY_NAME: "",
+            DATA_KEY_NAME: "Untitled Sheet",
             DATA_KEY_CELLS: {},
             DATA_KEY_UID: uid,
             DATA_KEY_SCREENSHOT: None
@@ -142,7 +145,11 @@ FILE_ACTIONS = {
 
 def get_form_data():
     form = request.form.to_dict()
-    data = json.loads(list(form.keys())[0])
+    try:
+        json_data = list(form.keys())[0]
+        data = json.loads(json_data)
+    except:
+        data = form
     if isinstance(data, list):
         data = data[0]
     return data

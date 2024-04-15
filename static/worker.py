@@ -148,7 +148,6 @@ def get_image_data(figure):
     #
     matplotlib.use('agg')
     bytes = BytesIO()
-    figure.set_size_inches(4, 3)
     figure.set_edgecolor("#BBB")
     figure.savefig(bytes, bbox_inches="tight", format='png')
     bytes.seek(0)
@@ -209,13 +208,19 @@ def generate_completion(key, prompt):
         }))
 
     def error(data, status, xhr):
-        print("Send completion error to app", data)
+        publish(sender, receiver, TOPIC_WORKER_COMPLETION, json.dumps({
+            "key": key, 
+            "prompt": prompt,
+            "text": data,
+            "budget": {},
+            "duration": time.time() - start,
+        }))
 
     window.ltk_post(
         url, 
-        json.dumps(data), 
+        data, 
         pyodide.ffi.create_proxy(success), 
-        "json", 
+        None,
         pyodide.ffi.create_proxy(error)
     )
 
