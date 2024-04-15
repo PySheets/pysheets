@@ -233,6 +233,11 @@ h3 {
     margin-right: 4px;
 }
 
+.preview-header .embed {
+    color: white;
+    margin-top: 2px;
+}
+
 .preview-header .toggle {
     width: 24px;
     min-width: 24px;
@@ -241,6 +246,12 @@ h3 {
     position: absolute;
     right: 4px;
     font-size: 18px;
+}
+
+.preview-header .ltk-checkbox {
+    height: 14px;
+    width: 14px;
+    margin-top: 5px;
 }
 
 .preview table {
@@ -800,3 +811,60 @@ td:hover .debug-info {
     overflow: hidden;
     color: navy;
 }
+
+:root {
+    --checkbox-border-color: #e9f5fd;
+    --checkbox-checked-color: #92bdee;
+    --checkbox-hover-color: #a3cef1;
+    --checkbox-disabled-bg-color: #d9d9d9;
+  }
+  
+  input[type="checkbox"] {
+    box-sizing: border-box;
+    width: 20px;
+    height: 20px;
+    margin: 6px;
+    padding: 0;
+    border: 2px solid var(--checkbox-border-color);
+    appearance: none;
+    background-color: transparent;
+    outline: none;
+    transition: outline 0.1s;
+  }
+  
+  input[type="checkbox"]:checked {
+    background-size: cover;
+    padding: 2px;
+  }
+  
+  input[type="checkbox"]:not(:disabled):checked {
+    border-color: var(--checkbox-checked-color);
+    background-color: #e9f5fd;
+  }
+  
+  input[type="checkbox"]:disabled {
+    background-color: var(--checkbox-disabled-bg-color);
+  }
+  
+  input[type="checkbox"]:disabled:checked {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="20" viewBox="0 0 32 32" xml:space="preserve"><path style="fill: %238b8c89" d="M11.941,28.877l-11.941-11.942l5.695-5.696l6.246,6.246l14.364-14.364L32,8.818"/></svg>');
+  }
+  
+  @media (hover: hover) {
+    input[type="checkbox"]:not(:disabled):hover {
+      background-color: var(--checkbox-hover-color);
+      outline: 6px solid var(--checkbox-hover-color);
+      transform: scale(1.05);
+    }
+  }
+  
+  input[type="checkbox"]:focus-visible {
+    outline: 6px solid var(--checkbox-hover-color);
+    transform: scale(1.05);
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    input[type="checkbox"] {
+      transition: none;
+    }
+  }

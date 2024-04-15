@@ -155,7 +155,7 @@
             const protocol = document.location.protocol;
             const host = document.location.host;
             const url = `${protocol}//${host}/?U=${uid}`;
-            if (url !== document.location.href) {
+            if (uid && url !== document.location.href) {
                 $("body").append(
                     $("<div>")
                         .css("margin", 8)
@@ -165,6 +165,8 @@
                         .append(
                             $("<li>Edit the URL to remove the packages that are not pure Python wheels.</li>"),
                             $("<li>Edit the URL to use 'pyodide' instead of 'micropython'.</li>"),
+                            $("<li>Check the Chrome Devtools Console (or its equivalent).</li>"),
+                            $("<li>Reload the current page.</li>"),
                             $("<li>Go to the previous document in your browser history.</li>")
                         )
                 )

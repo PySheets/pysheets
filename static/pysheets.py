@@ -110,11 +110,12 @@ class Spreadsheet():
         cell.css("font-size", settings.get(constants.DATA_KEY_VALUE_FONT_SIZE, constants.DEFAULT_FONT_SIZE))
 
     def load_cell_value(self, cell, settings):
+        embed = settings.get(constants.DATA_KEY_VALUE_EMBED, "")
         data = settings[constants.DATA_KEY_VALUE]
         script = data.get(constants.DATA_KEY_VALUE_FORMULA, "")
         preview = data.get(constants.DATA_KEY_VALUE_PREVIEW, "")
         kind = data.get(constants.DATA_KEY_VALUE_KIND, "")
-        cell.load(script, kind, preview)
+        cell.load(script, kind, preview, embed)
 
     def load_cell(self, cell, settings):
         if cell is self.current:
@@ -536,6 +537,7 @@ class Cell(ltk.TableData):
         self.inputs = []
         self.script = ""
         self.preview = None
+        self.embed = ""
         if script != "" or preview:
             self.set(script, preview)
         
@@ -598,7 +600,8 @@ class Cell(ltk.TableData):
             main_editor.set(self.script)
             self.sheet.select(self)
     
-    def load(self, script, kind, preview):
+    def load(self, script, kind, preview, embed):
+        self.embed = embed
         self.set(script, preview)
         self.text(kind)
         debug("load", self.key, kind, script, "=>", repr(self.text()))
@@ -722,7 +725,7 @@ class Cell(ltk.TableData):
         if state.mobile():
             return
         if self.preview:
-            window.addArrow(self.element, ltk.find(f"#preview-{self.key}"))
+            window.addArrow(self.element, ltk.find(f"#preview-{self.key} .ltk-text"))
         if not self.inputs:
             return
         try:
@@ -830,12 +833,23 @@ class Cell(ltk.TableData):
             ltk.find(event.target).text("+" if minimize else "-")
             ltk.schedule(save_preview, "save-preview", 3)
 
+        @saveit
+        def toggle_embed(event):
+            self.embed = "" if self.embed else "embed"
+            self.add_preview(self.preview)
+            state.doc.edits[constants.DATA_KEY_CELLS][self.key] = self.to_dict()
+            state.doc.last_edit = window.time()
+
         try:
             html = self.fix_preview_html(preview, self.preview)
+            url = f"/embed?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_CELL}={self.key}"
+            embed = ltk.Link(url, "embed") if self.embed else ltk.Label("embed")
             ltk.find("#sheet-scrollable").append(
                 preview.append(
                     ltk.HBox(
                         ltk.Text(self.key),
+                        ltk.Checkbox(self.embed != "").on("change", ltk.proxy(toggle_embed)),
+                        ltk.Div(embed.addClass("embed")),
                         ltk.Button("-" if preview.height() > constants.PREVIEW_HEADER_HEIGHT or preview.height() == 0 else "+", ltk.proxy(toggle)).addClass("toggle")
                     ).addClass("preview-header"),
                     ltk.create(html)
@@ -964,6 +978,7 @@ class Cell(ltk.TableData):
 
     def to_dict(self):
         result = {
+            constants.DATA_KEY_VALUE_EMBED: self.embed,
             constants.DATA_KEY_VALUE: {
                 constants.DATA_KEY_VALUE_FORMULA: self.script,
                 constants.DATA_KEY_VALUE_KIND: self.text(),

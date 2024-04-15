@@ -2,6 +2,7 @@ from .firestore import complete
 from .firestore import delete
 from .firestore import list_files
 from .firestore import get_file
+from .firestore import get_file_with_uid
 from .firestore import get_logs
 from .firestore import log
 from .firestore import get_edits

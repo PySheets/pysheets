@@ -243,6 +243,17 @@ def history():
     )
 
 
+@app.route("/embed", methods=["GET"])
+def embed():
+    key = request.args.get(DATA_KEY_CELL)
+    uid = request.args.get(DATA_KEY_UID)
+    file = storage.get_file_with_uid(uid)
+    cells = file[DATA_KEY_CELLS]
+    if key in cells:
+        return cells[key][DATA_KEY_VALUE].get(DATA_KEY_VALUE_PREVIEW, "")
+    return f"{key} missing"
+
+
 @app.route("/forget", methods=["GET"])
 def forget():
     return { 
