@@ -100,8 +100,8 @@ class Spreadsheet():
     def clear(self):
         self.cells = {}
         self.cache = {}
-        self.current: Cell = None
         self.counts = collections.defaultdict(int)
+        self.current = None
 
     def load_cell_css(self, cell, settings):
         cell.css("background-color", settings.get(constants.DATA_KEY_VALUE_FILL, constants.DEFAULT_FILL))
@@ -276,8 +276,8 @@ class Spreadsheet():
             ltk.find(".main-editor-container").width(data[constants.DATA_KEY_EDITOR_WIDTH])
         ltk.schedule(lambda: remove_arrows(1000), "remove arrows", 2.5)
         cells = self.load_cells(data.get(constants.DATA_KEY_CELLS, {}))
-        if constants.DATA_KEY_CURRENT in data and data[constants.DATA_KEY_CURRENT]:
-            ltk.schedule(lambda: self.select(self.get(data[constants.DATA_KEY_CURRENT])), "select-later", 0.1)
+        current = data.get(constants.DATA_KEY_CURRENT, "A1")
+        ltk.schedule(lambda: self.select(self.get(current)), "select-later", 0.1)
         if is_doc:
             sheet.find_frames()
         state.console.write("network-status", f"[I/O] Loaded '{state.doc.name}', {len(bytes)} bytes ✅")
@@ -471,7 +471,7 @@ pysheets.sheet("{key}:{other_key}")
                 constants.DATA_KEY_RUNTIME: "pyodide" if ltk.find("#run-in-main").prop("checked") == True else "micropython",
                 constants.DATA_KEY_PREVIEWS: previews,
                 constants.DATA_KEY_EDITOR_WIDTH: main_editor.width(),
-                constants.DATA_KEY_CURRENT: self.current.key if self.current else "",
+                constants.DATA_KEY_CURRENT: self.current.key,
             }
 
             def save_done(data):
@@ -512,7 +512,7 @@ pysheets.sheet("{key}:{other_key}")
             {
                 constants.DATA_KEY_UID: state.doc.uid,
                 constants.DATA_KEY_EDIT: edits,
-                constants.DATA_KEY_CURRENT: self.current.key if self.current else "",
+                constants.DATA_KEY_CURRENT: self.current.key,
             },
             proxy(lambda response: state.doc.empty_edits()),
         )
@@ -1345,7 +1345,7 @@ def create_sheet():
                         .css("display", "none"),
                     ltk.Button("run", proxy(run_current))
                         .attr("id", "run-button"),
-                    ltk.Button(constants.ICON_STAR, proxy(lambda event: insert_completion(sheet.current.key, "", "", { "total": 0 })))
+                    ltk.Button(constants.ICON_STAR, proxy(lambda event: insert_completion(sheet.current.key if sheet.current else "", "", "", { "total": 0 })))
                         .addClass("completion-button"),
                 ).addClass("packages-container"),
             ),
