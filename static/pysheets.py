@@ -817,7 +817,7 @@ class Cell(ltk.TableData):
             .on("mouseleave", proxy(lambda event: remove_arrows()))
             .on("resize", proxy(resize))
             .on("dragstop", proxy(dragstop))
-            .draggable(ltk.to_js({ "containment": "parent" }))
+            .draggable(ltk.to_js({ "containment": ".sheet" }))
         )
 
         def toggle(event):
@@ -843,7 +843,7 @@ class Cell(ltk.TableData):
         try:
             html = self.fix_preview_html(preview, self.preview)
             url = f"/embed?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_CELL}={self.key}"
-            embed = ltk.Link(url, "embed") if self.embed else ltk.Label("embed")
+            embed = ltk.Link(url, "embed") if self.embed else ltk.Div("embed")
             ltk.find("#sheet-scrollable").append(
                 preview.append(
                     ltk.HBox(
@@ -852,7 +852,9 @@ class Cell(ltk.TableData):
                         ltk.Div(embed.addClass("embed")),
                         ltk.Button("-" if preview.height() > constants.PREVIEW_HEADER_HEIGHT or preview.height() == 0 else "+", ltk.proxy(toggle)).addClass("toggle")
                     ).addClass("preview-header"),
-                    ltk.create(html)
+                    ltk.Div(
+                        ltk.create(html)
+                    ).addClass("preview-content")
                 )
             )
         except Exception as e:
