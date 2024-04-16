@@ -250,8 +250,10 @@ def embed():
     file = storage.get_file_with_uid(uid)
     cells = file[DATA_KEY_CELLS]
     if key in cells:
-        return cells[key][DATA_KEY_VALUE].get(DATA_KEY_VALUE_PREVIEW, "")
-    return f"{key} missing"
+        cell = cells[key]
+        if cell.get(DATA_KEY_VALUE_EMBED):
+            return cell[DATA_KEY_VALUE].get(DATA_KEY_VALUE_PREVIEW, "")
+    return f'<html><head><meta http-equiv="refresh" content="0; url=https://pysheets.app"></head></html>'
 
 
 @app.route("/forget", methods=["GET"])
