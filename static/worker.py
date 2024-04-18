@@ -131,7 +131,7 @@ def run_in_worker(script, inputs):
     _globals.update(inputs)
     _globals["pyodide"] = pyodide
     _globals["pyscript"] = pyscript
-    _globals["pysheets"] = PySheets(None, inputs)
+    _globals["pysheets"] = sys.modules["pysheets"] = PySheets(None, inputs)
     _locals = _globals
     exec(script, _globals, _locals)
     return _locals["_"]

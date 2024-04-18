@@ -4,6 +4,11 @@ import pyscript # type: ignore
 import re
 import time
 
+try:
+    import pandas as pd
+except:
+    pass
+
 window = pyscript.window
 
 
@@ -30,7 +35,8 @@ def wrap_as_file(content):
 
 def get_prompt(key, columns):
     return f"""
-Visualize a dataframe. I already have it stored in a variable called "{key}".
+Visualize a dataframe as a horizontal bar graph.
+I already have it stored in a variable called "{key}".
 Create a matplotlib figure in the code and call it "figure".
 Here are the column names for the dataframe: {columns}
     """.strip()
@@ -75,7 +81,6 @@ class PySheets():
         self.inputs = inputs
 
     def sheet(self, selection, headers=True):
-        import pandas
         start, end = selection.split(":")
         start_col, start_row = get_col_row(start)
         end_col, end_row = get_col_row(end)
@@ -88,8 +93,8 @@ class PySheets():
             values = [ self.inputs[ key ] for key in keys ]
             header = values.pop(0) if headers else f"col-{col}"
             data[header] = values
-        df = pandas.DataFrame.from_dict(data)
-        if not isinstance(df, pandas.DataFrame):
+        df = pd.DataFrame.from_dict(data)
+        if not isinstance(df, pd.DataFrame):
             return "Error: Incomplete Data"
         return df
 
@@ -98,6 +103,18 @@ class PySheets():
 
     def load(self, url):
         return urlopen(url)
+
+    def load_sheet(self, url):
+        try:
+            data = urlopen(url)
+            print("convert to excel", url)
+            return pd.read_excel(data, engine='openpyxl')
+        except:
+            try:
+                print("convert to csv", url)
+                return pd.read_csv(data)
+            except Exception as e:
+                return f"Cannot load {url}: {type(e)}: {e}"
 
 
 def get_dict_table(result):

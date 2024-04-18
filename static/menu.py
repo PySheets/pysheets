@@ -12,6 +12,7 @@ def create_menu():
         ltk.Menu("File",
              ltk.MenuItem("➕", "New", "", lambda item: new_sheet()),
              ltk.MenuItem("📂", "Open", "Cmd+O", lambda item: go_go()),
+             ltk.MenuItem("📂", "Import", "", lambda item: import_sheet()),
              ltk.MenuItem("🎁", "Share", "", lambda item: share_sheet()),
              ltk.MenuItem("🗑", "Delete", "", lambda item: delete_doc()),
         ),
@@ -36,6 +37,22 @@ def delete_doc():
     if window.prompt(DELETE_PROMPT) == state.doc.name:
         url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
         ltk.delete(state.add_token(url), lambda data: go_go())
+
+
+IMPORT_MESSAGE = """
+PySheets supports importing of Excel, Google Sheets, and CSV.
+<br><br>
+To import a sheet, simply enter a URL into any of the cells in the sheet.
+The AI will then propose the next step.
+<br><br>
+A message will appear in the console for the next step.
+"""
+
+
+def import_sheet():
+    ltk.Div(IMPORT_MESSAGE) \
+        .attr("title", "Importing a Sheet into PySheets") \
+        .dialog(ltk.to_js({ "width": 350 }))
 
 
 def go_home():

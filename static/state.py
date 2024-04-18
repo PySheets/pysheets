@@ -242,7 +242,7 @@ class Console():
             del self.messages[key]
         self.render()
 
-    def write(self, key, *args):
+    def write(self, key, *args, action=None):
         try:
             message = " ".join(str(arg) for arg in args)
         except Exception as e:
@@ -253,7 +253,7 @@ class Console():
         self.messages[key] = when, f"{when:4.3f}s  {message}"
         if "RuntimeError: pystack exhausted" in message:
             self.messages["critical"] = when, f"{when:4.3f}s  [Critical] MicroPython Error. Enable 'PyOdide' and reload the page."
-        self.render_message(key, *self.messages[key])
+        self.render_message(key, *self.messages[key], action=action)
         self.save(message)
 
     def render(self):
@@ -267,7 +267,7 @@ class Console():
     def remove(self, key):
         ltk.find(f"#console-{key}").remove()
     
-    def render_message(self, key, when, message):
+    def render_message(self, key, when, message, action=None):
         filter = self.get_filter()
         if filter and not filter in message:
             return
@@ -278,7 +278,12 @@ class Console():
             ltk.TableRow(
                 ltk.TableData(ltk.Preformatted(parts[0])),
                 ltk.TableData(ltk.Preformatted(parts[1])),
-                ltk.TableData(ltk.Preformatted(" ".join(parts[2:]).replace("<", "&lt;"))).css("width", "100%"),
+                ltk.TableData(
+                    ltk.HBox(
+                        (action or ltk.Span()).css("margin-left", 0).css("margin-top", 0),
+                        ltk.Preformatted(" ".join(parts[2:]).replace("<", "&lt;")),
+                    )
+                ).css("width", "100%")
             )
             .attr("id", f"console-{key}").addClass(clazz)
         )
@@ -332,7 +337,7 @@ def show_worker_status():
         console.write("worker-status", f"[Worker] Starting PyOdide {constants.ICON_HOUR_GLASS} {worker_dots}")
         ltk.schedule(show_worker_status, "worker-status", 1)
     else:
-        console.write("worker-status", f"[Worker] PyOdide; Python v{worker_version} ✅")
+        console.write("worker-status", f"[Worker] Worker is running PyOdide; Python v{worker_version} ✅")
 
 
 def start_worker():

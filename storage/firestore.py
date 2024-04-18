@@ -124,8 +124,11 @@ def increment_budget(email, budget):
 
 
 def openai_complete(prompt):
+    model = "davinci-002"
+    model = "babbage-002"
+    model="gpt-3.5-turbo-instruct"
     return openai.Completion.create(
-        model="gpt-3.5-turbo-instruct",
+        model=model,
         prompt=prompt,
         temperature=0,
         max_tokens=1000,
@@ -164,13 +167,14 @@ def complete(prompt, token):
     if not email:
         raise ValueError("login")
     budget = check_completion_budget(email)
-    completion = prompt_to_completion.document(prompt[:1000]).get().to_dict()
+    prompt_hash = str(hashlib.md5(prompt.encode("utf-8")))
+    completion = prompt_to_completion.document(prompt_hash).get().to_dict()
     if completion:
         completion["cached"] = True
     else:
         completion = openai_complete(prompt)
         completion["cached"] = False
-        prompt_to_completion.document(prompt[:1000]).set(completion)
+        prompt_to_completion.document(prompt_hash).set(completion)
     completion["budget"] = budget
     return completion
     

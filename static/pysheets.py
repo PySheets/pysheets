@@ -209,7 +209,7 @@ class Spreadsheet():
     def handle_worker_result(self, result):
         try:
             key = result["key"]
-            cell: Cell = self.cells[key]
+            cell: Cell = self.get(key)
             if not cell.script:
                 return
             cell.update(result["duration"], result["value"], result["preview"])
@@ -220,7 +220,7 @@ class Spreadsheet():
                 state.console.write(key, f"[Error] {key}: {result['error']}")
                 cell.update(result["duration"], result["error"])
         except Exception as e:
-            state.console.write(key, f"[Error] {e}")
+            state.console.write(key, f"[Error] Cannot handle worker result: {type(e)}: {e}")
 
     def notify(self, cell):
         for other in self.cells.values():
@@ -280,6 +280,7 @@ class Spreadsheet():
         ltk.schedule(lambda: self.select(self.get(current)), "select-later", 0.1)
         if is_doc:
             sheet.find_frames()
+            sheet.find_urls()
         state.console.write("network-status", f"[I/O] Loaded '{state.doc.name}', {len(bytes)} bytes ✅")
         ltk.find("#main").animate(ltk.to_js({"opacity": 1}), 400)
         return cells
@@ -311,11 +312,18 @@ class Spreadsheet():
                 for row in range(cell.row, cell.row + height):
                     other_key = get_key_from_col_row(col, row)
                     visited.add(other_key)
+            prompt = f"""
+Convert the spreadsheet cells in range "{key}:{other_key}" into a Pandas dataframe.
+To load a Dataframe from cells, use "pysheets.sheet(pysheets.load(url))".
+Make the last expression refer to the dataframe.
+The pysheets module is already imported.
+Generate Python code.
+"""
             text = f"""
 # Create a Pandas DataFrame from values found in the current sheet
 pysheets.sheet("{key}:{other_key}")
 """
-            add_completion_button(cell.key, lambda: insert_completion(key, "", text, { "total": 0 }))
+            add_completion_button(cell.key, lambda: insert_completion(key, prompt, text, { "total": 0 }))
 
         for key in sorted(self.cells.keys()):
             cell = self.cells[key]
@@ -325,6 +333,28 @@ pysheets.sheet("{key}:{other_key}")
             height = get_height(cell)
             if width > 1 and height > 1:
                 add_frame(cell.key, width, height)
+
+    def is_a_dependent(self, key):
+        for cell in self.cells.values():
+            if key in cell.inputs:
+                return True
+        return False
+
+    def find_urls(self):
+        for key, cell in self.cells.items():
+            value = cell.text()
+            if isinstance(value, str) and value.startswith("https:"):
+                if self.is_a_dependent(key):
+                    state.console.remove(f"ai-{key}")
+                else:
+                    prompt = f"""
+Load the data URL already stored in variable {key} into a Pandas Dataframe.
+To load a Dataframe from a url, import pandas and use "pd.read_csv(pysheets.load(url))".
+Make the last expression refer to the dataframe.
+Generate Python code.
+"""
+
+                    request_completion(key, prompt.strip())
 
     def setup_selection(self):
         def select(event):
@@ -438,6 +468,7 @@ pysheets.sheet("{key}:{other_key}")
     def worker_ready(self, data):
         for cell in self.cells.values():
             cell.worker_ready()
+        self.find_urls()
 
     def save_file(self, done=None):
         try:
@@ -708,6 +739,7 @@ class Cell(ltk.TableData):
         self.css("background-color", "")
         ltk.find(f"#preview-{self.key}").remove()
         ltk.find(f"#completion-{self.key}").remove()
+        state.console.remove(f"ai-{self.key}")
         del self.sheet.cells[self.key]
         if self.key in previews:
             del previews[self.key]
@@ -769,10 +801,7 @@ class Cell(ltk.TableData):
             previews[self.key] = get_dimension()
             state.doc.edits[constants.DATA_KEY_PREVIEWS][self.key] = preview
             state.doc.last_edit = window.time()
-            state.console.write(
-                "preview-changed", 
-                f"[Sheet] Preview position for {self} saved: {previews[self.key]}"
-            )
+            debug(f"[Sheet] Preview position for {self} saved: {previews[self.key]}")
 
         def dragstop(*args):
             ltk.schedule(save_preview, "save-preview", 3)
@@ -1280,6 +1309,7 @@ def update_cell(event=None):
         state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
         state.doc.last_edit = window.time()
         sheet.selection.css("height", cell.height())
+    sheet.find_urls()
 
 
 main_editor = editor.Editor()
@@ -1368,7 +1398,7 @@ def create_sheet():
         ).addClass("console-container"),
         "editor-and-console",
     ).addClass("right-panel")
-    if ltk.find("body").width() < 800:
+    if state.mobile():
         ltk.find("#main").prepend(
             ltk.VerticalSplitPane(
                 ltk.Div(
@@ -1376,7 +1406,7 @@ def create_sheet():
                         ltk.find(".sheet"),
                     ).attr("id", "sheet-scrollable")
                 ).attr("id", "sheet-container"),
-                vsp,
+                vsp.css("height", "30%"),
                 "sheet-and-editor",
             ).css("height", "100vh")
         )
@@ -1531,7 +1561,7 @@ def show_document_list(documents):
             ltk.Button("New Sheet", proxy(lambda event: menu.new_sheet())).addClass(
                 "new-button"
             )
-        )
+        ).css("overflow", "auto").css("height", "100%")
     )
     ltk.find(".document-card").eq(0).focus()
     ltk.find("#menu").empty()
@@ -1550,75 +1580,119 @@ def cleanup_completion(text):
 
 def handle_completion_request(completion):
     try:
+        state.console.write("ai-complete", "[AI] Received completion from OpenAI...")
         import json
         key = completion["key"]
-        prompt = completion["prompt"]
         text = completion["text"]
+        prompt = completion["prompt"]
+        current_prompt = ltk.find("#ai-prompt").text()
+        if current_prompt and prompt != current_prompt:
+            message = f"Prompt different:\n\n{prompt}\n\n{current_prompt}\n\nPlease try again"
+            ltk.find("#ai-text").text(message)
+            state.console.write("ai-complete", f"[AI] {message}")
+            ltk.find("#ai-generate").removeAttr("disabled")
+            ltk.find("#ai-insert").attr("disabled", "disabled")
+            return
         if not "CompletionBudgetException" in text:
             text = cleanup_completion(text)
         debug("PySheets: handle completion", key, text)
+        text = f"# The following code is entirely AI-generated. Please check it for errors.\n\n{text}"
 
-        if ltk.find("#completion-dialog-text").length:
-            ltk.find("#completion-dialog-text").text(text)
-            ltk.find("#completion-dialog-insert").removeAttr("disabled")
+        if ltk.find("#ai-text").length:
+            ltk.find("#ai-text").text(text)
+            ltk.find("#ai-insert").removeAttr("disabled")
             return
 
         if sheet.cells[key].script == "":
+            state.console.write("ai-complete", f"[AI] Completion canceled for {key}")
             return
-        completion_cache[key] = (
-            f"# The following code is entirely AI-generated. It may contain errors or hallucinations.\n\n{text}",
-            completion["budget"],
-        )
+        completion_cache[key] = (text, completion["budget"])
         ltk.find(f"#completion-{key}").remove()
         text, budget = completion_cache[key]
+        state.console.write("ai-complete", f"[AI] OpenAI completion received for {key}; Budget: {budget["total"]}/100")
         add_completion_button(key, lambda: insert_completion(key, prompt, text, budget))
     except Exception as e:
-        state.console.write("sheet", "[Error] Cannot complete:", e)
+        state.console.write("ai-complete", "[Error] Could not handle completion from OpenAI...", e)
+
+
+def request_completion(key, prompt):
+    state.console.write("ai-complete", "[AI] Sending the completion to OpenAI...")
+    ltk.publish(
+        "Application",
+        "Worker",
+        constants.TOPIC_WORKER_COMPLETE,
+        {
+            "key": key, 
+            "prompt": prompt,
+        },
+    )
+        
+
+def set_random_color():
+    color = f"hsla({(360 * random.random())}, 70%,  72%, 0.8)"
+    sheet.current.css("background-color", color)
+    sheet.selection.css("background-color", color)
 
 
 def insert_completion(key, prompt, text, budget):
     def generate(event):
-        ltk.find("#completion-dialog-budget").text(f"{100 - budget['total']} runs left.")
-        ltk.find("#completion-dialog-text").text("Loading...")
-        ltk.find("#completion-dialog-generate").attr("disabled", "true"),
-        edited_prompt = ltk.find("#completion-dialog-prompt").val()
+        ltk.find("#ai-budget").text(f"{100 - budget['total']} runs left.")
+        ltk.find("#ai-text").text("Loading...")
+        ltk.find("#ai-generate").attr("disabled", "true"),
+        edited_prompt = ltk.find("#ai-prompt").val()
         debug("Generate")
-        ltk.publish(
-            "Application",
-            "Worker",
-            constants.TOPIC_WORKER_COMPLETE,
-            {
-                "key": key, 
-                "prompt": edited_prompt,
-            },
-        )
+        request_completion(key, edited_prompt)
 
     def insert(event):
-        latest_text = ltk.find("#completion-dialog-text").text()
+        text = ltk.find("#ai-text").text()
         if main_editor.get() == "":
-            main_editor.set(f"=\n{latest_text}").focus()
+            edited_prompt = ltk.find("#ai-prompt").val()
+            text = f'=\n\nprompt = """\n{edited_prompt}\n"""\n\n{text}'
+            main_editor.set(text).focus()
             update_cell()
             ltk.find("#completion-dialog").remove()
-            color = f"hsla({(360 * random.random())}, 70%,  72%, 0.8)"
-            sheet.current.css("background-color", color)
+            set_random_color()
         else:
-            window.alert("Please select an empty cell and try again.")
+            ltk.find("#ai-message").text(
+                "Please select an empty cell and try again."
+            ).css("color", "red")
     
     def set_plot_kind(kind):
-        prompt = ltk.find("#completion-dialog-prompt").val()
-        extra_text = f"When you create the plot, make it {kind}."
-        ltk.find("#completion-dialog-prompt").val(f"{prompt}\n\n{extra_text}")
+        add_prompt(f"When you create the plot, make it {kind}.")
+
+    def load_from_cloud():
+        google = f"https://drive.google.com/uc?export=download"
+        add_prompt(f"""
+Assume variable A1 already contains a URL we want to load. 
+Load a file from the cloud using "pysheets.load_sheet(A1)".
+Do not print it.
+            """.strip())
+
+    def load_local_file():
+        google = f"https://drive.google.com/uc?export=download"
+        add_prompt(f"""
+Load a spreadsheet from an upload.
+Make the last expression in the code "df".
+            """.strip())
+
+    def add_prompt(extra_text):
+        prompt = ltk.find("#ai-prompt").val()
+        ltk.find("#ai-prompt").val(f"{prompt}\n\n{extra_text}")
         prompt_changed()
 
     def prompt_changed():
-        ltk.find("#completion-dialog-generate").removeAttr("disabled")
-        ltk.find("#completion-dialog-insert").attr("disabled", "true"),
-        ltk.find("#completion-dialog-text").text("Click the Generate button to get a new completion...")
+        ltk.find("#ai-generate").removeAttr("disabled")
+        ltk.find("#ai-insert").attr("disabled", "true"),
+        ltk.find("#ai-text").text("Click the Generate button to get a new completion...")
 
-    ltk.find("#completion-dialog").remove()
-    ltk.VBox(
-        ltk.HBox(
-            ltk.Text("The prompts given to the AI:"),
+    extra_prompt_buttons = {
+        constants.COMPLETION_KINDS_IMPORT: [
+            ltk.Button("Load Local File", proxy(lambda event: load_local_file())),
+        ],
+        constants.COMPLETION_KINDS_NONE: [
+            ltk.Button("Load Local File", proxy(lambda event: load_local_file())),
+        ],
+        constants.COMPLETION_KINDS_CHART: [
             ltk.Button("bar", proxy(lambda event: set_plot_kind("a bar graph"))),
             ltk.Button("barh", proxy(lambda event: set_plot_kind("a horizontal bar graph"))),
             ltk.Button("pie", proxy(lambda event: set_plot_kind("a pie chart"))),
@@ -1627,27 +1701,43 @@ def insert_completion(key, prompt, text, budget):
             ltk.Button("scatter", proxy(lambda event: set_plot_kind("a scatter plot"))),
             ltk.Button("stack", proxy(lambda event: set_plot_kind("a stack plot"))),
             ltk.Button("fill", proxy(lambda event: set_plot_kind("a fill between graph"))),
+        ],
+    }
+    cell: Cell = sheet.get(key)
+    if cell.text() == "DataFrame":
+        data_kind = constants.COMPLETION_KINDS_CHART
+    elif cell.text().startswith("https:"):
+        data_kind = constants.COMPLETION_KINDS_IMPORT
+    else:
+        data_kind = constants.COMPLETION_KINDS_NONE
+
+    ltk.find("#completion-dialog").remove()
+    ltk.VBox(
+        ltk.HBox(
+            ltk.Text("The prompts given to the AI:"),
+            extra_prompt_buttons[data_kind],
         ),
-        ltk.TextArea(prompt)
-            .attr("id", "completion-dialog-prompt")
+        ltk.TextArea(prompt or "Generate Python code.")
+            .attr("id", "ai-prompt")
             .on("keyup", proxy(lambda event: prompt_changed()))
             .css("height", 300),
         ltk.HBox(
             ltk.Button("Generate", proxy(generate))
                 .attr("disabled", "true")
-                .attr("id", "completion-dialog-generate"),
+                .attr("id", "ai-generate"),
             ltk.Text("")
-                .attr("id", "completion-dialog-budget"),
+                .attr("id", "ai-budget"),
             ltk.Text("The latest AI generated completion:"),
         ),
         ltk.Preformatted()
-            .attr("id", "completion-dialog-text")
+            .attr("id", "ai-text")
             .text(text)
             .css("height", 300),
         ltk.HBox(
             ltk.Button("Insert into the Sheet", proxy(insert))
-                .attr("id", "completion-dialog-insert"),
-            ltk.Text("(you can always edit the code later)"),
+                .attr("id", "ai-insert"),
+            ltk.Text("(you can always edit the code later)")
+                .attr("id", "ai-message"),
         ),
     ).attr("id", "completion-dialog").dialog(ltk.to_js({
         "width": 700,
@@ -1656,18 +1746,22 @@ def insert_completion(key, prompt, text, budget):
 
 
 def add_completion_button(key, handler):
+    def run(event):
+        handler()
+        ltk.schedule(sheet.find_urls, "find-urls", 1)
+        
     ltk.find(f"#completion-{key}").remove()
     ltk.find(".packages-container").append(
-        ltk.Button(
-            f"{constants.ICON_STAR} {key}", 
-            proxy(lambda event: handler())
-        )
-        .addClass("completion-button")
-        .attr("id", f"completion-{key}")
+        ltk.Button(f"{constants.ICON_STAR} {key}", proxy(run))
+            .addClass("completion-button")
+            .attr("id", f"completion-{key}")
     )
     if key:
-        message = f"[AI] The AI suggested a completion for {key}. See the '{constants.ICON_STAR}{key}' button"
-        state.console.write(f"ai-{key}", message)
+        state.console.write(
+            f"ai-{key}",
+            f"[AI] AI completion available for [{key}: {sheet.cells[key].text()}]. {constants.ICON_STAR}",
+            action=ltk.Button(f"{constants.ICON_STAR}{key}", proxy(run)).addClass("completion-button")
+        )
 
 
 def load_doc_with_packages(event, uid, runtime, packages):
@@ -1733,6 +1827,28 @@ state.console.write(
     f"[Main] PySheets {version_app} is in beta-mode 😱. Use only for experiments.",
 )
 state.console.write("pysheets", message)
+
+def insert_url(event):
+    if main_editor.get() == "":
+        sheet.current.set("https://chrislaffra.com/forbes_ai_50_2024.csv")
+        sheet.find_urls()
+        set_random_color()
+    else:
+        lambda: state.console.write(
+            "insert-tip",
+            f"[Tip] To import a sheet, select an empty cell first. Then enter a URL. {constants.ICON_STAR}", 
+            action=ltk.Button(f"{constants.ICON_STAR} Try", insert_url).addClass("completion-button")
+        )
+
+ltk.schedule(
+    lambda: state.console.write(
+        "insert-tip",
+        f"[Tip] To import a sheet, enter a URL into an empty cell and the AI will help. {constants.ICON_STAR}", 
+        action=ltk.Button(f"{constants.ICON_STAR} Try", insert_url).addClass("completion-button")
+    ),
+    "give a tip",
+    3.0
+)
 
 
 def convert(value):

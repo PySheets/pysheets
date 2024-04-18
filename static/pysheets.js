@@ -149,26 +149,35 @@
     }
 
     window.check_loaded = () => {
-        if ($('#sheet-containter').length === 0) {
+        if ($('#sheet-container').length === 0) {
             const params = new URLSearchParams(document.location.search);
             const uid = params.get("U");
             const protocol = document.location.protocol;
             const host = document.location.host;
             const url = `${protocol}//${host}/?U=${uid}`;
             if (uid && url !== document.location.href) {
+                const nopackages = url;
+                const pyodide = `${url}&r=pyodide`;
                 $("body").append(
-                    $("<div>")
-                        .css("margin", 8)
-                        .text("It looks like PySheets could not load the document. Things you can try:"),
-                    $("<ul>")
-                        .css("margin", 8)
-                        .append(
-                            $("<li>Edit the URL to remove the packages that are not pure Python wheels.</li>"),
-                            $("<li>Edit the URL to use 'pyodide' instead of 'micropython'.</li>"),
-                            $("<li>Check the Chrome Devtools Console (or its equivalent).</li>"),
-                            $("<li>Reload the current page.</li>"),
-                            $("<li>Go to the previous document in your browser history.</li>")
-                        )
+                    $("<div>").append(
+                        $("<div>")
+                            .css("margin", 8)
+                            .text("It looks like PySheets could not load the document. Things you can try:"),
+                        $("<ul>")
+                            .css("margin", 8)
+                            .append(
+                                $(`<li>Edit the URL to remove the packages that are not pure Python wheels. <a href="${url}">Try this</a>.</li>`),
+                                $(`<li>Edit the URL to use 'pyodide' instead of 'micropython'. <a href="${pyodide}">Try this</a>.</li>`),
+                                $(`<li>Reload the current page. <a href="${url}">Try this</a>.</li>`),
+                                $(`<li>Check the Chrome Devtools Console (or its equivalent).</li>`),
+                                $(`<li>Go to the previous document in your browser history.</li>`)
+                            )
+                    )
+                    .css("position", "absolute")
+                    .css("left", "10px")
+                    .css("top", "190px")
+                    .css("color", "red")
+                    .css("z-index", 1000000)
                 )
             }
         }

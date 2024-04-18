@@ -285,6 +285,13 @@ h3 {
     background-color: #AAF;
 }
 
+.ui-widget-header {
+    background-color: #AAF;
+    border: 1px solid #ddd;
+    color: #333;
+    font-weight: bold;
+}
+
 .ltk-input {
     border-color: transparent;
     height: 23px;
@@ -292,7 +299,7 @@ h3 {
 
 #completion-dialog .ltk-textarea, #completion-dialog pre {
     width: calc(100% - 20px);
-    height: 200px;
+    height: 100px;
     margin: 4px 0 28px 0;
     background-color: #fffef7;
     border: 1px solid purple;
@@ -305,7 +312,7 @@ h3 {
     min-width: 0;
 }
 
-#completion-dialog-budget {
+#ai-budget {
     margin-right: 10px;
 }
 
@@ -745,6 +752,7 @@ td:hover .debug-info {
 .console {
     background-color: #f9f9ff;
     width: 100%;
+    height: 100%;
     overflow: scroll;
 }
 
@@ -762,6 +770,10 @@ td:hover .debug-info {
 
 .console .ltk-table {
     width: 100%
+}
+
+.console .ltk-button {
+    margin-right: 10px;
 }
 
 .console pre {
