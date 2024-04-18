@@ -349,7 +349,7 @@ pysheets.sheet("{key}:{other_key}")
                 else:
                     prompt = f"""
 Load the data URL already stored in variable {key} into a Pandas Dataframe.
-To load a Dataframe from a url, import pandas and use "pd.read_csv(pysheets.load(url))".
+To load a Dataframe from a url, use "pysheets.load_sheet(url)".
 Make the last expression refer to the dataframe.
 Generate Python code.
 """
@@ -1585,14 +1585,6 @@ def handle_completion_request(completion):
         key = completion["key"]
         text = completion["text"]
         prompt = completion["prompt"]
-        current_prompt = ltk.find("#ai-prompt").text()
-        if current_prompt and prompt != current_prompt:
-            message = f"Prompt different:\n\n{prompt}\n\n{current_prompt}\n\nPlease try again"
-            ltk.find("#ai-text").text(message)
-            state.console.write("ai-complete", f"[AI] {message}")
-            ltk.find("#ai-generate").removeAttr("disabled")
-            ltk.find("#ai-insert").attr("disabled", "disabled")
-            return
         if not "CompletionBudgetException" in text:
             text = cleanup_completion(text)
         debug("PySheets: handle completion", key, text)
