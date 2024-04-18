@@ -1609,7 +1609,7 @@ def handle_completion_request(completion):
         completion_cache[key] = (text, completion["budget"])
         ltk.find(f"#completion-{key}").remove()
         text, budget = completion_cache[key]
-        state.console.write("ai-complete", f"[AI] OpenAI completion received for {key}; Budget: {budget["total"]}/100")
+        state.console.write("ai-complete", f"[AI] OpenAI completion received for {key}; Budget: {budget['total']}/100")
         add_completion_button(key, lambda: insert_completion(key, prompt, text, budget))
     except Exception as e:
         state.console.write("ai-complete", "[Error] Could not handle completion from OpenAI...", e)
