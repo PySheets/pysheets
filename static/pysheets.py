@@ -1589,7 +1589,7 @@ def cleanup_completion(text):
 
 def handle_completion_request(completion):
     try:
-        state.console.write("ai-complete", "[AI] Received completion from OpenAI...", completion)
+        debug("[AI] Received completion from OpenAI...", completion)
         import json
         key = completion["key"]
         text = completion["text"]
@@ -1605,19 +1605,19 @@ def handle_completion_request(completion):
             return
 
         if sheet.cells[key].script == "":
-            # state.console.write("ai-complete", f"[AI] Completion canceled for {key}")
+            debug(f"[AI] Completion canceled for {key}")
             return
         completion_cache[key] = (text, completion.get("budget"))
         ltk.find(f"#completion-{key}").remove()
         text, budget = completion_cache[key]
-        # state.console.write("ai-complete", f"[AI] OpenAI completion received for {key}; Budget: {budget['total']}/100")
+        debug(f"[AI] OpenAI completion received for {key}; Budget: {budget['total']}/100")
         add_completion_button(key, lambda: insert_completion(key, prompt, text, budget))
     except Exception as e:
         state.console.write("ai-complete", "[Error] Could not handle completion from OpenAI...", e)
 
 
 def request_completion(key, prompt):
-    # state.console.write("ai-complete", f"[AI] Sending a completion request for {key} to OpenAI...")
+    debug(f"[AI] Sending a completion request for {key} to OpenAI...")
     ltk.publish(
         "Application",
         "Worker",
