@@ -33,13 +33,9 @@ def wrap_as_file(content):
         return io.StringIO(content)
 
 
-def get_prompt(key, columns):
-    return f"""
-Visualize a dataframe as a horizontal bar graph.
-I already have it stored in a variable called "{key}".
-Create a matplotlib figure in the code and call it "figure".
-Here are the column names for the dataframe: {columns}
-    """.strip()
+def shorten(s, length):
+    return f"{s[:length - 3]}{s[length - 3:] and '...'}"
+
 
 network_cache = {}
 
@@ -107,11 +103,9 @@ class PySheets():
     def load_sheet(self, url):
         try:
             data = urlopen(url)
-            print("convert to excel", url)
             return pd.read_excel(data, engine='openpyxl')
         except:
             try:
-                print("convert to csv", url)
                 return pd.read_csv(data)
             except Exception as e:
                 return f"Cannot load {url}: {type(e)}: {e}"
