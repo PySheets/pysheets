@@ -48,8 +48,14 @@
 }
 
 #sheet-container {
-    height: calc(100vh - 68px);
+    min-height: 100px;
+    min-width: 300px;
     overflow: auto;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+#sheet-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
 }
 
 #sheet-scrollable {
@@ -207,6 +213,10 @@ h3 {
     font-family: 'Courier New', Courier, monospace;
 }
 
+.CodeMirror-hscrollbar, .CodeMirror-vscrollbar {
+    display: none;
+}
+
 .preview {
     position: absolute;
     background-color: white;
@@ -217,7 +227,7 @@ h3 {
     border: 1px solid rgb(176, 176, 176);
     box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
     cursor: pointer;
-    max-height: 70vh;
+    max-height: 90vh;
     overflow: hidden;
 }
 
@@ -285,8 +295,13 @@ h3 {
     background-color: #AAF;
 }
 
+.ui-dialog-title {
+    color: white;
+}
+
 .ui-widget-header {
-    background-color: #AAF;
+    background-color: #2077b4;
+    color: white;
     border: 1px solid #ddd;
     color: #333;
     font-weight: bold;
@@ -325,7 +340,8 @@ h3 {
 }
 
 .editor-container {
-    height: calc(50vh);
+    height: 50%;
+    min-height: 100px;
     overflow: hidden;
     background-color: #f7f7f7;
 }
@@ -707,14 +723,27 @@ td:hover .debug-info {
     margin-left: 12px;
     margin-right: 12px;
 }
+    
+.small-button {
+    background-color: #2077b4;
+    border: 1px solid gray;
+    color: white;
+    border-radius: 3px;
+    height: 19px;
+    min-width: 41px;
+    font-size: 9px;
+    cursor: pointer;
+}
 
 #reload-button {
+    background-color: var(--ltk-success);
     margin-top: 4px;
     min-width: 45px;
     margin-right: 12px;
 }
 
 #run-button {
+    background-color: var(--ltk-success);
     margin-top: 4px;
     min-width: 45px;
 }
@@ -723,7 +752,7 @@ td:hover .debug-info {
     min-width: 41px;
     margin-left: 10px;
     margin-top: 4px;
-    font-size: 9px;
+    cursor: pointer;
 }
 
 #packages {
@@ -733,27 +762,15 @@ td:hover .debug-info {
 
 .console-container {
     background-color: #f9f9ff;
-    height: calc(50vh - 64px);
+    min-height: 100px;
     width: 100%;
     padding: "0 8px";
+    overflow: auto;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
 }
-
-.ltk-horizontal-split-pane-middle {
-    width: 5px;
-    background-color: #efefef;
-}
-
-.right-panel {
-    width: 700px;
-    height: calc(100vh - 51px);
-    z-index: 3000;
-}
-
-.console {
-    background-color: #f9f9ff;
-    width: 100%;
-    height: 100%;
-    overflow: scroll;
+.console-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
 }
 
 .console-filter {
@@ -774,6 +791,22 @@ td:hover .debug-info {
 
 .console .ltk-button {
     margin-right: 10px;
+}
+
+.ltk-horizontal-split-pane-middle {
+    width: 5px;
+    background-color: #efefef;
+}
+
+.right-panel {
+    width: 700px;
+    z-index: 3000;
+}
+
+.console {
+    background-color: #f9f9ff;
+    width: 100%;
+    height: 100%;
 }
 
 .console pre {
