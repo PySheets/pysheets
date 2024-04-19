@@ -102,13 +102,13 @@ def check_completion_budget(email):
     budget = get_completion_budget(email)
     if email in admins:
         return budget
-    if budget["total"] > 100:
-        raise CompletionBudgetException("You reached the lifetime maximum of 100 free completions.")
+    if budget["total"] > 1000:
+        raise CompletionBudgetException("You reached the lifetime maximum of 1,000 free completions.")
     seconds = time.time() - budget["last"]
-    if seconds < 60:
+    if seconds < 10:
         raise CompletionBudgetException(f"""
-You are asking for too many AI completions.
-You can ask for a completion again in {round(60 - seconds)}s.
+
+Too many AI completions.  You can ask for a completion again in {round(10 - seconds)}s.
 
 You have {100 - budget["total"]} lifetime completions left.
 """)

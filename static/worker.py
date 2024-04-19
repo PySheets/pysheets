@@ -12,7 +12,7 @@ import pyodide # type: ignore
 import pyscript # type: ignore
 
 try:
-    from api import edit_script, PySheets, get_dict_table, get_prompt
+    from api import edit_script, PySheets, get_dict_table
 except:
     pass
 
@@ -178,10 +178,18 @@ def create_preview(result):
     return str(result)
 
 
+def get_visualization_prompt(key, columns):
+    return f"""
+Visualize a dataframe as a matplotlib figure in the code and call it "figure".
+I already have it stored in a variable called "{key}".
+Here are the column names for the dataframe:
+{columns}
+    """.strip()
+
 def complete(key, kind):
     if kind != "DataFrame":
         return
-    prompt = get_prompt(key, cache[key].columns.values)
+    prompt = get_visualization_prompt(key, cache[key].columns.values)
     if prompt in completion_cache:
         return completion_cache[prompt]
     generate_completion(key, prompt)
@@ -203,7 +211,7 @@ def generate_completion(key, prompt):
             "key": key, 
             "prompt": prompt,
             "text": text,
-            "budget": data["budget"],
+            "budget": data.get("budget"),
             "duration": time.time() - start,
         }))
 
