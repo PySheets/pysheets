@@ -15,6 +15,7 @@ from pyscript import window  # type: ignore
 
 state.console.write("pysheets", f"[Main] Pysheets starting {constants.ICON_HOUR_GLASS}")
 
+sheet = None
 previews = {}
 completion_cache = {}
 logger = logging.getLogger("root")
@@ -281,7 +282,7 @@ class Spreadsheet():
         if is_doc:
             sheet.find_frames()
             sheet.find_urls()
-        state.console.write("network-status", f"[I/O] Loaded '{state.doc.name}', {len(bytes)} bytes ✅")
+        state.console.write("network-status", f'[I/O] Loaded sheet "{state.doc.name}", {len(bytes)} bytes ✅')
         ltk.find("#main").animate(ltk.to_js({"opacity": 1}), 400)
         return cells
 
@@ -340,21 +341,25 @@ pysheets.sheet("{key}:{other_key}")
                 return True
         return False
 
+    def get_url_keys(self):
+        return [
+            key
+            for key, cell in self.cells.items()
+            if cell.text().startswith("https:")
+        ]
+
     def find_urls(self):
-        for key, cell in self.cells.items():
-            value = cell.text()
-            if isinstance(value, str) and value.startswith("https:"):
-                if self.is_a_dependent(key):
-                    state.console.remove(f"ai-{key}")
-                else:
-                    prompt = f"""
+        for key in self.get_url_keys():
+            if self.is_a_dependent(key):
+                state.console.remove(f"ai-{key}")
+            else:
+                prompt = f"""
 Load the data URL already stored in variable {key} into a Pandas Dataframe.
 To load a Dataframe from a url, use "pysheets.load_sheet(url)".
 Make the last expression refer to the dataframe.
 Generate Python code.
 """
-
-                    request_completion(key, prompt.strip())
+                request_completion(key, prompt.strip())
 
     def setup_selection(self):
         def select(event):
@@ -400,6 +405,7 @@ Generate Python code.
         debug("sheet.save_selection", self.selection_edited, self.selection.val(), self.current and self.current.text())
         if self.selection_edited and self.current and self.selection.val() != self.current.text():
             self.current.edited(self.selection.val())
+        self.find_urls()
     
     def copy_selection_to_main_editor(self):
         debug("copy", self.selection.val())
@@ -422,6 +428,8 @@ Generate Python code.
         elif event.key == "ArrowDown" or event.key == "Enter":
             row += 1
         if len(event.key) == 1:
+            if event.ctrlKey and event.key == "v":
+                self.selection.focus()
             if event.metaKey or event.ctrlKey:
                 return
             self.selection_edited = True
@@ -1348,7 +1356,7 @@ def create_sheet():
         ltk.find("#run-in-main").prop("checked", ltk.find(event.target).prop("checked"))
 
     def show_button(event=None):
-        ltk.find("#reload-button").css("display", "block")
+        ltk.find("#reload-button").css("display", "block").addClass("small-button")
 
     def run_current(event=None):
         remove_arrows()
@@ -1376,9 +1384,10 @@ def create_sheet():
                         .attr("id", "reload-button")
                         .css("display", "none"),
                     ltk.Button("run", proxy(run_current))
+                        .addClass("small-button")
                         .attr("id", "run-button"),
                     ltk.Button(constants.ICON_STAR, proxy(lambda event: insert_completion(sheet.current.key if sheet.current else "", "", "", { "total": 0 })))
-                        .addClass("completion-button"),
+                        .addClass("small-button completion-button"),
                 ).addClass("packages-container"),
             ),
             main_editor,
@@ -1408,7 +1417,7 @@ def create_sheet():
                 ).attr("id", "sheet-container"),
                 vsp.css("height", "30%"),
                 "sheet-and-editor",
-            ).css("height", "100vh")
+            ).css("height", "100%")
         )
     else:
         ltk.find("#main").prepend(
@@ -1420,7 +1429,7 @@ def create_sheet():
                 ).attr("id", "sheet-container"),
                 vsp,
                 "sheet-and-editor",
-            ).element
+            ).css("height", "calc(100vh - 51px)")
         )
     window.createSheet(26, 50, "sheet-scrollable")
     if not ltk.find("#A1").attr("id"):
@@ -1580,15 +1589,15 @@ def cleanup_completion(text):
 
 def handle_completion_request(completion):
     try:
-        state.console.write("ai-complete", "[AI] Received completion from OpenAI...")
+        state.console.write("ai-complete", "[AI] Received completion from OpenAI...", completion)
         import json
         key = completion["key"]
         text = completion["text"]
         prompt = completion["prompt"]
         if not "CompletionBudgetException" in text:
             text = cleanup_completion(text)
+            text = f"# The following code is entirely AI-generated. Please check it for errors.\n\n{text}"
         debug("PySheets: handle completion", key, text)
-        text = f"# The following code is entirely AI-generated. Please check it for errors.\n\n{text}"
 
         if ltk.find("#ai-text").length:
             ltk.find("#ai-text").text(text)
@@ -1596,19 +1605,19 @@ def handle_completion_request(completion):
             return
 
         if sheet.cells[key].script == "":
-            state.console.write("ai-complete", f"[AI] Completion canceled for {key}")
+            # state.console.write("ai-complete", f"[AI] Completion canceled for {key}")
             return
-        completion_cache[key] = (text, completion["budget"])
+        completion_cache[key] = (text, completion.get("budget"))
         ltk.find(f"#completion-{key}").remove()
         text, budget = completion_cache[key]
-        state.console.write("ai-complete", f"[AI] OpenAI completion received for {key}; Budget: {budget['total']}/100")
+        # state.console.write("ai-complete", f"[AI] OpenAI completion received for {key}; Budget: {budget['total']}/100")
         add_completion_button(key, lambda: insert_completion(key, prompt, text, budget))
     except Exception as e:
         state.console.write("ai-complete", "[Error] Could not handle completion from OpenAI...", e)
 
 
 def request_completion(key, prompt):
-    state.console.write("ai-complete", "[AI] Sending the completion to OpenAI...")
+    # state.console.write("ai-complete", f"[AI] Sending a completion request for {key} to OpenAI...")
     ltk.publish(
         "Application",
         "Worker",
@@ -1626,6 +1635,13 @@ def set_random_color():
     sheet.selection.css("background-color", color)
 
 
+def check_completion():
+    if ltk.find("#ai-text").text() == "Loading...":
+        ltk.find("#ai-generate").removeAttr("disabled")
+        ltk.find("#ai-insert").attr("disabled", "true"),
+        ltk.find("#ai-text").text("It looks like OpenAI is overloaded. Please try again.")
+
+
 def insert_completion(key, prompt, text, budget):
     def generate(event):
         ltk.find("#ai-budget").text(f"{100 - budget['total']} runs left.")
@@ -1634,6 +1650,7 @@ def insert_completion(key, prompt, text, budget):
         edited_prompt = ltk.find("#ai-prompt").val()
         debug("Generate")
         request_completion(key, edited_prompt)
+        ltk.schedule(check_completion, "check-openai", 5)
 
     def insert(event):
         text = ltk.find("#ai-text").text()
@@ -1652,21 +1669,6 @@ def insert_completion(key, prompt, text, budget):
     def set_plot_kind(kind):
         add_prompt(f"When you create the plot, make it {kind}.")
 
-    def load_from_cloud():
-        google = f"https://drive.google.com/uc?export=download"
-        add_prompt(f"""
-Assume variable A1 already contains a URL we want to load. 
-Load a file from the cloud using "pysheets.load_sheet(A1)".
-Do not print it.
-            """.strip())
-
-    def load_local_file():
-        google = f"https://drive.google.com/uc?export=download"
-        add_prompt(f"""
-Load a spreadsheet from an upload.
-Make the last expression in the code "df".
-            """.strip())
-
     def add_prompt(extra_text):
         prompt = ltk.find("#ai-prompt").val()
         ltk.find("#ai-prompt").val(f"{prompt}\n\n{extra_text}")
@@ -1679,14 +1681,13 @@ Make the last expression in the code "df".
 
     extra_prompt_buttons = {
         constants.COMPLETION_KINDS_IMPORT: [
-            ltk.Button("Load Local File", proxy(lambda event: load_local_file())),
         ],
         constants.COMPLETION_KINDS_NONE: [
-            ltk.Button("Load Local File", proxy(lambda event: load_local_file())),
         ],
         constants.COMPLETION_KINDS_CHART: [
             ltk.Button("bar", proxy(lambda event: set_plot_kind("a bar graph"))),
             ltk.Button("barh", proxy(lambda event: set_plot_kind("a horizontal bar graph"))),
+            ltk.Button("line", proxy(lambda event: set_plot_kind("a line plot"))),
             ltk.Button("pie", proxy(lambda event: set_plot_kind("a pie chart"))),
             ltk.Button("stem", proxy(lambda event: set_plot_kind("a stem plot"))),
             ltk.Button("stairs", proxy(lambda event: set_plot_kind("a stairs graph"))),
@@ -1745,14 +1746,16 @@ def add_completion_button(key, handler):
     ltk.find(f"#completion-{key}").remove()
     ltk.find(".packages-container").append(
         ltk.Button(f"{constants.ICON_STAR} {key}", proxy(run))
-            .addClass("completion-button")
+            .addClass("small-button completion-button")
             .attr("id", f"completion-{key}")
     )
     if key:
+        cell_contents = api.shorten(sheet.cells[key].text(), 12)
+        message = f'[AI] AI suggestion available for [{key}: "{cell_contents}"]. {constants.ICON_STAR}'
         state.console.write(
             f"ai-{key}",
-            f"[AI] AI completion available for [{key}: {sheet.cells[key].text()}]. {constants.ICON_STAR}",
-            action=ltk.Button(f"{constants.ICON_STAR}{key}", proxy(run)).addClass("completion-button")
+            message,
+            action=ltk.Button(f"{constants.ICON_STAR}{key}", proxy(run)).addClass("small-button completion-button")
         )
 
 
@@ -1811,14 +1814,30 @@ message = (
     f"Interpreter:{window.version_interpreter} " +
     f"Mode:{state.mode}-{minimized}."
 )
+state.console.write("pysheets", message)
 logger.info(message)
 
 version_app = "dev"
 state.console.write(
-    "welcome",
-    f"[Main] PySheets {version_app} is in beta-mode 😱. Use only for experiments.",
+    "discord",
+    f"[Main] Meet the PySheets community on our Discord server.",
+    action=ltk.Button(
+        "💬 Join",
+        lambda event: ltk.window.open("https://discord.gg/4jjFF6hj")
+    ).addClass("small-button")
 )
-state.console.write("pysheets", message)
+state.console.write(
+    "welcome",
+    f"[Main] PySheets {version_app} is in early beta-mode 😱. Use only for experiments.",
+)
+state.console.write(
+    "form",
+    f"[Main] We welcome your feedback and bug reports.",
+    action=ltk.Button(
+        "📣 Tell",
+        lambda event: ltk.window.open("https://forms.gle/W7SBXKgz1yvkTEd76")
+    ).addClass("small-button")
+)
 
 def insert_url(event):
     if main_editor.get() == "":
@@ -1828,15 +1847,15 @@ def insert_url(event):
     else:
         lambda: state.console.write(
             "insert-tip",
-            f"[Tip] To import a sheet, select an empty cell first. Then enter a URL. {constants.ICON_STAR}", 
-            action=ltk.Button(f"{constants.ICON_STAR} Try", insert_url).addClass("completion-button")
+            f"[AI] To import a sheet, select an empty cell first. Then enter a URL. {constants.ICON_STAR}", 
+            action=ltk.Button(f"{constants.ICON_STAR} Try", insert_url).addClass("small-button completion-button")
         )
 
 ltk.schedule(
-    lambda: state.console.write(
+    lambda: sheet and not sheet.get_url_keys() and state.console.write(
         "insert-tip",
-        f"[Tip] To import a sheet, enter a URL into an empty cell and the AI will help. {constants.ICON_STAR}", 
-        action=ltk.Button(f"{constants.ICON_STAR} Try", insert_url).addClass("completion-button")
+        f"[AI] To import a sheet, enter a URL into a cell. {constants.ICON_STAR}", 
+        action=ltk.Button(f"{constants.ICON_STAR} Try", insert_url).addClass("small-button completion-button")
     ),
     "give a tip",
     3.0
