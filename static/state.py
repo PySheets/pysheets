@@ -224,7 +224,7 @@ class Console():
         for ignore in self.ignore_log:
             if message.startswith(ignore):
                 return
-        self.log_queue.append((round(ltk.get_time(), 3), message, action))
+        self.log_queue.append((round(ltk.get_time(), 3), message))
         ltk.schedule(self.flush_log_queue, "flush log queue", 3)
     
     def flush_log_queue(self):
