@@ -220,11 +220,11 @@ class Console():
     def format(self, *args):
         return " ".join(str(arg).replace("<", "&lt;") for arg in args)
         
-    def save(self, message):
+    def save(self, message, action=None):
         for ignore in self.ignore_log:
             if message.startswith(ignore):
                 return
-        self.log_queue.append((round(ltk.get_time(), 3), message))
+        self.log_queue.append((round(ltk.get_time(), 3), message, action))
         ltk.schedule(self.flush_log_queue, "flush log queue", 3)
     
     def flush_log_queue(self):
@@ -250,16 +250,16 @@ class Console():
         if message.startswith("[Console] [Network]"):
             return
         when = ltk.get_time()
-        self.messages[key] = when, f"{when:4.3f}s  {message}"
+        self.messages[key] = when, f"{when:4.3f}s  {message}", action
         if "RuntimeError: pystack exhausted" in message:
             self.messages["critical"] = when, f"{when:4.3f}s  [Critical] MicroPython Error. Enable 'PyOdide' and reload the page."
-        self.render_message(key, *self.messages[key], action=action)
-        self.save(message)
+        self.render_message(key, *self.messages[key])
+        self.save(message, action)
 
     def render(self):
         ltk.find(".console .ltk-tr").remove()
-        for key, (when, message) in sorted(self.messages.items(), key=lambda pair: pair[1][0]):
-            self.render_message(key, when, message)
+        for key, (when, message, action) in sorted(self.messages.items(), key=lambda pair: pair[1][0]):
+            self.render_message(key, when, message, action)
     
     def get_filter(self):
         return str(ltk.find(".console-filter").val() or "")
@@ -268,6 +268,9 @@ class Console():
         ltk.find(f"#console-{key}").remove()
     
     def render_message(self, key, when, message, action=None):
+        action = ltk.Span("") if action is None else action
+        if "Discord" in message:
+            window.console.orig_log("render", action)
         filter = self.get_filter()
         if filter and not filter in message:
             return
@@ -280,7 +283,7 @@ class Console():
                 ltk.TableData(ltk.Preformatted(parts[1])),
                 ltk.TableData(
                     ltk.HBox(
-                        (action or ltk.Span()).css("margin-left", 0).css("margin-top", 0),
+                        action.css("margin-left", 0).css("margin-top", 0),
                         ltk.Preformatted(" ".join(parts[2:]).replace("<", "&lt;")),
                     )
                 ).css("width", "100%")
