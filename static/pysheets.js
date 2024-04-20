@@ -1,4 +1,4 @@
-(function pysheets() {
+(async function pysheets() {
 
     window.start = new Date().getTime();
 
@@ -157,7 +157,7 @@
             const url = `${protocol}//${host}/?U=${uid}`;
             if (uid && url !== document.location.href) {
                 const nopackages = url;
-                const pyodide = `${url}&r=pyodide`;
+                const runInMain = `${url}&r=pyodide`;
                 $("body").append(
                     $("<div>").append(
                         $("<div>")
@@ -167,7 +167,8 @@
                             .css("margin", 8)
                             .append(
                                 $(`<li>Edit the URL to remove the packages that are not pure Python wheels. <a href="${url}">Try this</a>.</li>`),
-                                $(`<li>Edit the URL to use 'pyodide' instead of 'micropython'. <a href="${pyodide}">Try this</a>.</li>`),
+                                $(`<li>Edit the URL to run all Python in the main thread. <a href="${runInMain}">Try this</a>.</li>`),
+                                $(`<li>Edit the URL to run all Python in the worker'. <a href="${nopackages}">Try this</a>.</li>`),
                                 $(`<li>Reload the current page. <a href="${url}">Try this</a>.</li>`),
                                 $(`<li>Check the Chrome Devtools Console (or its equivalent).</li>`),
                                 $(`<li>Go to the previous document in your browser history.</li>`)
@@ -191,6 +192,9 @@
     window.CodeMirror.commands.autocomplete = function (cm) {
         window.CodeMirror.simpleHint(cm, window.CodeMirror.pythonHint);
     } 
+
+    window.completePython = (lines, line, pos) => {}
+    window.completions = []
 
     window.create_codemirror_editor = function (element, config) {
         const editor = window.CodeMirror(element, config);
@@ -230,8 +234,8 @@
         }
   
         var result = getHints(editor, givenOptions);
-        if (!result || !result.list.length) return;
-        var completions = result.list;
+        if (!result || result.list && !result.list.length) return;
+        var completions = result.list || [];
         function insert(str) {
           editor.replaceRange(str, result.from, result.to);
         }
@@ -253,6 +257,7 @@
           var opt = sel.appendChild(document.createElement("option"));
           opt.appendChild(document.createTextNode(completions[i]));
         }
+        if (!sel.firstChild) return;
         sel.firstChild.selected = true;
         sel.size = Math.min(10, completions.length);
         var pos = editor.cursorCoords(options.alignWithWord ? result.from : null);
@@ -279,6 +284,9 @@
           setTimeout(function(){editor.focus();}, 50);
         }
         CodeMirror.on(sel, "blur", close);
+        CodeMirror.on(sel, "click", function(event) {
+            pick();
+        });
         CodeMirror.on(sel, "keydown", function(event) {
           var code = event.keyCode;
           // Enter
@@ -331,7 +339,7 @@
       return arr.indexOf(item) != -1;
     }
   
-    function scriptHint(editor, _keywords, getToken) {
+    async function scriptHint(editor, _keywords, getToken) {
       // Find the token at the cursor
       var cur = editor.getCursor(), token = getToken(editor, cur), tprop = token;
       // If it's not a 'word-style' token, ignore the token.
@@ -340,11 +348,12 @@
           token = tprop = {start: cur.ch, end: cur.ch, string: "", state: token.state,
                            className: token.string == ":" ? "python-type" : null};
       }
-  
       if (!context) var context = [];
       context.push(tprop);
   
       var completionList = getCompletions(token, context);
+      await window.completePython(editor.getValue(), cur.line, cur.ch)
+      completionList.push(...window.completions)
       completionList = completionList.sort();
       //prevent autocomplete for last word, instead show dropdown with one word
       if(completionList.length == 1) {
@@ -357,24 +366,20 @@
     }
   
     CodeMirror.pythonHint = function(editor) {
-      return scriptHint(editor, pythonKeywordsU, function (e, cur) {return e.getTokenAt(cur);});
+      return scriptHint(editor, pythonKeywords, function (e, cur) {return e.getTokenAt(cur);});
     };
   
-    var pythonKeywords = "and del from not while as elif global or with assert else if pass yield"
-  + "break except import print class exec in raise continue finally is return def for lambda try";
-    var pythonKeywordsL = pythonKeywords.split(" ");
-    var pythonKeywordsU = pythonKeywords.toUpperCase().split(" ");
+    var pythonKeywords = ("and del from not while as elif global or with assert else if pass yield"
+  + "break except import print class exec in raise continue finally is return def for lambda try").split(" ");
   
-    var pythonBuiltins = "abs divmod input open staticmethod all enumerate int ord str "
+    var pythonBuiltins = ("abs divmod input open staticmethod all enumerate int ord str "
   + "any eval isinstance pow sum basestring execfile issubclass print super"
   + "bin file iter property tuple bool filter len range type"
   + "bytearray float list raw_input unichr callable format locals reduce unicode"
   + "chr frozenset long reload vars classmethod getattr map repr xrange"
   + "cmp globals max reversed zip compile hasattr memoryview round __import__"
   + "complex hash min set apply delattr help next setattr buffer"
-  + "dict hex object slice coerce dir id oct sorted intern ";
-    var pythonBuiltinsL = pythonBuiltins.split(" ").join("() ").split(" ");
-    var pythonBuiltinsU = pythonBuiltins.toUpperCase().split(" ").join("() ").split(" ");
+  + "dict hex object slice coerce dir id oct sorted intern ").split(" ").join("() ").split(" ");
   
     function getCompletions(token, context) {
       var found = [], start = token.string;
@@ -383,10 +388,8 @@
       }
   
       function gatherCompletions(_obj) {
-          forEach(pythonBuiltinsL, maybeAdd);
-          forEach(pythonBuiltinsU, maybeAdd);
-          forEach(pythonKeywordsL, maybeAdd);
-          forEach(pythonKeywordsU, maybeAdd);
+          forEach(pythonBuiltins, maybeAdd);
+          forEach(pythonKeywords, maybeAdd);
       }
   
       if (context) {

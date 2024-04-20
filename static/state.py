@@ -349,6 +349,10 @@ def start_worker():
     show_worker_status()
     url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
     packages = url_packages.split(" ") if url_packages else []
+    start_worker_with_packages(packages)
+
+
+def start_worker_with_packages(packages):
     config = {
         "packages": [ "pandas", "matplotlib", "pyscript-ltk", "numpy", "requests" ] + packages,
         "files": {
@@ -357,12 +361,27 @@ def start_worker():
     }
     worker = XWorker(f"./worker{window.version_app}.py", config=ltk.to_js(config), type="pyodide")
     ltk.register_worker("pyodide-worker", worker)
+    ltk.schedule(lambda: check_worker(packages), "check-worker", 10)
     return worker
+
+
+def check_worker(packages):
+    if worker_version == constants.WORKER_LOADING:
+        def fix_packages(event):
+            protocol = window.document.location.protocol
+            host = window.document.location.host
+            window.location = f"{protocol}//{host}/?U=${doc.uid}"
+        console.write(
+            "worker-failed",
+            f"[Error] It looks like the worker cannot run with packages {repr(packages)}. Only full-Python wheels are supported by PyScript.",
+            action=ltk.Button(f"⚠️ Fix", fix_packages).addClass("small-button completion-button")
+        )
 
 
 def worker_ready(data):
     global worker_version
     worker_version = data[1:].split()[0]
+    console.remove("worker-failed")
 
 
 ltk.subscribe(constants.PUBSUB_STATE_ID, ltk.pubsub.TOPIC_WORKER_READY, worker_ready)

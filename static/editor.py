@@ -33,6 +33,9 @@ class Editor(ltk_Div):
     def get(self):
         return self.editor.getValue()
 
+    def get_cursor(self):
+        return self.editor.getCursor()
+
     def set(self, value):
         self.create_editor()
         self.editor.setValue(str(value))

@@ -1,3 +1,4 @@
+import ast
 import builtins
 import json
 import sys
@@ -11,7 +12,7 @@ import pyodide # type: ignore
 import pyscript # type: ignore
 
 try:
-    from api import edit_script, PySheets, get_dict_table
+    from api import edit_script, PySheets, get_dict_table, to_js
 except:
     pass
 
@@ -131,6 +132,7 @@ def run_in_worker(script, inputs):
     _globals["pyodide"] = pyodide
     _globals["pyscript"] = pyscript
     _globals["pysheets"] = sys.modules["pysheets"] = PySheets(None, inputs)
+    cache.update(inputs)
     _locals = _globals
     exec(script, _globals, _locals)
     return _locals["_"]
@@ -245,7 +247,7 @@ def run(data):
             lines = tb.strip().split("\n")
             line = [line for line in lines if "<string>" in line][0]
             line_number = int(re.sub("[^0-9]", "", line))
-            error = f"At line {line_number + 1}: {lines[-1]}"
+            error = f"At line {line_number + 1}: {lines[-1]} - {tb}"
         except Exception as e:
             error = tb
         publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
@@ -309,5 +311,81 @@ polyscript.xworker.sync.handler = handle_request
 
 subscribe("Worker", TOPIC_WORKER_RUN, "pyodide-worker")
 subscribe("Worker", TOPIC_WORKER_COMPLETE, "pyodide-worker")
-
 publish("Worker", "Sheet", TOPIC_WORKER_READY, repr(sys.version))
+
+
+
+def fuzzy_parse(text):
+    try:
+        return ast.parse(text)
+    except:
+        pass
+    try:
+        return ast.parse(text + "_")
+    except:
+        pass
+    try:
+        return ast.parse(text + ")")
+    except:
+        pass
+    try:
+        return ast.parse(text + "_)")
+    except:
+        pass
+    for n in range(3):
+        try:
+            return ast.parse(text + ")" * n)
+        except:
+            pass
+    return None
+
+
+def complete_python(text, line, pos):
+    window.completions.length = 0
+    lines = text[1:].split("\n")[:line + 1]
+    lines[-1] = lines[-1][:pos + 1]
+    text = "\n".join(lines)
+    tree = fuzzy_parse(text)
+    if not tree:
+        return
+
+    cache["pysheets"] = PySheets()
+
+    class CompletionFinder(ast.NodeVisitor):
+        context = {}
+
+        def inside(self, node):
+            return hasattr(node, "lineno") and node.lineno == line + 1 and node.col_offset <= pos and pos <= node.end_col_offset
+
+        def get_attributes(self, obj):
+            return [attr for attr in dir(obj) if not attr.startswith("_")] if obj else []
+
+        def add_object(self, obj, prefix):
+            self.add_attributes(self.get_attributes(obj), prefix)
+
+        def add_attributes(self, attributes, prefix):
+            for attr in attributes:
+                if attr.startswith(prefix):
+                    window.completions.push(attr)
+
+        def visit_Import(self, node):
+            for alias in node.names:
+                asname = alias.asname or alias.name
+                if not asname in cache:
+                    cache[asname] = __import__(alias.name)
+
+        def visit_Attribute(self, node):
+            if self.inside(node):
+                self.add_object(cache.get(node.value.id, []), "" if node.attr == "_" else node.attr)
+
+        def visit_Name(self, node):
+            if self.inside(node) and isinstance(node.ctx, ast.Load):
+                self.add_attributes(cache.keys(), node.id)
+
+        def generic_visit(self, node):
+            # print("VISIT", ast.dump(node))
+            ast.NodeVisitor.generic_visit(self, node)
+
+    CompletionFinder().visit(tree)
+
+window.completePython = complete_python

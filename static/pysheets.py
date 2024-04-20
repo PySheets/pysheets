@@ -971,12 +971,15 @@ class Cell(ltk.TableData):
                 self.inputs = set()
             cache_keys = set(self.sheet.cache.keys())
             if not self.inputs.issubset(cache_keys):
-                state.console.write(self.key, f"[Warning] While running {self.key}. No value for inputs {self.inputs - cache_keys}")
+                debug(self.key, f"[Warning] While running {self.key}. No value for inputs {self.inputs - cache_keys}")
                 return
         state.console.remove(self.key)
         if is_formula:
             try:
-                self.evaluate_locally(expression)
+                if state.pyodide or "no-worker" in self.script:
+                    self.evaluate_locally(expression)
+                else:
+                    raise
             except Exception as e:
                 if state.pyodide:
                     state.console.write(self.key, f"[Error] {self.key}: {e}")
@@ -1382,7 +1385,7 @@ def create_sheet():
                         .css("width", 150)
                         .on("keyup", proxy(show_button))
                         .val(packages),
-                    ltk.Switch("PyOdide:", False)
+                    ltk.Switch("Run in main:", False)
                         .on("change", proxy(run_in_main))
                         .attr("id", "run-in-main"),
                     ltk.Button("Reload", proxy(save_packages))
@@ -1511,8 +1514,8 @@ def joke():
         "https://icanhazdadjoke.com/",
         lambda response: state.console.write(
             "joke",
-            f"[Fun] {response['joke']} 😂",
-            action=ltk.Button(f"😂 Fun", proxy(lambda event: window.open("https://icanhazdadjoke.com/")))
+            f"[Fun] {response['joke']} 😜",
+            action=ltk.Button(f"😜 Fun", proxy(lambda event: window.open("https://icanhazdadjoke.com/")))
                 .addClass("small-button")
         )
     )

@@ -1,5 +1,6 @@
 import base64
 import io
+import json
 import pyscript # type: ignore
 import time
 
@@ -8,8 +9,17 @@ window = pyscript.window
 
 def edit_script(script): # TODO: use ast to parse script
     lines = script.strip().split("\n")
-    lines[-1] = f"_={lines[-1]}"
+    if lines[-1].startswith("import ") or lines[-1].startswith("from "):
+        lines.append("_=None")
+    else:
+        lines[-1] = f"_={lines[-1]}"
     return "\n".join(lines)
+
+
+def to_js(python_object):
+    if python_object.__class__.__name__ == "jsobj":
+        return python_object
+    return window.to_js(json.dumps(python_object))
 
 
 def get_col_row(key):
@@ -66,9 +76,9 @@ except:
     pass
 
 class PySheets():
-    def __init__(self, spreadsheet, inputs):
-        self.spreadsheet = spreadsheet
-        self.inputs = inputs
+    def __init__(self, spreadsheet=None, inputs=[]):
+        self._spreadsheet = spreadsheet
+        self._inputs = inputs
 
     def sheet(self, selection, headers=True):
         import pandas as pd
@@ -81,7 +91,7 @@ class PySheets():
                 f"{chr(ord('A') + col - 1)}{row}"
                 for row in range(start_row, end_row + 1)
             ]
-            values = [ self.inputs[ key ] for key in keys ]
+            values = [ self._inputs[ key ] for key in keys ]
             header = values.pop(0) if headers else f"col-{col}"
             data[header] = values
         df = pd.DataFrame.from_dict(data)
@@ -90,7 +100,7 @@ class PySheets():
         return df
 
     def cell(self, key):
-        return self.spreadsheet.get(key) if self.spreadsheet else window.jQuery(f"#{key}")
+        return self._spreadsheet.get(key) if self._spreadsheet else window.jQuery(f"#{key}")
 
     def load(self, url):
         return urlopen(url)
