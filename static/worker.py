@@ -3,7 +3,6 @@ import json
 import sys
 import time
 import traceback
-import re
 import requests
 
 import js # type: ignore

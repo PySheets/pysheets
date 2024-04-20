@@ -167,7 +167,7 @@ def forget_me(event):
             button
                 .on("click", ltk.proxy(lambda event: (dialog.remove(), really_forget_me())))
         )
-    ).dialog()
+    ).dialog().addClass("permanent-forget")
     dialog.parent().css("width", 400)
 
 

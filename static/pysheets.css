@@ -217,6 +217,11 @@ h3 {
     display: none;
 }
 
+.permanent-forget .ltk-checkbox {
+    position: relative;
+    top: 10px;
+}
+
 .preview {
     position: absolute;
     background-color: white;
