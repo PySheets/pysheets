@@ -1,13 +1,7 @@
 import base64
 import io
 import pyscript # type: ignore
-import re
 import time
-
-try:
-    import pandas as pd
-except:
-    pass
 
 window = pyscript.window
 
@@ -77,6 +71,7 @@ class PySheets():
         self.inputs = inputs
 
     def sheet(self, selection, headers=True):
+        import pandas as pd
         start, end = selection.split(":")
         start_col, start_row = get_col_row(start)
         end_col, end_row = get_col_row(end)
@@ -101,6 +96,7 @@ class PySheets():
         return urlopen(url)
 
     def load_sheet(self, url):
+        import pandas as pd
         try:
             data = urlopen(url)
             return pd.read_excel(data, engine='openpyxl')

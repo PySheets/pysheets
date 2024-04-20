@@ -112,7 +112,6 @@ def shorten(name):
 def bundle(folder, module_name, out):
     if module_name in found_modules:
         return True
-    found_modules.add(module_name)
 
     base = os.path.join(folder, module_name.replace(".", "/"))
     filename = f"{base}.py"
@@ -124,6 +123,7 @@ def bundle(folder, module_name, out):
         return False
     with open(filename, 'r') as f:
         source = f.read()
+    found_modules.add(module_name)
     tree = ast.parse(source)
     imports = []
     module_children[module_name.replace(".", "_")] = children = []
@@ -138,11 +138,8 @@ def bundle(folder, module_name, out):
 
     class ImportResolver(ast.NodeTransformer):
         def visit_Import(self, node: ast.Import):
-            names = []
-            for name in node.names:
-                if not bundle(folder, name.name, out):
-                    names.append(name)
-            node.names = names
+            empty = [ ast.Name("sys") ]
+            node.names = [ name for name in node.names if not bundle(folder, name.name, out)] or empty
             return None if not names else node
 
         def visit_ImportFrom(self, node: ast.ImportFrom):
