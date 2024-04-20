@@ -812,14 +812,17 @@ class Cell(ltk.TableData):
             debug(f"[Sheet] Preview position for {self} saved: {previews[self.key]}")
 
         def dragstop(*args):
+            previews[self.key] = get_dimension()
             ltk.schedule(save_preview, "save-preview", 3)
 
         def resize(event, *args):
+            previews[self.key] = get_dimension()
             preview = ltk.find(event.target)
             preview.find("img, iframe").css("width", "100%").css("height", f"calc(100% - {constants.PREVIEW_HEADER_HEIGHT})")
             ltk.schedule(save_preview, "save-preview", 3)
         
         def move():
+            previews[self.key] = get_dimension()
             self.draw_cell_arrows()
             
         def click():
@@ -1071,12 +1074,14 @@ def handle_edits(data):
     edits = data[constants.DATA_KEY_EDITS]
     for edit in edits:
         email = edit[constants.DATA_KEY_EMAIL]
+        if email == state.user.email:
+            continue
         timestamp = edit[constants.DATA_KEY_TIMESTAMP]
+        state.console.write(f"edit-{timestamp}", f"[Edits] Handle edit from {email}")
+        state.create_user_image(email, timestamp)
         edit[constants.DATA_KEY_UID] = data[constants.DATA_KEY_UID]
         edit[constants.DATA_KEY_CURRENT] = None
         sheet.load_data(edit)
-    if edits:
-        state.create_user_image(email, timestamp)
 
 
 def check_edits():
@@ -1501,12 +1506,25 @@ def logout(event=None):
     menu.go_home()
 
 
+def joke():
+    ltk.get(
+        "https://icanhazdadjoke.com/",
+        lambda response: state.console.write(
+            "joke",
+            f"[Fun] {response['joke']} 😂",
+            action=ltk.Button(f"😂 Fun", proxy(lambda event: window.open("https://icanhazdadjoke.com/")))
+                .addClass("small-button")
+        )
+    )
+    ltk.schedule(lambda: state.console.remove("joke"), "joke", 15)
+
 def setup():
     global sheet
     if state.doc.uid:
         state.clear()
         sheet = create_sheet()
         load_file()
+        ltk.schedule(joke, "joke", 3)
     elif state.user.token:
         list_sheets()
     else:
