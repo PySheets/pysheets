@@ -142,8 +142,15 @@ def complete_python(text, line, ch, cache):
 
         def get_attributes(self, obj):
             from typing import Callable
+
+            def is_callable(name):
+                try:
+                    return isinstance(getattr(obj, name), Callable) 
+                except:
+                    pass
+
             attributes = [
-                f"{name}()" if isinstance(getattr(obj, name), Callable) else name
+                f"{name}()" if is_callable(name) else name
                 for name in dir(obj)
             ]
             if DEBUG_COMPLETION:
@@ -166,13 +173,15 @@ def complete_python(text, line, ch, cache):
                     completions.append(attr)
         
         def get_value(self, node):
-            start = time.time()
+            text = ast.unparse(node)
+            if DEBUG_COMPLETION:
+                print(" - get_value", repr(text), self.context.keys())
             try:
-                value = eval(ast.unparse(node), self.context, self.context)
+                return eval(text, self.context, self.context)
             except:
                 # traceback.print_exc()
-                value = ""
-            return value
+                function = f"{text}()"
+                return self.context.get(function, "")
 
         def visit_Import(self, node):
             for alias in node.names:
@@ -240,3 +249,4 @@ def complete_python(text, line, ch, cache):
         return public + private
 
     return sort(completions)
+
