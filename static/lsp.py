@@ -19,7 +19,7 @@ class CodeCompletor():
     def insert(self, string):
         cursor = self.editor.getCursor()
         token = self.editor.getTokenAt(cursor)
-        length = len(token.string) if string.startswith(token.string) else 0
+        length = 0 if token.string == "." else len(token.string)
         self.editor.replaceRange(
             string,
             ltk.to_js({
@@ -78,7 +78,7 @@ class CodeCompletor():
         self.completions = completions
         ltk.find(".completions").remove()
         token = self.getToken()
-        if not completions or token.string == " ":
+        if not completions or token.string in [" ", ":", ";"]:
             return
         ltk.find(".CodeMirror-code").append(
             ltk.find("<div>")
@@ -102,8 +102,11 @@ def fuzzy_parse(text):
     import traceback
     fuzzy_fixes = [
         "",
+        " :pass",
+        "_:pass",
         "_",
         ")",
+        " in []:pass",
         "))",
         ")))",
         "))))",
@@ -115,11 +118,12 @@ def fuzzy_parse(text):
     ]
     for fix in fuzzy_fixes:
         try:
-            return ast.parse(f"{text}{fix}")
+            return fix, ast.parse(f"{text}{fix}")
         except:
             if DEBUG_COMPLETION:
                 traceback.print_exc()
-    return None
+    return None, None
+
 
 
 def complete_python(text, line, ch, cache):
@@ -128,7 +132,7 @@ def complete_python(text, line, ch, cache):
     lines[-1] = lines[-1][:ch + 1]
     text = "\n".join(lines)
     completions = []
-    tree = fuzzy_parse(text)
+    fix, tree = fuzzy_parse(text)
     if not tree:
         return
 
@@ -136,9 +140,20 @@ def complete_python(text, line, ch, cache):
         def __init__(self):
             self.context = {}
             self.context.update(cache)
+            self.token = ""
 
         def inside(self, node):
             return hasattr(node, "lineno") and node.lineno == line + 1 and node.col_offset <= ch and ch <= node.end_col_offset
+
+        def matches(self, lower_attr, lower_match):
+            if fix and lower_match.endswith(fix):
+                lower_match = lower_match[:-len(fix)]
+            for c in lower_match:
+                try:
+                    lower_attr = lower_attr[lower_attr.index(c):]
+                except:
+                    return False
+            return True
 
         def get_attributes(self, obj):
             from typing import Callable
@@ -159,12 +174,6 @@ def complete_python(text, line, ch, cache):
 
         def add_object(self, obj, match):
             self.add_attributes(self.get_attributes(obj), match)
-
-        def matches(self, lower_attr, lower_match):
-            for c in lower_match:
-                if not c in lower_attr:
-                    return False
-            return True
 
         def add_attributes(self, attributes, match):
             lower_match = match.lower()
@@ -217,6 +226,7 @@ def complete_python(text, line, ch, cache):
                 print(" - attribute", self.inside(node), ast.dump(node))
             if self.inside(node):
                 self.add_object(self.get_value(node.value), "" if node.attr == "_" else node.attr)
+                self.token = node.attr
 
         def visit_Subscript(self, node):
             if DEBUG_COMPLETION:
@@ -229,9 +239,10 @@ def complete_python(text, line, ch, cache):
 
         def visit_Name(self, node):
             if DEBUG_COMPLETION:
-                print(" - name", self.inside(node), isinstance(node.ctx, ast.Load), ast.dump(node))
-            if self.inside(node) and isinstance(node.ctx, ast.Load):
+                print(" - name", self.inside(node), ast.dump(node))
+            if self.inside(node):
                 self.add_attributes(self.context.keys(), node.id)
+                self.token = ast.unparse(node)
 
         def generic_visit(self, node):
             if DEBUG_COMPLETION:
@@ -244,9 +255,14 @@ def complete_python(text, line, ch, cache):
     finder.visit(tree)
 
     def sort(completions):
-        public = sorted([attr for attr in completions if not attr.startswith("_")], key=lambda s: s.lower())
+        public = [attr for attr in completions if not attr.startswith("_")]
+        prefix = sorted([attr for attr in public if attr.startswith(finder.token)], key=lambda s: s.lower())
+        rest = sorted([attr for attr in public if not attr.startswith(finder.token)], key=lambda s: s.lower())
         private = sorted([attr for attr in completions if attr.startswith("_")], key=lambda s: s.lower())
-        return public + private
+        if DEBUG_COMPLETION:
+            print("=> prefix", finder.token, prefix)
+            print("=> rest", finder.token, rest)
+        return prefix + rest + private
 
     return sort(completions)
 

@@ -20,11 +20,11 @@ worker.worker_print = worker.orig_print
 def fuzzy_parse(text):
     print(f"Fuzzyparse: {repr(text)}")
     print("=" * 80)
-    tree = orig_fuzzy_parse(text)
+    fix, tree = orig_fuzzy_parse(text)
     print("-" * 80)
     print(ast.dump(tree, indent=4))
     print("=" * 80)
-    return tree
+    return fix, tree
 
 if DEBUG_COMPLETION:
     lsp.fuzzy_parse = fuzzy_parse
@@ -65,11 +65,12 @@ class TestCompletePython(unittest.TestCase):
         completions = worker.complete_python(text, line, pos, {})
         self.assertIn("__name__", completions)
 
-    def test_match_ld(self):
-        text, line, pos = self.set_text("=\nx = 'hello'\nx.cap")
+    def test_match_cap(self):
+        text, line, pos = self.set_text("=\nx = 'hello'\nx.ca")
         completions = worker.complete_python(text, line, pos, {})
         self.assertIn("capitalize()", completions)
-        self.assertIn("isspace()", completions)
+        self.assertIn("isdecimal()", completions)
+        self.assertIn("casefold()", completions)
 
     def test_cache_list(self):
         worker.cache["D13"] = []
@@ -90,6 +91,34 @@ class TestCompletePython(unittest.TestCase):
         text, line, pos = self.set_text("=\nmy_dict = { 'dogs': 0, 'cats': 1 }\nmy")
         completions = worker.complete_python(text, line, pos, {})
         self.assertIn('my_dict', completions)
+
+    def test_str_isdecimal(self):
+        text, line, pos = self.set_text("=\ns='abc'\ns.isd")
+        completions = worker.complete_python(text, line, pos, {})
+        self.assertIn('isdecimal()', completions)
+        self.assertNotIn('capitalize()', completions)
+
+    def test_sorting(self):
+        text, line, pos = self.set_text("=\ns='abc'\ns.ce")
+        completions = worker.complete_python(text, line, pos, {})
+        self.assertEquals("center()", completions[0])
+
+    def test_if(self):
+        text, line, pos = self.set_text("=\ns='abc'\nif s.")
+        completions = worker.complete_python(text, line, pos, {})
+        self.assertIn("center()", completions)
+
+    def test_for(self):
+        text, line, pos = self.set_text("=\nstring1='abc'\nstring2='def'\nfor s")
+        completions = worker.complete_python(text, line, pos, {})
+        self.assertIn("string1", completions)
+        self.assertIn("string2", completions)
+
+    def test_for_in(self):
+        text, line, pos = self.set_text("=\nstring1='abc'\nstring2='def'\nfor s in s")
+        completions = worker.complete_python(text, line, pos, {})
+        self.assertIn("string1", completions)
+        self.assertIn("string2", completions)
 
     def test_dict_subscript(self):
         text, line, pos = self.set_text("=\nmy_dict = { 'dogs': 0, 'cats': 1 }\nmy_dict[")
