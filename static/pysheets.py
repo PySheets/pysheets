@@ -24,7 +24,7 @@ logger.setLevel(
 )
 local_storage = window.localStorage
 proxy = ltk.proxy
-debug = lambda *args: None # print("[Debug]", *args)
+debug = lambda *args: print("[Debug]", *args) if False else ""
 
 
 def save(force=False):
@@ -593,7 +593,7 @@ class Cell(ltk.TableData):
             )
             edits = [
                 (edit[constants.DATA_KEY_TIMESTAMP], value[constants.DATA_KEY_VALUE][constants.DATA_KEY_VALUE_FORMULA])
-                for edit in all_edits
+                for edit in all_edits[:100]
                 if constants.DATA_KEY_CELLS in edit
                 for key, value in edit[constants.DATA_KEY_CELLS].items()
                 if key == self.key
@@ -613,9 +613,9 @@ class Cell(ltk.TableData):
 
         docid = f"{constants.DATA_KEY_UID}={state.doc.uid}"
         before = f"{constants.DATA_KEY_BEFORE}={window.time()}"
-        after = f"{constants.DATA_KEY_AFTER}={window.time() - 3600000}"
+        after = f"{constants.DATA_KEY_AFTER}={window.time() - 36000}"
         url = f"/history?{docid}&{before}&{after}"
-        state.console.write("history", f"[History] Loading history {constants.ICON_HOUR_GLASS}")
+        state.console.write("history", f"[History] Loading history for {self.key} {constants.ICON_HOUR_GLASS}")
         ltk.get(state.add_token(url), proxy(load_history))
         ltk.find("#main").css("opacity", 1)
 
@@ -644,6 +644,9 @@ class Cell(ltk.TableData):
         self.set(script, preview)
         self.text(kind)
         debug("load", self.key, kind, script, "=>", repr(self.text()))
+
+    def is_formula(self):
+        return self.script and self.script.startswith("=")
 
     def update(self, duration, value, preview=None):
         debug("update value", self.key, value)
@@ -970,16 +973,13 @@ class Cell(ltk.TableData):
                 state.console.write("sheet", f"[Error] Cannot get inputs for {self.key}", e)
                 self.inputs = set()
             cache_keys = set(self.sheet.cache.keys())
-            if not self.inputs.issubset(cache_keys):
-                debug(self.key, f"[Warning] While running {self.key}. No value for inputs {self.inputs - cache_keys}")
-                return
         state.console.remove(self.key)
         if is_formula:
             try:
                 if state.pyodide or "no-worker" in self.script:
                     self.evaluate_locally(expression)
                 else:
-                    raise
+                    raise Exception()
             except Exception as e:
                 if state.pyodide:
                     state.console.write(self.key, f"[Error] {self.key}: {e}")
@@ -1014,11 +1014,15 @@ class Cell(ltk.TableData):
         self.needs_worker = True
         self.show_loading()
         state.console.write(self.key, f"[Sheet] {self.key}: running in worker {constants.ICON_HOUR_GLASS}")
+        inputs = dict(
+            (key,value)
+            for key, value in self.sheet.cache.items() if not sheet.cells[key].is_formula()
+        )
         ltk.publish(
             "Application",
             "Worker",
             ltk.TOPIC_WORKER_RUN,
-            [self.key, expression, self.sheet.cache],
+            [self.key, expression, inputs]
         )
 
     def to_dict(self):
@@ -1813,12 +1817,16 @@ window.rowResized = ltk.proxy(row_resized)
 
 worker = state.start_worker()
 
+def handle_code_completion(completions):
+    main_editor.handle_code_completion(completions)
+
 
 def main():
     ltk.inject_css("pysheets.css")
     setup_login()
     ltk.schedule(setup, "setup")
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_COMPLETION, handle_completion_request)
+    ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_CODE_COMPLETION, handle_code_completion)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_PRINT, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_INFO, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_ERROR, print)

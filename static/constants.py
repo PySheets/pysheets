@@ -42,6 +42,8 @@ SAVE_DELAY_SINGLE_EDITOR = 60
 TOPIC_WORKER_PRINT = "worker.print"
 TOPIC_WORKER_COMPLETION = "worker.completion"
 TOPIC_WORKER_COMPLETE = "worker.complete"
+TOPIC_WORKER_CODE_COMPLETE = "worker.code.complete"
+TOPIC_WORKER_CODE_COMPLETION = "worker.code.completion"
 
 DATA_KEY_VALUE = "V"
 DATA_KEY_COLUMNS = "C"

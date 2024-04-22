@@ -222,6 +222,30 @@ h3 {
     top: 10px;
 }
 
+.completions {
+    position: absolute;
+    z-index: 2003;
+    background-color: white;
+    border: 1px solid rgb(176, 176, 176);
+    box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
+    max-height: 232px;
+    overflow-y: auto;
+}
+
+.completions .selected {
+    background-color: #2077b4;
+    color: white;
+}
+
+.completions .choice {
+    padding: 2px;
+    height: 21px;
+    min-width: 50px;
+    border: 0 solid gray;
+    border-bottom-width: 1px;
+    font-size: 14px;
+}
+
 .preview {
     position: absolute;
     background-color: white;

@@ -1,6 +1,8 @@
-import ast
 import builtins
+import constants
 import json
+import lsp
+import ltk
 import sys
 import time
 import traceback
@@ -11,22 +13,14 @@ import polyscript # type: ignore
 import pyodide # type: ignore
 import pyscript # type: ignore
 
-try:
-    from api import edit_script, PySheets, get_dict_table, to_js
-except:
-    pass
-
-DATA_KEY_URL = "u"
-DATA_KEY_ERROR = "G"
-DATA_KEY_TOKEN = "t"
-DATA_KEY_PROMPT = "v"
-DATA_KEY_STATUS = "S"
-DATA_KEY_COMPLETION = "w"
+from api import edit_script, PySheets, get_dict_table, to_js
 
 window = pyscript.window
 get = window.get
-cache = {}
-token = window.localStorage.getItem(DATA_KEY_TOKEN)
+cache = {
+    "pysheets": PySheets(),
+}
+token = window.localStorage.getItem(constants.DATA_KEY_TOKEN)
 
 OriginalSession = requests.Session
 
@@ -70,7 +64,7 @@ class PyScriptSession(OriginalSession):
         json=None,
     ):
         xhr = window.XMLHttpRequest.new()
-        xhr.open(method, f"load?{DATA_KEY_TOKEN}={window.getToken()}&{DATA_KEY_URL}={url}", False)
+        xhr.open(method, f"load?{constants.DATA_KEY_TOKEN}={window.getToken()}&{constants.DATA_KEY_URL}={url}", False)
         xhr.setRequestHeader("Authorization", (headers or self.headers).get("Authorization"))
         xhr.send(data)
         return PyScriptResponse(url, xhr.status, xhr.responseText)
@@ -79,32 +73,14 @@ class PyScriptSession(OriginalSession):
 requests.Session = PyScriptSession
 requests.session = lambda: PyScriptSession()
 
-
-
-TOPIC_INFO = "log.info"
-TOPIC_DEBUG = "log.debug"
-TOPIC_ERROR = "log.error"
-TOPIC_WARNING = "log.warning"
-TOPIC_CRITICAL = "log.critical"
-
-TOPIC_REQUEST = "app.request"
-TOPIC_RESPONSE = "app.response"
-TOPIC_WORKER_READY = "worker.ready"
-TOPIC_WORKER_RUN = "worker.run"
-TOPIC_WORKER_RESULT = "worker.result"
-TOPIC_WORKER_PRINT = "worker.print"
-TOPIC_WORKER_COMPLETION = "worker.completion"
-TOPIC_WORKER_COMPLETE = "worker.complete"
-
-
 sender = "Worker"
 receiver = "Application"
 subscribe = polyscript.xworker.sync.subscribe
 publish = polyscript.xworker.sync.publish
 
 orig_print = builtins.print
-def worker_print(*args):
-    publish(sender, receiver, TOPIC_WORKER_PRINT, f"[Worker] {' '.join(str(arg) for arg in args)}")
+def worker_print(*args, file=None, end=""):
+    publish(sender, receiver, constants.TOPIC_WORKER_PRINT, f"[Worker] {' '.join(str(arg) for arg in args)}")
     orig_print(*args)
 builtins.print = worker_print
 
@@ -114,10 +90,10 @@ completion_cache = {}
 
 class Logger():
     def info(self, *args):
-        publish(sender, receiver, TOPIC_INFO, json.dumps([ self.format(args)]))
+        publish(sender, receiver, constants.TOPIC_INFO, json.dumps([ self.format(args)]))
 
     def error(self, *args):
-        publish(sender, receiver, TOPIC_ERROR, json.dumps([ self.format(args)]))
+        publish(sender, receiver, constants.TOPIC_ERROR, json.dumps([ self.format(args)]))
 
     def format(self, *args):
         return f"Worker: {' '.join(str(arg) for arg in args)}"
@@ -126,13 +102,12 @@ logger = Logger()
 
 
 
-def run_in_worker(script, inputs):
+def run_in_worker(script):
     _globals = {}
-    _globals.update(inputs)
+    _globals.update(cache)
     _globals["pyodide"] = pyodide
     _globals["pyscript"] = pyscript
-    _globals["pysheets"] = sys.modules["pysheets"] = PySheets(None, inputs)
-    cache.update(inputs)
+    _globals["pysheets"] = sys.modules["pysheets"] = PySheets(None, cache)
     _locals = _globals
     exec(script, _globals, _locals)
     return _locals["_"]
@@ -197,18 +172,18 @@ def complete(key, kind):
 
 
 def generate_completion(key, prompt):
-    data = { DATA_KEY_PROMPT: prompt }
+    data = { constants.DATA_KEY_PROMPT: prompt }
     start = time.time()
-    url = f"complete?{DATA_KEY_TOKEN}={window.getToken()}"
+    url = f"complete?{constants.DATA_KEY_TOKEN}={window.getToken()}"
 
     def success(response, status, xhr):
         data = json.loads(window.JSON.stringify(response))
-        if data.get(DATA_KEY_STATUS, "ok") == "error":
-            text = data[DATA_KEY_ERROR]
+        if data.get(constants.DATA_KEY_STATUS, "ok") == "error":
+            text = data[constants.DATA_KEY_ERROR]
         else:
             text = data["text"].replace("plt.show()", "figure")
             completion_cache[prompt] = data
-        publish(sender, receiver, TOPIC_WORKER_COMPLETION, json.dumps({
+        publish(sender, receiver, constants.TOPIC_WORKER_COMPLETION, json.dumps({
             "key": key, 
             "prompt": prompt,
             "text": text,
@@ -217,7 +192,7 @@ def generate_completion(key, prompt):
         }))
 
     def error(data, status, xhr):
-        publish(sender, receiver, TOPIC_WORKER_COMPLETION, json.dumps({
+        publish(sender, receiver, constants.TOPIC_WORKER_COMPLETION, json.dumps({
             "key": key, 
             "prompt": prompt,
             "text": data,
@@ -238,8 +213,8 @@ def run(data):
     start = time.time()
     try:
         key, script, inputs = data
-        inputs.update(cache)
-        result = run_in_worker(script, inputs)
+        cache.update(inputs)
+        result = run_in_worker(script)
     except Exception as e:
         import re
         tb = traceback.format_exc()
@@ -250,7 +225,7 @@ def run(data):
             error = f"At line {line_number + 1}: {lines[-1]} - {tb}"
         except Exception as e:
             error = tb
-        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
+        publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "value": None,
             "preview": "",
@@ -263,7 +238,7 @@ def run(data):
         kind = result.__class__.__name__
         cache[key] = result
     except:
-        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
+        publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "script": script,
             "value": None,
@@ -276,7 +251,7 @@ def run(data):
     try:
         preview = create_preview(result)
         base_kind = kind in ["int","str","float"]
-        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
+        publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "duration": time.time() - start,
             "script": script,
@@ -286,7 +261,7 @@ def run(data):
         }))
         complete(key, kind)
     except:
-        publish(sender, receiver, TOPIC_WORKER_RESULT, json.dumps({
+        publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "value": None,
             "script": script,
@@ -298,9 +273,13 @@ def run(data):
 def handle_request(sender, topic, request):
     try:
         data = json.loads(request)
-        if topic == TOPIC_WORKER_COMPLETE:
+        if topic == constants.TOPIC_WORKER_COMPLETE:
             generate_completion(data["key"], data["prompt"])
-        elif topic == TOPIC_WORKER_RUN:
+        elif topic == constants.TOPIC_WORKER_CODE_COMPLETE:
+            text, line, ch = data
+            completions = lsp.complete_python(text, line, ch, cache)
+            publish(sender, receiver, constants.TOPIC_WORKER_CODE_COMPLETION, json.dumps(completions))
+        elif topic == ltk.pubsub.TOPIC_WORKER_RUN:
             run(data)
         else:
             print("Error: Unexpect topic request", topic)
@@ -309,83 +288,9 @@ def handle_request(sender, topic, request):
 
 polyscript.xworker.sync.handler = handle_request
 
-subscribe("Worker", TOPIC_WORKER_RUN, "pyodide-worker")
-subscribe("Worker", TOPIC_WORKER_COMPLETE, "pyodide-worker")
-publish("Worker", "Sheet", TOPIC_WORKER_READY, repr(sys.version))
+subscribe("Worker", ltk.TOPIC_WORKER_RUN, "pyodide-worker")
+subscribe("Worker", constants.TOPIC_WORKER_COMPLETE, "pyodide-worker")
+publish("Worker", "Sheet", ltk.pubsub.TOPIC_WORKER_READY, repr(sys.version))
 
 
-
-def fuzzy_parse(text):
-    try:
-        return ast.parse(text)
-    except:
-        pass
-    try:
-        return ast.parse(text + "_")
-    except:
-        pass
-    try:
-        return ast.parse(text + ")")
-    except:
-        pass
-    try:
-        return ast.parse(text + "_)")
-    except:
-        pass
-    for n in range(3):
-        try:
-            return ast.parse(text + ")" * n)
-        except:
-            pass
-    return None
-
-
-def complete_python(text, line, pos):
-    window.completions.length = 0
-    lines = text[1:].split("\n")[:line + 1]
-    lines[-1] = lines[-1][:pos + 1]
-    text = "\n".join(lines)
-    tree = fuzzy_parse(text)
-    if not tree:
-        return
-
-    cache["pysheets"] = PySheets()
-
-    class CompletionFinder(ast.NodeVisitor):
-        context = {}
-
-        def inside(self, node):
-            return hasattr(node, "lineno") and node.lineno == line + 1 and node.col_offset <= pos and pos <= node.end_col_offset
-
-        def get_attributes(self, obj):
-            return [attr for attr in dir(obj) if not attr.startswith("_")] if obj else []
-
-        def add_object(self, obj, prefix):
-            self.add_attributes(self.get_attributes(obj), prefix)
-
-        def add_attributes(self, attributes, prefix):
-            for attr in attributes:
-                if attr.startswith(prefix):
-                    window.completions.push(attr)
-
-        def visit_Import(self, node):
-            for alias in node.names:
-                asname = alias.asname or alias.name
-                if not asname in cache:
-                    cache[asname] = __import__(alias.name)
-
-        def visit_Attribute(self, node):
-            if self.inside(node):
-                self.add_object(cache.get(node.value.id, []), "" if node.attr == "_" else node.attr)
-
-        def visit_Name(self, node):
-            if self.inside(node) and isinstance(node.ctx, ast.Load):
-                self.add_attributes(cache.keys(), node.id)
-
-        def generic_visit(self, node):
-            # print("VISIT", ast.dump(node))
-            ast.NodeVisitor.generic_visit(self, node)
-
-    CompletionFinder().visit(tree)
-
-window.completePython = complete_python
+subscribe("Worker", constants.TOPIC_WORKER_CODE_COMPLETE, "pyodide-worker")

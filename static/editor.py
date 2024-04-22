@@ -1,4 +1,5 @@
 import ltk
+import lsp
 
 ltk_Div = ltk.Div
 
@@ -29,6 +30,7 @@ class Editor(ltk_Div):
             }))
             self.editor.setSize("100%", "100%")
             self.editor.on("blur", ltk.proxy(lambda *args: self.trigger("change")))
+            self.code_completor = lsp.CodeCompletor(self.editor)
 
     def get(self):
         return self.editor.getValue()
@@ -48,4 +50,8 @@ class Editor(ltk_Div):
     def refresh(self):
         self.editor.refresh()
         return self
+
+    def handle_code_completion(self, completions):
+        if self.code_completor:
+            self.code_completor.handle_code_completion(completions)
 

@@ -354,9 +354,17 @@ def start_worker():
 
 def start_worker_with_packages(packages):
     config = {
-        "packages": [ "pandas", "matplotlib", "pyscript-ltk", "numpy", "requests" ] + packages,
+        "packages": [ 
+            "pandas",
+            "matplotlib",
+            "pyscript-ltk",
+            "numpy",
+            "requests"
+        ] + packages,
         "files": {
             "static/api.py": "./api.py",
+            "static/constants.py": "./constants.py",
+            "static/lsp.py": "./lsp.py",
         }
     }
     worker = XWorker(f"./worker{window.version_app}.py", config=ltk.to_js(config), type="pyodide")
