@@ -1,7 +1,6 @@
 import builtins
 import constants
 import json
-import lsp
 import ltk
 import sys
 import time
@@ -13,7 +12,11 @@ import polyscript # type: ignore
 import pyodide # type: ignore
 import pyscript # type: ignore
 
-from api import edit_script, PySheets, get_dict_table, to_js
+try:
+    from api import edit_script, PySheets, get_dict_table, to_js
+    from lsp import complete_python
+except:
+    pass # needed for bundling
 
 window = pyscript.window
 get = window.get
@@ -277,14 +280,15 @@ def handle_request(sender, topic, request):
             generate_completion(data["key"], data["prompt"])
         elif topic == constants.TOPIC_WORKER_CODE_COMPLETE:
             text, line, ch = data
-            completions = lsp.complete_python(text, line, ch, cache)
+            completions = complete_python(text, line, ch, cache)
             publish(sender, receiver, constants.TOPIC_WORKER_CODE_COMPLETION, json.dumps(completions))
         elif topic == ltk.pubsub.TOPIC_WORKER_RUN:
             run(data)
         else:
             print("Error: Unexpect topic request", topic)
     except Exception as e:
-        print("Error: Handling topic", topic, e, repr(data))
+        print("Error: Handling topic", topic)
+        traceback.print_exc()
 
 polyscript.xworker.sync.handler = handle_request
 

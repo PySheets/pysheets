@@ -48,13 +48,14 @@ cp static/*.css dist/static
 cp static/*.png dist/static
 cp static/*.ico dist/static
 
-cat static/api.py static/worker.py | \
+cat static/api.py static/lsp.py static/worker.py | \
     grep -v "import api" | \
     grep -v "from api import PySheets, edit_script" \
     > dist/static/worker_$version.py
 
 cp static/api.py dist/static/api_$version.py
 cp static/constants.py dist/static/constants_$version.py
+cp static/constants.py dist/static/constants.py
 cp storage/__init__.py dist/storage_$version
 cat storage/firestore.py | \
     sed "s/constants as constants/constants_$version as constants/" | \

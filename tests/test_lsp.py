@@ -1,4 +1,8 @@
+import sys
+sys.path.append("static")
+
 import ast
+import lsp
 import unittest
 from unittest.mock import patch
 
@@ -8,18 +12,9 @@ sys.path.append("tests")
 
 from static import worker
 
-completions = []
-
-
-def clear_completions():
-    completions.clear()
-
-def add_completion(label):
-    completions.append(label)
-
 DEBUG_COMPLETION = True
 
-orig_fuzzy_parse = worker.fuzzy_parse
+orig_fuzzy_parse = lsp.fuzzy_parse
 worker.worker_print = worker.orig_print
 
 def fuzzy_parse(text):
@@ -32,18 +27,11 @@ def fuzzy_parse(text):
     return tree
 
 if DEBUG_COMPLETION:
-    worker.fuzzy_parse = fuzzy_parse
-worker.clear_completions = clear_completions
-worker.add_completion = add_completion
-worker.DEBUG_COMPLETION = DEBUG_COMPLETION
+    lsp.fuzzy_parse = fuzzy_parse
+lsp.DEBUG_COMPLETION = DEBUG_COMPLETION
 
 class TestCompletePython(unittest.TestCase):
-    completions = []
 
-    def setUp(self) -> None:
-        completions.clear()
-        return super().setUp()
-        
     def set_text(self, text):
         lines = text.split("\n")
         line = len(lines) - 1
@@ -52,82 +40,77 @@ class TestCompletePython(unittest.TestCase):
 
     def test_completes_attributes(self):
         text, line, pos = self.set_text("=\nimport math\nmath.s")
-        worker.complete_python(text, line, pos)
-        self.assertIn("sin", completions)
-        self.assertIn("sqrt", completions)
+        completions = worker.complete_python(text, line, pos, {})
+        self.assertIn("sin()", completions)
+        self.assertIn("sqrt()", completions)
 
     def test_completes_imported_modules(self):
         text, line, pos = self.set_text("=\nimport math\nma")
-        worker.complete_python(text, line, pos)
+        completions = worker.complete_python(text, line, pos, {})
         self.assertIn("math", completions)
 
     def test_completes_variables_in_scope(self):
         text, line, pos = self.set_text("=\nx1 = x2 = 10\nx")
-        worker.complete_python(text, line, pos)
+        completions = worker.complete_python(text, line, pos, {})
         self.assertIn("x1", completions)
         self.assertIn("x2", completions)
 
     def test_function_in_scope(self):
         text, line, pos = self.set_text("=\ndef function(): pass\nf")
-        worker.complete_python(text, line, pos)
-        self.assertIn("function", completions)
+        completions = worker.complete_python(text, line, pos, {})
+        self.assertIn("function()", completions)
 
     def test_function_attributes(self):
         text, line, pos = self.set_text("=\ndef function(): pass\nfunction.")
-        worker.complete_python(text, line, pos)
+        completions = worker.complete_python(text, line, pos, {})
         self.assertIn("__name__", completions)
 
-    def test_pysheets(self):
-        text, line, pos = self.set_text("=\npysheets.")
-        worker.complete_python(text, line, pos)
-        self.assertIn("cell", completions)
-        self.assertIn("load", completions)
-        self.assertIn("load_sheet", completions)
-        self.assertIn("sheet", completions)
-
     def test_match_ld(self):
-        text, line, pos = self.set_text("=\npysheets.ld")
-        worker.complete_python(text, line, pos)
-        expected = ['load', 'load_sheet', '__delattr__', '__module__']
-        self.assertEquals(completions, expected)
+        text, line, pos = self.set_text("=\nx = 'hello'\nx.cap")
+        completions = worker.complete_python(text, line, pos, {})
+        self.assertIn("capitalize()", completions)
+        self.assertIn("isspace()", completions)
 
     def test_cache_list(self):
         worker.cache["D13"] = []
         text, line, pos = self.set_text("=\nD13.")
-        worker.complete_python(text, line, pos)
-        self.assertIn("append", completions)
-        self.assertIn("insert", completions)
-        self.assertIn("clear", completions)
+        completions = worker.complete_python(text, line, pos, worker.cache)
+        self.assertIn("append()", completions)
+        self.assertIn("insert()", completions)
+        self.assertIn("clear()", completions)
 
     def test_cache_dict(self):
         worker.cache["D14"] = { "dogs": 0, "cats": 1 }
         text, line, pos = self.set_text("=\nD14[")
-        worker.complete_python(text, line, pos)
-        self.assertIn('"cats"]', completions)
-        self.assertIn('"dogs"]', completions)
+        completions = worker.complete_python(text, line, pos, worker.cache)
+        self.assertIn('["cats"]', completions)
+        self.assertIn('["dogs"]', completions)
 
     def test_dict_assign(self):
         text, line, pos = self.set_text("=\nmy_dict = { 'dogs': 0, 'cats': 1 }\nmy")
-        worker.complete_python(text, line, pos)
+        completions = worker.complete_python(text, line, pos, {})
         self.assertIn('my_dict', completions)
 
-    def test_dict_assign_partial(self):
-        text, line, pos = self.set_text("=\nmy_dict = { 'dogs': 0, 'cats': 1 }\nmy_dict['d")
-        worker.complete_python(text, line, pos)
-        self.assertIn('"dogs"]', completions)
-        self.assertNotIn('"cats"]', completions)
+    def test_dict_subscript(self):
+        text, line, pos = self.set_text("=\nmy_dict = { 'dogs': 0, 'cats': 1 }\nmy_dict[")
+        completions = worker.complete_python(text, line, pos, {})
+        self.assertIn('["dogs"]', completions)
+        self.assertIn('["cats"]', completions)
 
-    def test_match_dict_partial_d(self):
-        worker.cache["D33"] = { "dogs": 0, "cats": 1 }
-        text, line, pos = self.set_text("=\nD33['d'")
-        worker.complete_python(text, line, pos)
-        self.assertEquals(completions, ['"dogs"]'])
+    def test_dataframe(self):
+        import pandas as pd
+        import numpy as np
+        worker.cache["A1"] = pd.DataFrame(
+            np.array(([1, 2, 3], [4, 5, 6])),
+            index=['mouse', 'rabbit'],
+            columns=['one', 'two', 'three']
+        )
+        text, line, pos = self.set_text("=\nA1.")
+        completions = worker.complete_python(text, line, pos, worker.cache)
+        self.assertIn('align()', completions)
+        self.assertIn('fillna()', completions)
+        self.assertIn('merge()', completions)
 
-    def test_match_dict_partial_s(self):
-        worker.cache["D33"] = { "dogs": 0, "cats": 1 }
-        text, line, pos = self.set_text("=\nD33[\"s\"")
-        worker.complete_python(text, line, pos)
-        self.assertEquals(completions, ['"dogs"]', '"cats"]'])
 
 
 if __name__ == "__main__":

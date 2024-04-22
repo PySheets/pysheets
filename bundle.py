@@ -44,7 +44,7 @@ names = [
     "save_changes", "get_plot_screenshot", "done", "get_data", "handle_login", "register",
     "set_name", "update_cell", "set_font", "set_style", "set_layout", "set_font_size",
     "set_color", "set_background", "set_main_state", "toggle_edit", "create_card", "select_doc",
-    "result", "response", "index", "option", "function", "timeout_seconds",
+    "result", "response", "option", "function", "timeout_seconds",
     "create_user_image", "ServerLogger", "Editor", "load_previews", "previews",
     "load_history", "restore_history", "load_history_chunk", "Console",
 
@@ -118,7 +118,7 @@ def bundle(folder, module_name, out):
     if not os.path.exists(filename):
         filename = f"{base}/__init__.py"
     if not os.path.exists(filename):
-        if module_name not in ["pandas", "warnings"] and not "." in module_name:
+        if module_name not in ["pandas", "warnings", "ast", "typing", "traceback"] and not "." in module_name:
             global_imports[module_name] = True
         return False
     with open(filename, 'r') as f:
