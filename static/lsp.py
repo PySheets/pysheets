@@ -1,8 +1,16 @@
 import constants
 import ltk
-import time
 
 from pyscript import window # type: ignore
+
+
+COMPLETION_MAKE_CELL_FUNCTION = f"{constants.ICON_STAR} Make this a Python cell function"
+COMPLETION_IMPORT_SHEET = f"{constants.ICON_STAR} Import a sheet"
+
+magic_completions = {
+    COMPLETION_MAKE_CELL_FUNCTION: "=\n\n",
+    COMPLETION_IMPORT_SHEET: "url = \"https://chrislaffra.com/forbes_ai_50_2024.csv\"\npysheets.load_sheet(url)",
+}
 
 
 class CodeCompletor():
@@ -11,12 +19,27 @@ class CodeCompletor():
         self.editor.on("keydown", ltk.proxy(self.keydown))
         self.completions = []
         window.completePython = ltk.proxy(lambda text, line, ch: self.complete_python(text, line, ch))
+        # editor.on("cursorActivity", ltk.proxy(lambda *args: self.trigger_completion()))
+        # editor.on("focus", ltk.proxy(lambda *args: self.trigger_completion()))
+
+    def trigger_completion(self):
+        if not self.editor.getValue():
+            self.handle_code_completion([
+                COMPLETION_MAKE_CELL_FUNCTION,
+            ])
+        else:
+            cursor = self.editor.getCursor()
+            if cursor.ch == 0:
+                self.handle_code_completion([
+                    COMPLETION_IMPORT_SHEET,
+                ])
 
     def getToken(self):
         cursor = self.editor.getCursor()
         return self.editor.getTokenAt(cursor)
 
     def insert(self, string):
+        string = magic_completions.get(string, string)
         cursor = self.editor.getCursor()
         token = self.editor.getTokenAt(cursor)
         length = 0 if token.string == "." else len(token.string)
@@ -127,6 +150,7 @@ def fuzzy_parse(text):
 
 
 def complete_python(text, line, ch, cache):
+    print("complete", line, ch)
     import ast
     lines = text[1:].split("\n")[:line + 1]
     lines[-1] = lines[-1][:ch + 1]
