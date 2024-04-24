@@ -836,6 +836,7 @@ td:hover .debug-info {
     background-color: #f9f9ff;
     width: 100%;
     height: 100%;
+    overflow: auto;
 }
 
 .console pre {
