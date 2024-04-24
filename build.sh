@@ -13,10 +13,15 @@ else
     exit 1
 fi
 
+echo "Update ltk"
+curl "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.js" > static/ltk/ltk.js
+curl "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.css" > static/ltk/ltk.css
+
 echo "Building production folder in dist"
 
 mkdir dist
 mkdir dist/static/
+mkdir dist/static/ltk/
 mkdir dist/templates/
 mkdir dist/storage_$version/
 
@@ -47,6 +52,7 @@ cp static/*.js dist/static
 cp static/*.css dist/static
 cp static/*.png dist/static
 cp static/*.ico dist/static
+cp static/ltk/* dist/static/ltk
 
 cat static/api.py static/lsp.py static/worker.py | \
     grep -v "import api" | \
