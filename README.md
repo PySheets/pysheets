@@ -49,16 +49,6 @@ To navigate to the source of PySheets, and make changes to it:
   - Open the `pysheets/pysheets-src` folder
   - Open a terminal inside VS Code
 
-You should now see a source folder with a bunch of Python files in 
-a `static` folder, `tests`, `app.yaml`, a `templates/index.html`,
-and `main.py`.
-
-Files that contains secrets that should never be shared with
-anyone else are:
-  - `firestore.json`
-  - `sourcegraph.json`
-
-
 # Running PySheets during development
 
 To run PySheet locally from VS Code, it its terminal run:
