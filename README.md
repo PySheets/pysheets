@@ -54,8 +54,7 @@ To navigate to the source of PySheets, and make changes to it:
 To run PySheet locally from VS Code, it its terminal run:
 
 ```
-source ../env/bin/activate
-python3 main.py
+source ../env/bin/activate; python3 main.py
 ```
 
 Then open [the local preview](http://127.0.0.1:8081/). Note that in VS Code, you can `Cmd+Click` any URL or file name that is printed in the terminal to open it.
