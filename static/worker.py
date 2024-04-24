@@ -226,28 +226,30 @@ def run(data):
             line = [line for line in lines if "<string>" in line][0]
             line_number = int(re.sub("[^0-9]", "", line))
             error = f"At line {line_number + 1}: {lines[-1]} - {tb}"
-        except Exception as e:
-            error = tb
+        except:
+            error = str(e)
         publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "value": None,
             "preview": "",
             "duration": time.time() - start,
-            "error": error,
+            "error": str(e),
+            "traceback": tb,
         }))
         return
 
     try:
         kind = result.__class__.__name__
         cache[key] = result
-    except:
+    except Exception as e:
         publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "script": script,
             "value": None,
             "preview": "",
             "duration": time.time() - start,
-            "error": traceback.format_exc(),
+            "error": str(e),
+            "traceback": traceback.format_exc()
         }))
         return
 
