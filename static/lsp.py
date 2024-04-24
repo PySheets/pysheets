@@ -104,17 +104,17 @@ class CodeCompletor():
         if not completions or token.string in [" ", ":", ";"]:
             return
         ltk.find(".CodeMirror-code").append(
-            ltk.find("<div>")
+            ltk.create("<div>")
                 .addClass("completions")
                 .css("left", ltk.find(".CodeMirror-cursor").css("left"))
                 .css("top", window.parseFloat(ltk.find(".CodeMirror-cursor").css("top")) + 24)
         )
         for choice in self.completions:
             ltk.find(".completions").append(
-                ltk.find("<div>")
+                ltk.create("<div>")
                     .addClass("choice")
                     .text(choice)
-                    .on("click", self.pick)
+                    .on("click", ltk.proxy(lambda event: self.pick(event)))
                 )
         ltk.find(".completions").find(".choice").eq(0).addClass("selected")
 
@@ -157,6 +157,8 @@ def complete_python(text, line, ch, cache):
     completions = []
     fix, tree = fuzzy_parse(text)
     if not tree:
+        if DEBUG_COMPLETION:
+            print("Cannot complete", repr(text), line, ch)
         return
 
     class CompletionFinder(ast.NodeVisitor):
