@@ -150,7 +150,6 @@ def fuzzy_parse(text):
 
 
 def complete_python(text, line, ch, cache):
-    print("complete", line, ch)
     import ast
     lines = text[1:].split("\n")[:line + 1]
     lines[-1] = lines[-1][:ch + 1]
