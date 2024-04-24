@@ -1016,7 +1016,8 @@ class Cell(ltk.TableData):
         state.console.write(self.key, f"[Sheet] {self.key}: running in worker {constants.ICON_HOUR_GLASS}")
         inputs = dict(
             (key,value)
-            for key, value in self.sheet.cache.items() if not sheet.cells[key].is_formula()
+            for key, value in self.sheet.cache.items()
+            if key in sheet.cells and not sheet.cells[key].is_formula()
         )
         ltk.publish(
             "Application",
