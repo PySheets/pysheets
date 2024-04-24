@@ -3,28 +3,72 @@
 PySheets is a spreadsheet UI for Python, implemented in Python, running in the browser, using PyScript.
  
 
-# Setup
+# Setup VS Code
 
-In a terminal, run:
+First install VS Code, Python3, and the Python extension for VS Code.
+Follow [this tutorial](https://code.visualstudio.com/docs/python/python-tutorial) for that. As part of the instructions, you will install a Python v3 runtime.
+
+# Setup Venv
+
+To set up local virtual environment for PySheets, open a terminal and run:
+
+```
+mkdir pysheets
+cd pysheets
+python3 -m pip install virtualenv
+python3 -m venv env
+source env/bin/activate
+```
+
+You now have a `pysheets` folder containing a `venv` folder to store all
+the Python dependencies and runtimes that PySheets needs.
+
+# Setup PySheets
+
+PySheets is stored in github. To make a local copy, run:
 
 ```
 git clone https://github.com/ascend-software-company/pysheets-prod.git
 git clone https://github.com/ascend-software-company/pysheets-src.git
 cd pysheets-src
-python3 -m pip install
+pip install -r requirements.txt
+cd ../..
+ls
 ```
 
-Install VS Code, launch it, open the `pysheets-src` folder, and open a terminal.
+You should now have the following folder structure:
+  - `pysheets`
+    - `env`
+    - `pysheets-prod`
+    - `pysheets-src`
+
+# Accessing PySheets from VS Code
+
+To navigate to the source of PySheets, and make changes to it:
+  - Launch VS Code
+  - Open the `pysheets/pysheets-src` folder
+  - Open a terminal inside VS Code
+
+You should now see a source folder with a bunch of Python files in 
+a `static` folder, `tests`, `app.yaml`, a `templates/index.html`,
+and `main.py`.
+
+Files that contains secrets that should never be shared with
+anyone else are:
+  - `firestore.json`
+  - `sourcegraph.json`
+
 
 # Running PySheets during development
 
-To run PySheet locally and see your changes during development, run:
+To run PySheet locally from VS Code, it its terminal run:
 
 ```
+source ../env/bin/activate
 python3 main.py
 ```
 
-Then open [the local preview](http://127.0.0.1:8081/). 
+Then open [the local preview](http://127.0.0.1:8081/). Note that in VS Code, you can `Cmd+Click` any URL or file name that is printed in the terminal to open it.
 
 Note that this will use local Python source files and CSS, but all data still comes from production.
 
