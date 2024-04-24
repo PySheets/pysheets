@@ -3,7 +3,7 @@ echo "Running unit tests:"
 echo
 
 export version=`grep APP_VERSION app.yaml | sed "s/.* /v/" | sed "s/\\./_/g"`
-
+pip install pandas
 export PYTHONPATH=./static:./tests
 python3 -m unittest discover
 if [[ $? -eq 0 ]]; then
@@ -12,10 +12,6 @@ else
     echo "Unit tests failed"
     exit 1
 fi
-
-echo "Update ltk"
-curl "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.js" > static/ltk/ltk.js
-curl "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.css" > static/ltk/ltk.css
 
 echo "Building production folder in dist"
 

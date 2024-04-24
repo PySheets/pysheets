@@ -16,6 +16,21 @@
     color: #3f3f3f;
 }
 
+.multi-select {
+    position: absolute;
+    z-index: 1001;
+    border-width: 0;
+    background: #FFD700;
+}
+
+.multi-select.top,  .multi-select.bottom  {
+    height: 2px;
+}
+
+.multi-select.left,  .multi-select.right  {
+    width: 2px;
+}
+
 .logo-container {
     display: flex;
     justify-content: space-between;

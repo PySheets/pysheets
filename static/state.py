@@ -291,7 +291,7 @@ class Console():
             .attr("id", f"console-{key}").addClass(clazz)
         )
 
-    def console_log(self, *args):
+    def console_log(self, *args, category=None, stacklevel=0, source=None):
         message = " ".join(str(arg) for arg in args)
         if not message.startswith("💀🔒 - Possible deadlock"):
             key = "Network" if message.startswith("[Network]") else f"{ltk.get_time()}"

@@ -28,10 +28,15 @@ local_storage = window.localStorage
 proxy = ltk.proxy
 def debug(*args):
     if DEBUG:
-        try: 
-            print("[Debug]", *args)
-        except:
-            print("DEBUG ERROR", e)
+        print("[Debug]", *args)
+
+is_mac = window.navigator.platform.upper().startswith("MAC")
+is_ios = window.navigator.platform.upper().startswith("I")
+is_apple = is_mac or is_ios
+
+
+def is_command_key(event):
+    return (event.metaKey or event.ctrlKey) if is_apple else event.ctrlKey
 
 
 def save(force=False):
@@ -84,6 +89,114 @@ def get_key_from_col_row(col, row):
     return f"{get_column_name(col)}{row + 1}"
 
 
+class MultiSelection():
+
+    def __init__(self, sheet):
+        self.sheet = sheet
+        self.started = False
+        self.line_top = ltk.Div().addClass("multi-select top")
+        self.line_left = ltk.Div().addClass("multi-select left")
+        self.line_bottom = ltk.Div().addClass("multi-select bottom")
+        self.line_right = ltk.Div().addClass("multi-select right")
+        self.cells = []
+        self.cell1 = self.cell2 = None
+        
+    def select(self, cell):
+        self.cell1 = self.cell2 = cell
+        self.draw()
+
+    def draw(self):
+        ltk.find(".multi-select").remove()
+        pos1, pos2 = self.cell1.position(), self.cell2.position()
+        left = min(pos1.left, pos2.left)
+        top = min(pos1.top, pos2.top)
+        right = max(pos1.left + self.cell1.outerWidth(), pos2.left + self.cell2.outerWidth()) - 2
+        bottom = max(pos1.top + self.cell1.outerHeight(), pos2.top + self.cell2.outerHeight()) - 2
+        if self.cell1 is not self.cell2:
+            ltk.find("#sheet").append(
+                self.line_top.css("left", left).css("top", top).css("width", right - left),
+                self.line_left.css("left", left).css("top", top).css("height", bottom - top),
+                self.line_bottom.css("left", left).css("top", bottom).css("width", right - left + 2),
+                self.line_right.css("left", right).css("top", top).css("height", bottom - top),
+            )
+        self.dimensions = [
+            self.cell1.column if pos1.left < pos2.left else self.cell2.column,
+            self.cell2.column if pos1.left < pos2.left else self.cell1.column,
+            self.cell1.row if pos1.top < pos2.top else self.cell2.row,
+            self.cell2.row if pos1.top < pos2.top else self.cell1.row,
+        ]
+        self.highlight_row_col()
+
+    def highlight_row_col(self):
+        from_col, to_col, from_row, to_row = self.dimensions
+        # remove row/col highlights
+        ltk.find(".column-label").css("background-color", "white")
+        ltk.find(".row-label").css("background-color", "white")
+        self.cells = []
+        for col in range(from_col, to_col + 1):
+            for row in range(from_row, to_row + 1):
+                ltk.find(f".column-label.col-{col + 1}").css("background-color", "#d3e2fc")
+                ltk.find(f".row-label.row-{row + 1}").css("background-color", "#d3e2fc")
+                cell = self.sheet.get(get_key_from_col_row(col, row))
+                self.cells.append(cell)
+
+    def css(self, name, value):
+        sheet.selection.css(name, value)
+        for cell in self.cells:
+            cell.css(name, value)
+            state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
+        self.draw()
+
+    def copy(self):
+        from_col, to_col, from_row, to_row = self.dimensions
+        text = "\n".join([
+                "\t".join([
+                    self.sheet.get(get_key_from_col_row(col, row)).script
+                    for col in range(from_col, to_col + 1)
+                ])
+                for row in range(from_row, to_row + 1)
+            ])
+        window.clipboardWrite(text)
+
+    def paste(self):
+        current = self.sheet.current
+
+        def paste_text(text):
+            for row, line in enumerate(text.split("\n")):
+                for column, text in enumerate(line.split("\t")):
+                    cell = self.sheet.get(get_key_from_col_row(current.column + column, current.row + row))
+                    cell.edited(text)
+
+        window.clipboardRead(proxy(paste_text))
+
+    def cut(self):
+        self.copy()
+        self.clear()
+
+    def clear(self):
+        for cell in self.cells:
+            cell.edited("")
+            state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
+        self.draw()
+
+    def start(self, cell):
+        ltk.find("#main").focus()
+        self.sheet.select(cell)
+        self.cell1 = self.cell2 = cell
+        self.started = True
+        self.draw()
+
+    def extend(self, cell, force=False):
+        if not force and not self.started:
+            return
+        self.cell2 = cell
+        self.draw()
+
+    def stop(self, cell):
+        self.started = False
+        self.draw()
+
+
 class Spreadsheet():
     def __init__(self):
         self.clear()
@@ -91,6 +204,7 @@ class Spreadsheet():
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.pubsub.TOPIC_WORKER_READY, self.worker_ready)
 
         self.selection = ltk.Input("").addClass("selection")
+        self.multi_selection = MultiSelection(self)
         self.selection_edited = False
         ltk.find("#main").on("keydown", proxy(lambda event: self.navigate(event)))
 
@@ -369,15 +483,28 @@ Generate Python code.
                 request_completion(key, prompt.strip())
 
     def setup_selection(self):
-        def select(event):
-            target = ltk.find(event.target)
-            if target.hasClass("selection"):
+        def mousedown(event):
+            cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
+            if cell.hasClass("selection"):
                 self.selection.css("caret-color", "black").focus()
                 self.selection_edited = True
-            elif target.hasClass("cell"):
-                debug("sheet.setup.selection", target.attr("id"))
+            elif cell.hasClass("cell"):
+                debug("sheet.setup.selection", cell.attr("id"))
                 self.save_selection()
-                self.select(self.get(target.attr("id")))
+                if event.shiftKey:
+                    self.multi_selection.extend(cell, force=True)
+                else:
+                    self.multi_selection.start(cell)
+            event.preventDefault()
+
+        def mousemove(event):
+            cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
+            self.multi_selection.extend(cell)
+            event.preventDefault()
+
+        def mouseup(event):
+            cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
+            self.multi_selection.stop(cell)
             event.preventDefault()
 
         def activate(event):
@@ -389,7 +516,11 @@ Generate Python code.
                     .focus())
             event.preventDefault()
 
-        ltk.find(".cell").on("dblclick", proxy(activate)).on("click", proxy(select))
+        ltk.find(".cell") \
+            .on("dblclick", proxy(activate)) \
+            .on("mousedown", proxy(mousedown)) \
+            .on("mousemove", proxy(mousemove)) \
+            .on("mouseup", proxy(mouseup))
 
     def navigate(self, event):
         target = ltk.find(event.target)
@@ -401,7 +532,7 @@ Generate Python code.
     def navigate_selection(self, event):
         if event.key == "Escape":
             self.select(self.current)
-        elif event.key in ["Tab", "Enter", "ArrowUp", "ArrowDown"]:
+        elif event.key in ["Tab", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]:
             self.navigate_main(event)
         else:
             ltk.schedule(self.copy_selection_to_main_editor, "copy-to-editor")
@@ -419,13 +550,14 @@ Generate Python code.
         main_editor.set(self.selection.val())
 
     def navigate_main(self, event):
-        if not self.current:
+        if not self.current or event.key == "Meta":
             return
-        column, row = self.current.column, self.current.row
+        current = self.multi_selection.cell2 if event.shiftKey else self.current
+        column, row = current.column, current.row
         if event.key == "Tab":
             column += -1 if event.shiftKey else 1 
         elif event.key == "Delete" or event.key == "Backspace":
-            self.current.edited("")
+            self.multi_selection.clear()
         elif event.key == "ArrowLeft":
             column = max(0, column - 1)
         elif event.key == "ArrowRight":
@@ -435,8 +567,14 @@ Generate Python code.
         elif event.key == "ArrowDown" or event.key == "Enter":
             row += 1
         if len(event.key) == 1:
-            if event.ctrlKey and event.key == "v":
-                self.selection.focus()
+            if is_command_key(event):
+                if event.key == "c":
+                    self.multi_selection.copy()
+                elif event.key == "v":
+                    self.multi_selection.paste()
+                elif event.key == "x":
+                    self.multi_selection.cut()
+                    self.current.edited("")
             if event.metaKey or event.ctrlKey:
                 return
             self.selection_edited = True
@@ -445,7 +583,11 @@ Generate Python code.
         else:
             if self.current and (column != self.current.column or row != self.current.row):
                 self.save_selection()
-            self.select(self.get(get_key_from_col_row(column, row)))
+            cell = self.get(get_key_from_col_row(column, row))
+            if event.shiftKey:
+                self.multi_selection.extend(cell, force=True)
+            else:
+                self.select(cell)
             event.preventDefault()
 
     @saveit
@@ -453,6 +595,7 @@ Generate Python code.
         if not cell or not cell.hasClass("cell"):
             return
         state.console.write("sheet-selection", f"[Sheet] Select {cell}")
+        self.multi_selection.select(cell)
         cell.select()
         self.selection_edited = False
         self.selection \
@@ -470,15 +613,6 @@ Generate Python code.
             .val(cell.text())
         self.selection.css("caret-color", "transparent")
         self.current = cell
-
-        # remove highlights
-        ltk.find(".column-label").css("background-color", "white")
-        ltk.find(".row-label").css("background-color", "white")
-        ltk.find(f".cell.highlighted").removeClass("highlighted")
-        # highlight the column 
-        ltk.find(f".column-label.col-{cell.column + 1}").css("background-color", "#d3e2fc")
-        # highlight the row
-        ltk.find(f".row-label.row-{cell.row + 1}").css("background-color", "#d3e2fc")
 
     def worker_ready(self, data):
         for cell in self.cells.values():
@@ -607,7 +741,7 @@ class Cell(ltk.TableData):
             ]
             def get_copy_button(edit):
                 def copy():
-                    window.navigator.clipboard.writeText(edit)
+                    window.clipboardWrite(edit)
                 return ltk.Button("copy", lambda event: copy())
             ltk.VBox(*[
                 ltk.HBox(
@@ -672,6 +806,7 @@ class Cell(ltk.TableData):
         self.append(children)
         if self.sheet.current == self:
             self.sheet.selection.val(self.text())
+        self.sheet.multi_selection.draw()
     
     def get_preview(self, value):
         if type(value) is dict:
@@ -1457,36 +1592,21 @@ def create_sheet():
 
     @saveit
     def set_font(index, option):
-        cell = sheet.current
-        cell.css("font-family", option.text())
-        sheet.selection.css("font-family", option.text())
-        state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
-        state.doc.last_edit = window.time()
+        sheet.multi_selection.css("font-family", option.text())
 
     @saveit
     def set_font_size(index, option):
-        cell = sheet.current
-        cell.css("font-size", f"{option.text()}px")
-        sheet.selection.css("font-size", f"{option.text()}px")
-        state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
-        state.doc.last_edit = window.time()
+        sheet.multi_selection.css("font-size", f"{option.text()}px")
 
     @saveit
     def set_color(event):
-        cell = sheet.current
-        color = ltk.find(event.target).val()
-        cell.css("color", color)
-        sheet.selection.css("color", color)
-        state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
+        sheet.multi_selection.css("color", ltk.find(event.target).val())
+        event.preventDefault()
 
     @saveit
     def set_background(event):
-        cell = sheet.current
-        color = ltk.find(event.target).val()
-        cell.css("background-color", color)
-        sheet.selection.css("background-color", color)
-        state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
-        state.doc.last_edit = window.time()
+        sheet.multi_selection.css("background-color", ltk.find(event.target).val())
+        event.preventDefault()
 
     ltk.find("#cell-attributes-container").empty().append(
         ltk.ColorPicker()
@@ -1810,12 +1930,15 @@ def column_resized(event):
     column = ltk.find(event.target)
     ltk.find(f".cell.col-{column.attr('col')}").css("max-width", column.width())
     sheet_resized()
+    sheet.multi_selection.draw()
 
 
 def row_resized(event):
     row = ltk.find(event.target)
     ltk.find(f".cell.row-{row.attr('row')}").css("max-height", row.height())
     sheet_resized()
+    sheet.multi_selection.draw()
+
 
 window.columnResized = ltk.proxy(column_resized)
 window.rowResized = ltk.proxy(row_resized)

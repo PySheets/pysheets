@@ -200,4 +200,22 @@
         });
         return window.editor;
     }
+
+    window.clipboardRead = (callback) => {
+        navigator.clipboard.read().then(items => {
+            for (const item of items) {
+                for (const type of item.types) {
+                    if (type === "text/plain") {
+                        item.getType(type).then(blob => {
+                            blob.text().then(text => callback(text))
+                        })
+                    }
+                }
+              }
+        });
+    }
+
+    window.clipboardWrite = (text) => {
+        return navigator.clipboard.writeText(text).then(() => {});
+    }
 })();
