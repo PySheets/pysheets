@@ -15,6 +15,8 @@ from pyscript import window  # type: ignore
 
 state.console.write("pysheets", f"[Main] Pysheets starting {constants.ICON_HOUR_GLASS}")
 
+DEBUG = False
+
 sheet = None
 previews = {}
 completion_cache = {}
@@ -24,7 +26,12 @@ logger.setLevel(
 )
 local_storage = window.localStorage
 proxy = ltk.proxy
-debug = lambda *args: print("[Debug]", *args) if False else ""
+def debug(*args):
+    if DEBUG:
+        try: 
+            print("[Debug]", *args)
+        except:
+            print("DEBUG ERROR", e)
 
 
 def save(force=False):
@@ -218,8 +225,8 @@ class Spreadsheet():
             cell.notify()
             debug("Worker", key, "=>", result["value"])
             if result["error"]:
-                state.console.write(key, f"[Error] {key}: {result['error']}")
                 cell.update(result["duration"], result["error"])
+                state.console.write(key, f"[Error] {key}: {result['error']} {result['traceback']}")
         except Exception as e:
             state.console.write(key, f"[Error] Cannot handle worker result: {type(e)}: {e}")
 
@@ -394,7 +401,7 @@ Generate Python code.
     def navigate_selection(self, event):
         if event.key == "Escape":
             self.select(self.current)
-        elif event.key == "Tab" or event.key == "Enter":
+        elif event.key in ["Tab", "Enter", "ArrowUp", "ArrowDown"]:
             self.navigate_main(event)
         else:
             ltk.schedule(self.copy_selection_to_main_editor, "copy-to-editor")
@@ -771,16 +778,9 @@ class Cell(ltk.TableData):
             window.addArrow(self.element, ltk.find(f"#preview-{self.key} .ltk-text"))
         if not self.inputs:
             return
-        try:
-            inputs = list(sorted(self.inputs))
-            first = self.sheet.get(inputs[0])
-            last = self.sheet.get(inputs[-1])
-        except Exception as e:
-            state.console.write(f"arrows-{self.key}", f"[Error] Error in draw_arrows: {e}")
-            return
-        window.addArrow(create_marker(first, last, "inputs-marker arrow"), self.element)
+        cells = [self.sheet.cells[input] for input in self.inputs]
+        window.addArrow(create_marker(cells, "inputs-marker arrow"), self.element)
         self.addClass("arrow")
-        first.draw_arrows()
 
     def adjust_arrows(self):
         ltk.find(".leader-line").appendTo(ltk.find("#sheet-scrollable"))
@@ -901,7 +901,7 @@ class Cell(ltk.TableData):
                 )
             )
         except Exception as e:
-            state.console.write("sheet", f"[Error] No preview for {self}: {e}")
+            debug("sheet", f"[Error] No preview for {self}: {e}")
             pass
             
         debug("add preview", self.key)
@@ -921,6 +921,8 @@ class Cell(ltk.TableData):
     def fix_preview_html(self, preview, html):
         try:
             html = html.replace("script src=", "script crossorigin='anonymous' src=")
+            if not html.startswith("<"):
+                html = f"<div>{html}</div>"
         except Exception as e:
             raise e
 
@@ -1054,24 +1056,26 @@ def hide_marker(event):
     remove_arrows()
 
 
-def create_marker(first, last, clazz):
-    if not first or not last:
+def create_marker(cells, clazz):
+    if not cells:
         return
-    first_offset = first.offset()
-    last_offset = last.offset()
-    if not first_offset or not last_offset:
-        return
-    left = first_offset.left + 1 + ltk.find("#sheet-container").scrollLeft()
-    top = first_offset.top - 49 + ltk.find("#sheet-container").scrollTop()
-    width = last_offset.left - first_offset.left + last.outerWidth() - 5
-    height = last_offset.top - first_offset.top + last.outerHeight() - 5
+    if len(cells) == 1:
+        cells[0].draw_arrows()
+        return cells[0]
+    top, left, bottom, right = 10000, 10000, 0, 0
+    for cell in cells:
+        position = cell.position()
+        left = min(position.left, left)
+        top = min(position.top, top)
+        right = max(position.left + cell.outerWidth(), right)
+        bottom = max(position.top + cell.outerHeight(), bottom)
     return (ltk.Div()
         .addClass("marker")
         .addClass(clazz)
         .css("left", left)
         .css("top", top)
-        .width(width)
-        .height(height)
+        .width(right - left)
+        .height(bottom - top)
         .on("mousemove", proxy(hide_marker))
         .appendTo(ltk.find("#sheet-scrollable"))
     )
