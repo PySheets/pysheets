@@ -96,21 +96,37 @@ This runs the unit tests, bundles (obfuscates) the source code, and copies it al
 
 # Test the build
 
-Stop the existin `main.py` run. Then run:
+Open a new VS Code window and open `pysheets-prod`. You will not make any changes in the code, but 
+having a separate VS Code window will be handy to see the output and look at the 
+obfuscated source files. Then run the production version of the local PySheets:
 
 ```
-cd ../pysheets-prod
+source ../env/bin/activate
 python3 main*.py
 ```
 
+
 # Deploy the application to DigitalOcean
 
-Increment the version in `app.yaml` and then run the following:
+After you ran `build.sh` and tested the obfuscated version of PySheets locally, you can 
+now release to DigitalOcean. The release process looks like this:
 
-```
-. deploy.sh
-```
+ - Local development and testing (this is always safe):
+   - Make changes to source files in `pysheets-src`
+   - Test changes to source files in `pysheets-src`
+ - Checking the production version locally (this is still safe):
+   - Run `build.sh`
+   - Test production changes in `pysheets-prod`
+ - Run `deploy.sh` (this can and will directly impact production)
+    - This increments the version of the source (to clear browser caches)
+    - This commits all changes to github
+    - A github action triggers DigitalOcean to deploy:
+        - Create a new deployment server
+        - Clone the `pysheets-prod` repo 
+        - Run `pip install -r requirements.txt`
+        - Run `procfile` to run `gunicorn`
+        - Switch the old server to the new server at [pysheets.app](https://pysheets.app)
 
-This builds and then commits the contents of `pysheets-prod` to github. 
-DigitalOcean is set up to watch that repo and reloads the app.
-Click on the link that is printed to see progress of the remote build and deploy.
+The deploy script will print link to DigitalOcean's app dashboard.
+Follow that link to see progress of the remote build and deploy status.
+If the remote install fails for some reason, production will not be impacted.
