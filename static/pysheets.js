@@ -222,11 +222,14 @@
     }
 
     window.clipboardWrite = (text, html) => {
-        return navigator.clipboard.write(
+        console.log("Writing to clipboard")
+        console.log("text:", text)
+        console.log("html:", html)
+        return navigator.clipboard.write([
             new ClipboardItem({
-                'text/plain': new Blob([text], {type: 'text/plain'}),
-                'text/html': new Blob([html], {type: 'text/html'})
+                ['text/plain']: new Blob([text], {type: 'text/plain'}),
+                ['text/html']: new Blob([html], {type: 'text/html'})
             })
-        ).then(() => {});
+        ]).then(() => console.log("Wrote to clipboard", text.length, html.length));
     }
 })();

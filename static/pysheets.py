@@ -158,7 +158,16 @@ class MultiSelection():
                 ])
                 for row in range(from_row, to_row + 1)
             ])
-        window.clipboardWrite(text)
+        html = ltk.Div(ltk.Table( *[
+            ltk.TableRow(*[
+                ltk.TableData(
+                    self.sheet.get(get_key_from_col_row(col, row)).script
+                ).attr("style", self.sheet.get(get_key_from_col_row(col, row)).attr("style"))
+                for col in range(from_col, to_col + 1)
+            ])
+            for row in range(from_row, to_row + 1)
+        ])).html()
+        window.clipboardWrite(text, html)
 
     def paste(self, event):
         # TODO: remove temporary patch until web caches have flushed with clients
