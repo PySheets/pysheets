@@ -728,7 +728,10 @@ Generate Python code.
         for key, cell in list(state.doc.edits[constants.DATA_KEY_CELLS].items()):
             state.doc.edits[constants.DATA_KEY_CELLS][key] = cell if isinstance(cell, dict) else cell.to_dict()
         for key in list(state.doc.edits[constants.DATA_KEY_PREVIEWS]):
-            state.doc.edits[constants.DATA_KEY_PREVIEWS][key] = previews[key]
+            try:
+                state.doc.edits[constants.DATA_KEY_PREVIEWS][key] = previews[key]
+            except:
+                pass # use may have deleted the preview
         edits = {}
         for key, edit in list(state.doc.edits.items()):
             if edit:
@@ -924,6 +927,21 @@ class Cell(ltk.TableData):
             self.set_css_editors()
         except:
             pass
+        self.scroll_selection()
+
+    def scroll_selection(self):
+        offset = self.offset()
+        container = ltk.find("#sheet-container").get(0)
+        scrollable_width = ltk.find("#sheet-scrollable").width()
+        scrollable_height = ltk.find("#sheet-container").height()
+        if offset.left < 100:
+            container.scrollLeft -= scrollable_width / 3
+        elif offset.left > scrollable_width - self.width():
+            container.scrollLeft += scrollable_width / 3
+        if offset.top < 100:
+            container.scrollTop -= scrollable_height / 3
+        elif offset.top > scrollable_height - self.height():
+            container.scrollTop += scrollable_height / 3
         return self
     
     def set_css_editors(self):
