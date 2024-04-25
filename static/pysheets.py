@@ -193,6 +193,7 @@ class MultiSelection():
                 for row, line in enumerate(text.split("\n")):
                     for column, text in enumerate(line.split("\t")):
                         paste_cell(column, row, text)
+            sheet.find_ai_suggestions()
 
         def paste_html(text):
             if not event.shiftKey:
@@ -206,6 +207,7 @@ class MultiSelection():
                 else:
                     paste_cell(0, 0, html.text())
             sheet.select(sheet.current)
+            sheet.find_ai_suggestions()
 
         window.clipboardRead(proxy(paste_text), proxy(paste_html))
 
@@ -442,11 +444,13 @@ class Spreadsheet():
         current = data.get(constants.DATA_KEY_CURRENT, "A1")
         ltk.schedule(lambda: self.select(self.get(current)), "select-later", 0.1)
         if is_doc:
-            sheet.find_frames()
-            sheet.find_urls()
+            self.find_ai_suggestions()
         state.console.write("network-status", f'[I/O] Loaded sheet "{state.doc.name}", {len(bytes)} bytes ✅')
         ltk.find("#main").animate(ltk.to_js({"opacity": 1}), 400)
         return cells
+
+    def find_ai_suggestions(self):
+        ltk.schedule(lambda: (self.find_frames(),self.find_urls()), "find ai hints", 0.1)
 
     def find_frames(self):
         visited = set()
@@ -456,7 +460,7 @@ class Spreadsheet():
                 col += 1
                 key = get_key_from_col_row(col, cell.row)
                 visited.add(key)
-                if not key in self.cells:
+                if not key in self.cells or self.cells[key].script == "":
                     break
             return col - cell.column
 
@@ -488,8 +492,11 @@ pysheets.sheet("{key}:{other_key}")
 """
             add_completion_button(cell.key, lambda: insert_completion(key, prompt, text, { "total": 0 }))
 
-        for key in sorted(self.cells.keys()):
-            cell = self.cells[key]
+        sorted_cells = sorted(
+            [cell for cell in self.cells.values() if cell.script],
+            key=lambda cell: (cell.column, cell.row)
+        )
+        for cell in sorted_cells:
             if cell.key in visited:
                 continue
             width = get_width(cell)
@@ -584,7 +591,7 @@ Generate Python code.
         debug("sheet.save_selection", self.selection_edited, self.selection.val(), self.current and self.current.text())
         if self.selection_edited and self.current and self.selection.val() != self.current.text():
             self.current.edited(self.selection.val())
-        self.find_urls()
+        self.find_ai_suggestions()
     
     def copy_selection_to_main_editor(self):
         debug("copy", self.selection.val())
@@ -656,7 +663,7 @@ Generate Python code.
     def worker_ready(self, data):
         for cell in self.cells.values():
             cell.worker_ready()
-        self.find_urls()
+        self.find_ai_suggestions()
 
     def save_file(self, done=None):
         try:
@@ -955,7 +962,11 @@ class Cell(ltk.TableData):
             window.addArrow(self.element, ltk.find(f"#preview-{self.key} .ltk-text"))
         if not self.inputs:
             return
-        cells = [self.sheet.cells[input] for input in self.inputs]
+        cells = [
+            self.sheet.cells[input]
+            for input in self.inputs
+            if input in self.sheet.cells
+        ]
         window.addArrow(create_marker(cells, "inputs-marker arrow"), self.element)
         self.addClass("arrow")
 
@@ -1519,7 +1530,7 @@ def update_cell(event=None):
         state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
         state.doc.last_edit = window.time()
         sheet.selection.css("height", cell.height())
-    sheet.find_urls()
+    sheet.find_ai_suggestions()
 
 
 main_editor = editor.Editor()
@@ -1969,7 +1980,7 @@ def insert_completion(key, prompt, text, budget):
 def add_completion_button(key, handler):
     def run(event):
         handler()
-        ltk.schedule(sheet.find_urls, "find-urls", 1)
+        ltk.schedule(sheet.find_ai_suggestions, "find-ai-suggestions", 1)
         
     ltk.find(f"#completion-{key}").remove()
     ltk.find(".packages-container").append(
@@ -2077,7 +2088,7 @@ state.console.write(
 def insert_url(event):
     if main_editor.get() == "":
         sheet.current.set("https://chrislaffra.com/forbes_ai_50_2024.csv")
-        sheet.find_urls()
+        sheet.find_ai_suggestions()
         set_random_color()
     else:
         lambda: state.console.write(
