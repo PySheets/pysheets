@@ -167,7 +167,6 @@ class MultiSelection():
             return [ elements.eq(n) for n in range(elements.length) ]
         ltk.find_list = find_list
 
-
         current = self.sheet.current
             
         def paste_cell(column, row, text, style=None):
@@ -197,7 +196,6 @@ class MultiSelection():
                         ltk.find(f".col-{current.column + column + 1}").width(col.attr("width"))
                 else:
                     paste_cell(0, 0, html.text())
-                html.dialog()
             sheet.select(sheet.current)
 
         window.clipboardRead(proxy(paste_text), proxy(paste_html))
@@ -631,6 +629,7 @@ Generate Python code.
         self.selection_edited = False
         self.selection \
             .attr("style", cell.attr("style")) \
+            .css("padding", "") \
             .css("position", "absolute") \
             .css("color", cell.css("color")) \
             .css("left", 0) \
@@ -913,7 +912,7 @@ class Cell(ltk.TableData):
         ltk.find("#cell-font-color").val(rgb_to_hex(self.css("color")) or constants.DEFAULT_COLOR)
         ltk.find("#cell-fill").val(rgb_to_hex(self.css("background-color")) or constants.DEFAULT_FILL)
         ltk.find("#cell-vertical-align").val(self.css("vertical-align") or constants.DEFAULT_VERTICAL_ALIGN)
-        ltk.find("#cell-text-align").val(self.css("text-align") or constants.DEFAULT_TEXT_ALIGN)
+        ltk.find("#cell-text-align").val(self.css("text-align").replace("start", "left") or constants.DEFAULT_TEXT_ALIGN)
 
     def clear(self):
         self.inputs = []
@@ -1643,14 +1642,12 @@ def create_sheet():
         event.preventDefault()
 
     @saveit
-    def set_vertical_align(event):
-        sheet.multi_selection.css("vertical-align", ltk.find(event.target).val())
-        event.preventDefault()
+    def set_vertical_align(index, option):
+        sheet.multi_selection.css("vertical-align", option.text())
 
     @saveit
-    def set_text_align(event):
-        sheet.multi_selection.css("text-align", ltk.find(event.target).val())
-        event.preventDefault()
+    def set_text_align(index, option):
+        sheet.multi_selection.css("text-align", option.text())
 
     ltk.find("#cell-attributes-container").empty().append(
         ltk.ColorPicker()
