@@ -211,7 +211,7 @@ class MultiSelection():
 
     def cut(self, event):
         self.copy(event)
-        self.clear(event)
+        self.clear()
 
     def clear(self):
         for cell in self.cells:
