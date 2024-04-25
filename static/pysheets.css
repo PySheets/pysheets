@@ -747,18 +747,6 @@ td:hover .debug-info {
     display: block;
 }
 
-.menu-button {
-    background-color: transparent;
-    font-size: 25px;
-    font-weight: bold;
-    border-width: 0;
-    width: 14px;
-}
-
-.menu-button:hover {
-    font-size: 30px;
-}
-
 .packages-container {
     align-content: center;
     flex-wrap: wrap;
