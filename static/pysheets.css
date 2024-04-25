@@ -20,7 +20,7 @@
     position: absolute;
     z-index: 1001;
     border-width: 0;
-    background: #FFD700;
+    background: #e4a11c;
 }
 
 .multi-select.top,  .multi-select.bottom  {
@@ -102,13 +102,13 @@ td {
 .cell {
     font-family: Arial;
     background-color: white;
-    padding: 3px 3px;
+    padding: 0px 3px;
     width: 92px;
     border: 1px solid #e1e1e1;
     border-width: 0 0 1px 1px;
     text-overflow: ellipsis; 
     overflow: hidden; 
-    vertical-align: middle;
+    vertical-align: bottom;
 }
 
 .cell.highlighted {
@@ -157,9 +157,10 @@ input.arrow {
     font-family: Helvetica;
     border: 0 solid #e1e1e1;
     border-width: 0 2px 1px 0;
-    border-bottom-color: #afafaf;
+    border-bottom-color: #dbdbdb;
+    border-right-color: #dbdbdb;
     background-color: white;
-    margin-right: -2px;
+    margin-right: -1px;
     margin-left: 1px;
     font-weight: normal;
 }
@@ -177,8 +178,8 @@ input.arrow {
     font-family: Helvetica;
     border: 0 solid transparent;
     border-width: 0 1px 1px 0;
-    border-right-color: #afafaf;
-    border-bottom-color: #afafaf;
+    border-right-color: #dbdbdb;
+    border-bottom-color: #dbdbdb;
     background-color: white;
     padding: 2px 18px 0 18px;
 }

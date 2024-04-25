@@ -107,10 +107,12 @@ class MultiSelection():
 
     def draw(self):
         ltk.find(".multi-select").remove()
+        if not self.cell1 or not self.cell2:
+            return
         pos1, pos2 = self.cell1.position(), self.cell2.position()
         left = min(pos1.left, pos2.left)
-        top = min(pos1.top, pos2.top)
-        right = max(pos1.left + self.cell1.outerWidth(), pos2.left + self.cell2.outerWidth()) - 2
+        top = min(pos1.top, pos2.top) - 1
+        right = max(pos1.left + self.cell1.outerWidth(), pos2.left + self.cell2.outerWidth()) - 1
         bottom = max(pos1.top + self.cell1.outerHeight(), pos2.top + self.cell2.outerHeight()) - 2
         if self.cell1 is not self.cell2:
             ltk.find("#sheet").append(
@@ -147,7 +149,7 @@ class MultiSelection():
             state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
         self.draw()
 
-    def copy(self):
+    def copy(self, event):
         from_col, to_col, from_row, to_row = self.dimensions
         text = "\n".join([
                 "\t".join([
@@ -158,20 +160,51 @@ class MultiSelection():
             ])
         window.clipboardWrite(text)
 
-    def paste(self):
+    def paste(self, event):
+        # TODO: remove temporary patch until web caches have flushed with clients
+        def find_list(selector, parent=None):
+            elements = parent.find(selector) if parent else ltk.jQuery(selector)
+            return [ elements.eq(n) for n in range(elements.length) ]
+        ltk.find_list = find_list
+
+
         current = self.sheet.current
+            
+        def paste_cell(column, row, text, style=None):
+            key = get_key_from_col_row(current.column + column, current.row + row)
+            cell = self.sheet.get(key)
+            cell.edited(text)
+            if style:
+                cell.prop("style", style) \
+                    .css("border", "") \
+                    .css("text-align", cell.css("text-align").replace("start", "left").replace("end", "right"))
+            return cell
 
         def paste_text(text):
-            for row, line in enumerate(text.split("\n")):
-                for column, text in enumerate(line.split("\t")):
-                    cell = self.sheet.get(get_key_from_col_row(current.column + column, current.row + row))
-                    cell.edited(text)
+            if event.shiftKey:
+                for row, line in enumerate(text.split("\n")):
+                    for column, text in enumerate(line.split("\t")):
+                        paste_cell(column, row, text)
 
-        window.clipboardRead(proxy(paste_text))
+        def paste_html(text):
+            if not event.shiftKey:
+                html = ltk.Div(text)
+                if html.find("tr").length:
+                    for row, tr in enumerate(ltk.find_list("tr", html)):
+                        for column, td in enumerate(ltk.find_list("td", tr)):
+                            paste_cell(column, row, td.text(), td.attr("style"))
+                    for column, col in enumerate(ltk.find_list("col", html)):
+                        ltk.find(f".col-{current.column + column + 1}").width(col.attr("width"))
+                else:
+                    paste_cell(0, 0, html.text())
+                html.dialog()
+            sheet.select(sheet.current)
 
-    def cut(self):
-        self.copy()
-        self.clear()
+        window.clipboardRead(proxy(paste_text), proxy(paste_html))
+
+    def cut(self, event):
+        self.copy(event)
+        self.clear(event)
 
     def clear(self):
         for cell in self.cells:
@@ -230,6 +263,8 @@ class Spreadsheet():
         cell.css("font-family", settings.get(constants.DATA_KEY_VALUE_FONT_FAMILY, constants.DEFAULT_FONT_FAMILY))
         cell.css("color", settings.get(constants.DATA_KEY_VALUE_COLOR, constants.DEFAULT_COLOR))
         cell.css("font-size", settings.get(constants.DATA_KEY_VALUE_FONT_SIZE, constants.DEFAULT_FONT_SIZE))
+        cell.css("vertical-align", settings.get(constants.DATA_KEY_VALUE_VERTICAL_ALIGN, constants.DEFAULT_VERTICAL_ALIGN))
+        cell.css("text-align", settings.get(constants.DATA_KEY_VALUE_TEXT_ALIGN, constants.DEFAULT_TEXT_ALIGN))
 
     def load_cell_value(self, cell, settings):
         embed = settings.get(constants.DATA_KEY_VALUE_EMBED, "")
@@ -259,10 +294,7 @@ class Spreadsheet():
         to_cell.value.get()
         to_cell.store_edit()
         from_cell.store_edit()
-        to_cell.css("font-family", from_cell.css("font-family"))
-        to_cell.css("font-size", from_cell.css("font-size"))
-        to_cell.css("color", from_cell.css("color"))
-        to_cell.css("background-color", from_cell.css("background-color"))
+        to_cell.attr("style", from_cell.attr("style"))
 
     def show_column_menu(self, event):
         label = ltk.find(event.target)
@@ -390,10 +422,10 @@ class Spreadsheet():
         load_previews(data.get(constants.DATA_KEY_PREVIEWS, {}))
         for row, settings in data.get(constants.DATA_KEY_ROWS, {}).items():
             ltk.find(f".row-{row}").css("height", settings[constants.DATA_KEY_HEIGHT])
-            ltk.find(f".cell.row-{row}").css("max-height", settings[constants.DATA_KEY_HEIGHT])
+            ltk.find(f".cell.row-{row}").css("height", settings[constants.DATA_KEY_HEIGHT])
         for column, settings in data.get(constants.DATA_KEY_COLUMNS, {}).items():
             ltk.find(f".col-{column}").css("width", settings[constants.DATA_KEY_WIDTH])
-            ltk.find(f".cell.col-{column}").css("max-width", settings[constants.DATA_KEY_WIDTH])
+            ltk.find(f".cell.col-{column}").css("width", settings[constants.DATA_KEY_WIDTH])
         if constants.DATA_KEY_EDITOR_WIDTH in data:
             ltk.find(".main-editor-container").width(data[constants.DATA_KEY_EDITOR_WIDTH])
         ltk.schedule(lambda: remove_arrows(1000), "remove arrows", 2.5)
@@ -569,12 +601,11 @@ Generate Python code.
         if len(event.key) == 1:
             if is_command_key(event):
                 if event.key == "c":
-                    self.multi_selection.copy()
+                    self.multi_selection.copy(event)
                 elif event.key == "v":
-                    self.multi_selection.paste()
+                    self.multi_selection.paste(event)
                 elif event.key == "x":
-                    self.multi_selection.cut()
-                    self.current.edited("")
+                    self.multi_selection.cut(event)
             if event.metaKey or event.ctrlKey:
                 return
             self.selection_edited = True
@@ -599,16 +630,14 @@ Generate Python code.
         cell.select()
         self.selection_edited = False
         self.selection \
+            .attr("style", cell.attr("style")) \
             .css("position", "absolute") \
             .css("color", cell.css("color")) \
-            .css("background-color", cell.css("background-color")) \
-            .css("font-family", cell.css("font-family")) \
-            .css("font-size", cell.css("font-size")) \
             .css("left", 0) \
             .css("top", 0) \
+            .css("height", "calc(100% - 6px)") \
+            .css("width", "calc(100% - 8px)") \
             .appendTo(cell.element) \
-            .css("width", cell.width() - 2) \
-            .css("height", cell.height()) \
             .attr("class", self.current.attr("class").replace("cell", "selection")) \
             .val(cell.text())
         self.selection.css("caret-color", "transparent")
@@ -883,16 +912,17 @@ class Cell(ltk.TableData):
         ltk.find("#cell-font-size").val(round(window.parseFloat(self.css("font-size"))) or constants.DEFAULT_FONT_SIZE)
         ltk.find("#cell-font-color").val(rgb_to_hex(self.css("color")) or constants.DEFAULT_COLOR)
         ltk.find("#cell-fill").val(rgb_to_hex(self.css("background-color")) or constants.DEFAULT_FILL)
+        ltk.find("#cell-vertical-align").val(self.css("vertical-align") or constants.DEFAULT_VERTICAL_ALIGN)
+        ltk.find("#cell-text-align").val(self.css("text-align") or constants.DEFAULT_TEXT_ALIGN)
 
     def clear(self):
         self.inputs = []
-        self.css("color", "")
-        self.css("font-size", "")
-        self.css("font-family", "")
-        self.css("background-color", "")
+        self.attr("style", "")
         ltk.find(f"#preview-{self.key}").remove()
         ltk.find(f"#completion-{self.key}").remove()
         state.console.remove(f"ai-{self.key}")
+        ltk.find(f".row-{self.row + 1}").height(lambda index, height: min(height, constants.DEFAULT_ROW_HEIGHT))
+        ltk.find(f".col-{self.column + 1}").width(lambda index, width: min(width, constants.DEFAULT_COLUMN_WIDTH))
         del self.sheet.cells[self.key]
         if self.key in previews:
             del previews[self.key]
@@ -1181,6 +1211,10 @@ class Cell(ltk.TableData):
             result[constants.DATA_KEY_VALUE_COLOR] = style.getPropertyValue("color")
         if style.getPropertyValue("background-color") != constants.DEFAULT_FILL:
             result[constants.DATA_KEY_VALUE_FILL] = style.getPropertyValue("background-color")
+        if style.getPropertyValue("vertical-align") != constants.DEFAULT_VERTICAL_ALIGN:
+            result[constants.DATA_KEY_VALUE_VERTICAL_ALIGN] = style.getPropertyValue("vertical-align")
+        if style.getPropertyValue("text-align") != constants.DEFAULT_TEXT_ALIGN:
+            result[constants.DATA_KEY_VALUE_TEXT_ALIGN] = style.getPropertyValue("text-align")
         return result
 
     def __repr__(self):
@@ -1608,6 +1642,16 @@ def create_sheet():
         sheet.multi_selection.css("background-color", ltk.find(event.target).val())
         event.preventDefault()
 
+    @saveit
+    def set_vertical_align(event):
+        sheet.multi_selection.css("vertical-align", ltk.find(event.target).val())
+        event.preventDefault()
+
+    @saveit
+    def set_text_align(event):
+        sheet.multi_selection.css("text-align", ltk.find(event.target).val())
+        event.preventDefault()
+
     ltk.find("#cell-attributes-container").empty().append(
         ltk.ColorPicker()
         .on("input", proxy(set_background))
@@ -1619,6 +1663,12 @@ def create_sheet():
         ),
         ltk.Select(map(str, constants.FONT_SIZES), "12", set_font_size).attr(
             "id", "cell-font-size"
+        ),
+        ltk.Select(["top", "middle", "bottom"], "bottom", set_vertical_align).attr(
+            "id", "cell-vertical-align"
+        ),
+        ltk.Select(["left", "center", "right"], "right", set_text_align).attr(
+            "id", "cell-text-align"
         ),
     )
     state.console.setup()
@@ -1928,14 +1978,14 @@ def sheet_resized():
 
 def column_resized(event):
     column = ltk.find(event.target)
-    ltk.find(f".cell.col-{column.attr('col')}").css("max-width", column.width())
+    ltk.find(f".cell.col-{column.attr('col')}").css("width", column.width())
     sheet_resized()
     sheet.multi_selection.draw()
 
 
 def row_resized(event):
     row = ltk.find(event.target)
-    ltk.find(f".cell.row-{row.attr('row')}").css("max-height", row.height())
+    ltk.find(f".cell.row-{row.attr('row')}").css("height", row.height())
     sheet_resized()
     sheet.multi_selection.draw()
 

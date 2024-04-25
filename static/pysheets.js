@@ -201,21 +201,32 @@
         return window.editor;
     }
 
-    window.clipboardRead = (callback) => {
+    window.clipboardRead = (text_callback, html_callback) => {
+        const callback = {
+            "text/plain": text_callback,
+            "text/html": html_callback,
+        };
         navigator.clipboard.read().then(items => {
             for (const item of items) {
                 for (const type of item.types) {
-                    if (type === "text/plain") {
-                        item.getType(type).then(blob => {
-                            blob.text().then(text => callback(text))
+                    item.getType(type).then(blob => {
+                        blob.text().then(text => {
+                            if (callback[type]) {
+                                callback[type](text)
+                            }
                         })
-                    }
+                    })
                 }
-              }
+            }
         });
     }
 
-    window.clipboardWrite = (text) => {
-        return navigator.clipboard.writeText(text).then(() => {});
+    window.clipboardWrite = (text, html) => {
+        return navigator.clipboard.write(
+            new ClipboardItem({
+                'text/plain': new Blob([text], {type: 'text/plain'}),
+                'text/html': new Blob([html], {type: 'text/html'})
+            })
+        ).then(() => {});
     }
 })();
