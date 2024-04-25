@@ -272,6 +272,8 @@ class Spreadsheet():
         cell.css("font-size", settings.get(constants.DATA_KEY_VALUE_FONT_SIZE, constants.DEFAULT_FONT_SIZE))
         cell.css("vertical-align", settings.get(constants.DATA_KEY_VALUE_VERTICAL_ALIGN, constants.DEFAULT_VERTICAL_ALIGN))
         cell.css("text-align", settings.get(constants.DATA_KEY_VALUE_TEXT_ALIGN, constants.DEFAULT_TEXT_ALIGN))
+        cell.css("font-weight", settings.get(constants.DATA_KEY_VALUE_FONT_WEIGHT, constants.DEFAULT_FONT_WEIGHT))
+        cell.css("font-style", settings.get(constants.DATA_KEY_VALUE_FONT_STYLE, constants.DEFAULT_FONT_STYLE))
 
     def load_cell_value(self, cell, settings):
         embed = settings.get(constants.DATA_KEY_VALUE_EMBED, "")
@@ -922,6 +924,8 @@ class Cell(ltk.TableData):
         ltk.find("#cell-fill").val(rgb_to_hex(self.css("background-color")) or constants.DEFAULT_FILL)
         ltk.find("#cell-vertical-align").val(self.css("vertical-align") or constants.DEFAULT_VERTICAL_ALIGN)
         ltk.find("#cell-text-align").val(self.css("text-align").replace("start", "left") or constants.DEFAULT_TEXT_ALIGN)
+        ltk.find("#cell-font-weight").val(self.css("font-weight").replace("400", "normal") or constants.DEFAULT_FONT_WEIGHT)
+        ltk.find("#cell-font-style").val(self.css("font-style") or constants.DEFAULT_FONT_STYLE)
 
     def clear(self):
         self.inputs = []
@@ -1215,6 +1219,10 @@ class Cell(ltk.TableData):
             result[constants.DATA_KEY_VALUE_FONT_FAMILY] = style.getPropertyValue("font-family")
         if style.getPropertyValue("font-size") != constants.DEFAULT_FONT_SIZE:
             result[constants.DATA_KEY_VALUE_FONT_SIZE] = style.getPropertyValue("font-size")
+        if style.getPropertyValue("font-weight") != constants.DEFAULT_FONT_WEIGHT:
+            result[constants.DATA_KEY_VALUE_FONT_WEIGHT] = style.getPropertyValue("font-weight")
+        if style.getPropertyValue("font-style") != constants.DEFAULT_FONT_STYLE:
+            result[constants.DATA_KEY_VALUE_FONT_STYLE] = style.getPropertyValue("font-style")
         if style.getPropertyValue("color") != constants.DEFAULT_COLOR:
             result[constants.DATA_KEY_VALUE_COLOR] = style.getPropertyValue("color")
         if style.getPropertyValue("background-color") != constants.DEFAULT_FILL:
@@ -1641,6 +1649,14 @@ def create_sheet():
         sheet.multi_selection.css("font-size", f"{option.text()}px")
 
     @saveit
+    def set_font_weight(index, option):
+        sheet.multi_selection.css("font-weight", option.text())
+
+    @saveit
+    def set_font_style(index, option):
+        sheet.multi_selection.css("font-style", option.text())
+
+    @saveit
     def set_color(event):
         sheet.multi_selection.css("color", ltk.find(event.target).val())
         event.preventDefault()
@@ -1669,6 +1685,12 @@ def create_sheet():
         ),
         ltk.Select(map(str, constants.FONT_SIZES), "12", set_font_size).attr(
             "id", "cell-font-size"
+        ),
+        ltk.Select(["normal", "italic"], "normal", set_font_style).attr(
+            "id", "cell-font-style"
+        ),
+        ltk.Select(["normal", "bold"], "normal", set_font_weight).attr(
+            "id", "cell-font-weight"
         ),
         ltk.Select(["top", "middle", "bottom"], "bottom", set_vertical_align).attr(
             "id", "cell-vertical-align"
