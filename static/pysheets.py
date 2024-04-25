@@ -472,7 +472,7 @@ class Spreadsheet():
                 row += 1
                 key = get_key_from_col_row(cell.column, row)
                 visited.add(key)
-                if not key in self.cells:
+                if not key in self.cells or self.cells[key].script == "":
                     break
             return row - cell.row
 
