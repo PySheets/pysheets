@@ -217,7 +217,7 @@ class MultiSelection():
 
     def clear(self):
         for cell in self.cells:
-            cell.edited("")
+            cell.clear()
             state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
         self.draw()
 
@@ -935,6 +935,7 @@ class Cell(ltk.TableData):
         ltk.find("#cell-font-style").val(self.css("font-style") or constants.DEFAULT_FONT_STYLE)
 
     def clear(self):
+        self.text("")
         self.inputs = []
         self.attr("style", "")
         ltk.find(f"#preview-{self.key}").remove()
