@@ -23,6 +23,10 @@ def create_menu():
         ltk.Menu("View",
              ltk.MenuItem("◱", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),
         ),
+        ltk.Menu("User",
+            ltk.MenuItem("👋", "Sign out", "", ltk.proxy(state.logout)),
+            ltk.MenuItem("💀", "Forget me", "", ltk.proxy(state.forget_me)),
+        )
     )
 DELETE_PROMPT = """
 This will permanently delete the current sheet.

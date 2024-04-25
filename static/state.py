@@ -171,16 +171,6 @@ def forget_me(event):
     dialog.parent().css("width", 400)
 
 
-def show_settings(event):
-    button = ltk.find(event.target)
-    popup = ltk.MenuPopup(
-        ltk.MenuItem("👋", "Sign out", "", ltk.proxy(logout)),
-        ltk.MenuItem("💀", "Forget me", "", ltk.proxy(forget_me)),
-    )
-    popup.css("display", "block")
-    popup.show(button.parent())
-
-
 def add_token(url):
     sep = "&" if "?" in url else "?"
     return f"{url}{sep}{constants.DATA_KEY_TOKEN}={user.token}"
@@ -398,6 +388,5 @@ def check_lastpass():
     if ltk.find("div[data-lastpass-root]").length:
         console.write("lastpass", f"[Error] Lastpass was detected. It slows down PySheets. Please disable it for this page.")
 
-ltk.find(".menu-button").on("click", ltk.proxy(show_settings))
 ltk.window.addEventListener("popstate", lambda event: print("popstate"))
 check_lastpass()
