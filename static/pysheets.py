@@ -13,9 +13,13 @@ import sys
 
 from pyscript import window  # type: ignore
 
-state.console.write("pysheets", f"[Main] Pysheets starting {constants.ICON_HOUR_GLASS}")
 
-DEBUG = False
+def debug(*args):
+    if False:
+        print("[Debug]", *args)
+
+
+state.console.write("pysheets", f"[Main] Pysheets starting {constants.ICON_HOUR_GLASS}")
 
 sheet = None
 previews = {}
@@ -26,9 +30,7 @@ logger.setLevel(
 )
 local_storage = window.localStorage
 proxy = ltk.proxy
-def debug(*args):
-    if DEBUG:
-        print("[Debug]", *args)
+
 
 is_mac = window.navigator.platform.upper().startswith("MAC")
 is_ios = window.navigator.platform.upper().startswith("I")
@@ -153,7 +155,7 @@ class MultiSelection():
         from_col, to_col, from_row, to_row = self.dimensions
         text = "\n".join([
                 "\t".join([
-                    self.sheet.get(get_key_from_col_row(col, row)).script
+                    str(self.sheet.get(get_key_from_col_row(col, row)).script)
                     for col in range(from_col, to_col + 1)
                 ])
                 for row in range(from_row, to_row + 1)
@@ -250,6 +252,7 @@ class Spreadsheet():
         self.selection = ltk.Input("").addClass("selection")
         self.multi_selection = MultiSelection(self)
         self.selection_edited = False
+        self.mousedown = False
         ltk.find("#main").on("keydown", proxy(lambda event: self.navigate(event)))
 
         # ltk.find(".column-label").on("contextmenu", proxy(lambda event: self.show_column_menu(event)))
@@ -377,21 +380,35 @@ class Spreadsheet():
         try:
             key = result["key"]
             cell: Cell = self.get(key)
+            cell.running = False
+            if result["error"]:
+                error = result["error"]
+                duration = result["duration"]
+                tb = result["traceback"]
+                parts = error.split("'")
+                if len(parts) == 3 and parts[0] == "name " and parts[2] == " is not defined":
+                    key = parts[1]
+                    if key in cell.inputs:
+                        # The worker job ran out of sequence, ignore this error for now
+                        return
+                cell.update(duration, error)
+                state.console.write(key, f"[Error] {key}: {error} {tb}")
+                return
             if not cell.script:
                 return
-            cell.update(result["duration"], result["value"], result["preview"])
-            cell.running = False
+            value = result["value"]
+            if isinstance(value, str):
+                value = value[1:-1] if value.startswith("'") and value.endswith("'") else value
+            cell.update(result["duration"], value, result["preview"])
             cell.notify()
-            debug("Worker", key, "=>", result["value"])
-            if result["error"]:
-                cell.update(result["duration"], result["error"])
-                state.console.write(key, f"[Error] {key}: {result['error']} {result['traceback']}")
+            debug("Worker result for", key, "=>", result["value"])
         except Exception as e:
             state.console.write(key, f"[Error] Cannot handle worker result: {type(e)}: {e}")
 
     def notify(self, cell):
         for other in self.cells.values():
             if other.key != cell.key and cell.key in other.inputs:
+                debug("notify", other.key, "for", cell.key)
                 other.evaluate()
 
     def setup(self, data, is_doc=True):
@@ -533,12 +550,18 @@ Generate Python code.
                 request_completion(key, prompt.strip())
 
     def setup_selection(self):
+        
         def mousedown(event):
-            cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
-            if cell.hasClass("selection"):
+            self.mousedown = False
+            if ltk.find(event.target).hasClass("selection"):
                 self.selection.css("caret-color", "black").focus()
                 self.selection_edited = True
-            elif cell.hasClass("cell"):
+                return
+            self.mousedown = True
+            cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
+            if not cell:
+                return
+            if cell.hasClass("cell"):
                 debug("sheet.setup.selection", cell.attr("id"))
                 self.save_selection()
                 if event.shiftKey:
@@ -548,26 +571,20 @@ Generate Python code.
             event.preventDefault()
 
         def mousemove(event):
+            if not self.mousedown:
+                return
             cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
             self.multi_selection.extend(cell)
             event.preventDefault()
 
         def mouseup(event):
+            if not self.mousedown:
+                return
             cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
             self.multi_selection.stop(cell)
             event.preventDefault()
 
-        def activate(event):
-            if ltk.find(".selection:focus").length == 0:
-                (self.selection
-                    .val("")
-                    .val(self.current.text())
-                    .css("caret-color", "black")
-                    .focus())
-            event.preventDefault()
-
         ltk.find(".cell") \
-            .on("dblclick", proxy(activate)) \
             .on("mousedown", proxy(mousedown)) \
             .on("mousemove", proxy(mousemove)) \
             .on("mouseup", proxy(mouseup))
@@ -755,7 +772,6 @@ class Cell(ltk.TableData):
         ltk.TableData.__init__(self, "")
         self.sheet= sheet
         self.key = get_key_from_col_row(column, row)
-        debug("Cell", self.key, column, row, script)
         self.element = ltk.find(f"#{self.key}")
         if not self.element.attr("id"):
             debug("Error: Cell has no element", self)
@@ -826,10 +842,12 @@ class Cell(ltk.TableData):
         if script == "":
             self.clear()
         self.add_preview(preview)
-        self.evaluate()
         if self.sheet.current == self:
             main_editor.set(self.script)
             self.sheet.select(self)
+        if not self.is_formula():
+            self.sheet.cache[self.key] = convert(script)
+        ltk.schedule(self.evaluate, f"eval-{self.key}")
     
     def load(self, script, kind, preview, embed):
         self.embed = embed
@@ -838,18 +856,20 @@ class Cell(ltk.TableData):
         debug("load", self.key, kind, script, "=>", repr(self.text()))
 
     def is_formula(self):
-        return self.script and self.script.startswith("=")
+        return self.script and isinstance(self.script, str) and self.script.startswith("=")
 
     def update(self, duration, value, preview=None):
         debug("update value", self.key, value)
-        self.sheet.cache[self.key] = convert(value) if value != "" else 0
         self.add_preview(preview or self.get_preview(value))
         if self.script:
             count = self.sheet.counts[self.key]
             if count:
                 speed = '🐌' if duration > 1.0 else '🚀'
                 if isinstance(value, str) and not "Error" in value:
-                    state.console.write(self.key, f"[Sheet] {self.key}: runs: {count}, {duration:.3f}s {speed}")
+                    state.console.write(
+                        self.key,
+                        f"[Sheet] {self.key}: Ran in worker {count} time{'s' if count > 1 else ''}, last run took {duration:.3f}s {speed}"
+                    )
         self.notify()
         self.find(".loading-indicator").remove()
         children = self.children()
@@ -864,7 +884,6 @@ class Cell(ltk.TableData):
             return api.get_dict_table(value)
 
     def notify(self):
-        debug("notify", self.key)
         self.sheet.notify(self)
     
     def worker_ready(self):
@@ -1183,14 +1202,13 @@ class Cell(ltk.TableData):
             except Exception as e:
                 state.console.write("sheet", f"[Error] Cannot get inputs for {self.key}", e)
                 self.inputs = set()
-            cache_keys = set(self.sheet.cache.keys())
         state.console.remove(self.key)
         if is_formula:
             try:
-                if state.pyodide or "no-worker" in self.script:
+                if not "# worker" in self.script and (state.pyodide or "# no-worker" in self.script):
                     self.evaluate_locally(expression)
                 else:
-                    raise Exception()
+                    raise Exception("only run in worker")
             except Exception as e:
                 if state.pyodide:
                     state.console.write(self.key, f"[Error] {self.key}: {e}")
@@ -1210,26 +1228,27 @@ class Cell(ltk.TableData):
         start = ltk.get_time()
         exec(expression, inputs)
         duration = ltk.get_time() - start
-        self.update(duration, inputs["_"])
+        value = inputs["_"]
+        self.sheet.cache[self.key] = convert(value)
+        self.update(duration, value)
     
     def show_loading(self):
-        self.find(".loading-indicator").remove()
-        self.append(ltk.Span(constants.ICON_HOUR_GLASS).addClass("loading-indicator"))
+        text = self.text()
+        if not text.endswith(constants.ICON_HOUR_GLASS):
+            self.text(f"{text}{constants.ICON_HOUR_GLASS}")
 
     def evaluate_in_worker(self, expression):
         if self.running:
             return
-        debug("evaluate in worker", self.key, expression)
         self.sheet.counts[self.key] += 1
         self.running = True
         self.needs_worker = True
         self.show_loading()
-        state.console.write(self.key, f"[Sheet] {self.key}: running in worker {constants.ICON_HOUR_GLASS}")
         inputs = dict(
             (key,value)
             for key, value in self.sheet.cache.items()
-            if key in sheet.cells and not sheet.cells[key].is_formula()
         )
+        debug("evaluate in worker", self.key, expression, inputs)
         ltk.publish(
             "Application",
             "Worker",
@@ -1550,7 +1569,6 @@ def update_cell(event=None):
         cell.evaluate()
         state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
         state.doc.last_edit = window.time()
-        sheet.selection.css("height", cell.height())
     sheet.find_ai_suggestions()
 
 
@@ -2095,7 +2113,7 @@ state.console.write(
 )
 state.console.write(
     "welcome",
-    f"[Main] PySheets {version_app} is in early beta-mode 😱. Use only for experiments.",
+    f"[Main] PySheets {version_app} is in Pubkic Beta-mode 😱. Use only for experiments.",
 )
 state.console.write(
     "form",
@@ -2133,6 +2151,6 @@ def convert(value):
     try:
         return float(value) if "." in value else int(value)
     except:
-        return value
+        return value if value else 0
 
 

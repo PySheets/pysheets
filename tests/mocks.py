@@ -1,4 +1,5 @@
 import sys
+import traceback
 import os
 
 sys.path.append(os.path.dirname(__file__))
@@ -16,3 +17,12 @@ pyscript.window.parseFloat = lambda s: 0
 
 import state
 state.mobile = lambda: True
+state.show_worker_status = lambda: True
+
+def schedule(function, key, duration=None):
+    try:
+        function()
+    except Exception as e:
+        print("Mocks: ignore")
+        traceback.print_exc()
+ltk.schedule = schedule

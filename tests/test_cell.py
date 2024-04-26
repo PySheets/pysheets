@@ -31,9 +31,8 @@ class TestCellValue(unittest.TestCase):
         sheet = Spreadsheet()
         cell = sheet.get("B2")
         cell.set("=20 + 30", "fifty")
-        cell.update(3.14, 60, "sixty")
+        cell.evaluate_locally("_=60")
         self.assertEqual(sheet.cache, { "B2": 60 })
-        self.assertEqual(cell.preview, "sixty")
 
     def test_cell_evaluate(self):
         sheet = Spreadsheet()

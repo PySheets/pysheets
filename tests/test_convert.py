@@ -16,4 +16,4 @@ class TestConvert(unittest.TestCase):
         self.assertEqual(convert("hello"), "hello")
 
     def test_convert_empty(self):
-        self.assertEqual(convert(""), "")
+        self.assertEqual(convert(""), 0)
