@@ -6,6 +6,7 @@ from .firestore import get_file_with_uid
 from .firestore import get_logs
 from .firestore import log
 from .firestore import get_edits
+from .firestore import get_activity
 from .firestore import add_edit
 from .firestore import forget
 from .firestore import new

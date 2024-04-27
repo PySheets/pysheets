@@ -2,6 +2,7 @@ from firebase_admin import credentials
 from firebase_admin import initialize_app
 from firebase_admin import firestore
 
+import collections
 import hashlib
 import json
 import openai
@@ -383,6 +384,7 @@ def get_edits(token, uid, ts):
         return f'{{ "{constants.DATA_KEY_ERROR}": "no uid" }}'
     if get_user_files(token).document(uid).get().exists:
         edits = docid_to_edits.document(uid).collection("edits").where(constants.DATA_KEY_TIMESTAMP, ">", float(ts)).get()
+        print("get edits ", uid, "=>", len(edits))
         return {
             constants.DATA_KEY_UID: uid,
             constants.DATA_KEY_TIMESTAMP: ts,
@@ -439,9 +441,10 @@ def check_owner(token, uid):
 
 def check_admin(token):
     user = token_to_email.document(token).get().to_dict()
-    if user and user[constants.DATA_KEY_EMAIL] in admins:
+    email = user[constants.DATA_KEY_EMAIL] if user else ""
+    if email in admins:
         return
-    raise ValueError(f"admin")
+    raise ValueError(f"{email} is not an admin")
 
 
 def share(token, sheet_id, email):
@@ -450,16 +453,48 @@ def share(token, sheet_id, email):
         token_to_email.document(email).set({ constants.DATA_KEY_EMAIL: email })
     email_to_files.document(email).collection("files").document(sheet_id).set({ constants.DATA_KEY_UID: sheet_id })
         
-    
-def get_users(token):
-    check_admin(token)
-    emails = set(list(filter(None, [
+
+def get_all_emails():
+    return set(list(filter(None, [
         doc.to_dict().get(constants.DATA_KEY_EMAIL, "")
         for doc in token_to_email.stream()
     ])))
-    def get_files(email):
-        return [
-            doc.to_dict().get(constants.DATA_KEY_UID)
-            for doc in email_to_files.document(email).collection('files').stream()
-        ]
-    return { "users": dict((email, get_files(email)) for email in emails)}
+
+
+def get_files(email):
+    return [
+        doc.to_dict()
+        for doc in email_to_files.document(email).collection('files').stream()
+    ]
+
+
+def get_file_ids(email):
+    return [ file.get(constants.DATA_KEY_UID) for file in get_files(email)]
+
+
+def get_users(token):
+    check_admin(token)
+    return { "users": dict((email, get_file_ids(email)) for email in get_all_emails())}
+
+
+def get_activity(token, ts):
+    check_admin(token)
+    uids = set([
+        file.get(constants.DATA_KEY_UID) 
+        for email in get_all_emails()
+        for file in get_files(email)
+    ])
+    MINUTE = 60
+    HOUR = 24 * MINUTE
+    edits = collections.defaultdict(list)
+    for uid in uids:
+        for reference in docid_to_edits.document(uid).collection("edits").where(constants.DATA_KEY_TIMESTAMP, ">", float(ts)).get():
+            edit = reference.to_dict()
+            if not edit[constants.DATA_KEY_EMAIL] in admins:
+                edits[round(edit[constants.DATA_KEY_TIMESTAMP] / HOUR)].append(edit[constants.DATA_KEY_EMAIL])
+
+    return {
+        "edits": dict((ts * HOUR, len(emails)) for ts, emails in edits.items()),
+        "emails": dict((ts * HOUR, list(set(emails))) for ts, emails in edits.items()),
+    }
+

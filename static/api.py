@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+import ltk
 import pyscript # type: ignore
 import time
 
@@ -102,8 +103,17 @@ class PySheets():
     def cell(self, key):
         return self._spreadsheet.get(key) if self._spreadsheet else window.jQuery(f"#{key}")
 
-    def load(self, url):
-        return urlopen(url)
+    def set_cell(self, key, value):
+        cell = self.cell(key)
+        cell.set(f"={repr(value)}")
+        cell.evaluate()
+
+
+    def load(self, url, handler=None):
+        if handler:
+            ltk.get(window.addToken(url), handler)
+        else:
+            return urlopen(url)
 
     def load_sheet(self, url):
         import pandas as pd

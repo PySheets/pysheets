@@ -234,6 +234,15 @@ def edits():
     )
 
 
+@app.route("/activity", methods=["GET"])
+def activity():
+    print("ACTIVITY SINCE", request.args.get(DATA_KEY_TIMESTAMP))
+    return storage.get_activity(
+        request.args.get(DATA_KEY_TOKEN),
+        request.args.get(DATA_KEY_TIMESTAMP) or 0,
+    )
+
+
 @app.route("/history", methods=["GET"])
 def history():
     return storage.get_history(
