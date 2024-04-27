@@ -309,7 +309,7 @@ class Console():
                             "",
                         ]))
                     else:
-                        self.write("py-error", text)
+                        self.write("py-error", f"[Error] {text}")
             finally:
                 py_error.remove()
         ltk.repeat(find_errors, 1)
@@ -369,9 +369,10 @@ def check_worker(packages):
             protocol = window.document.location.protocol
             host = window.document.location.host
             window.location = f"{protocol}//{host}/?U=${doc.uid}"
+        packages_note = "Note that only full-Python wheels are supported by PyScript." if packages else ""
         console.write(
             "worker-failed",
-            f"[Error] It looks like the worker cannot run with packages {repr(packages)}. Only full-Python wheels are supported by PyScript.",
+            f"[Error] It takes longer for the worker to start than expected. {packages_note}",
             action=ltk.Button(f"⚠️ Fix", fix_packages).addClass("small-button completion-button")
         )
 

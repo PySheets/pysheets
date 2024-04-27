@@ -707,7 +707,6 @@ Generate Python code.
             data = {
                 constants.DATA_KEY_UID: state.doc.uid,
                 constants.DATA_KEY_NAME: state.doc.name,
-                constants.DATA_KEY_SCREENSHOT: get_plot_screenshot(),
                 constants.DATA_KEY_TIMESTAMP: window.time(),
                 constants.DATA_KEY_CELLS: cells,
                 constants.DATA_KEY_PACKAGES: packages,
@@ -733,8 +732,12 @@ Generate Python code.
                 if done:
                     done()
 
-            url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
-            ltk.post(state.add_token(url), data, proxy(save_done))
+            def send(screenshot):
+                data[constants.DATA_KEY_SCREENSHOT] = screenshot
+                url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
+                ltk.post(state.add_token(url), data, proxy(save_done))
+
+            take_screenshot(send)
         except Exception as e:
             logger.error("Error saving file %s", e)
             raise e
@@ -1414,6 +1417,26 @@ def remove_marker(email):
     ltk.find(f".marker-{email_to_class(email)}").remove()
 
 
+def take_screenshot(callback):
+    options = ltk.to_js({
+        "width": 200 * 4,
+        "height": 150 * 4,
+        "x": 0,
+        "y": 48,
+        "scale": 0.25,
+    })
+
+    def fail(error):
+        window.console.orig_log(error)
+        state.console.write("screenshot", f"[Error] Cannot take screenshot: {error}")
+        callback(get_plot_screenshot())
+
+    try:
+        window.html2canvas(window.document.body, options) \
+            .then(ltk.proxy(lambda canvas: callback(canvas.toDataURL()))) \
+            .catch(ltk.proxy(fail))
+    except Exception as e:
+        fail(e)
 
 
 def get_plot_screenshot():
