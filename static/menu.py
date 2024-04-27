@@ -7,6 +7,18 @@ import constants
 logger = logging.getLogger('root')
 
 
+def landing(event):
+    window.open("/")
+
+
+def feedback(event):
+    window.open("https://docs.google.com/forms/d/e/1FAIpQLScmeDuDr5fxKYhe04Jo-pNS73P4VF2m-i8X8EC9rfKl-jT84A/viewform")
+
+
+def discord(event):
+    window.open("https://discord.com/invite/4jjFF6hj")
+
+
 def create_menu():
     return ltk.MenuBar(
         ltk.Menu("File",
@@ -26,6 +38,11 @@ def create_menu():
         ltk.Menu("User",
             ltk.MenuItem("👋", "Sign out", "", ltk.proxy(state.logout)),
             ltk.MenuItem("💀", "Forget me", "", ltk.proxy(state.forget_me)),
+        ),
+        ltk.Menu("Help",
+            ltk.MenuItem("🅿️", "PySheets Website", "", ltk.proxy(landing)),
+            ltk.MenuItem("👏", "Give Feedback", "", ltk.proxy(feedback)),
+            ltk.MenuItem("💬", "Visit Discord", "", ltk.proxy(discord)),
         )
     )
 DELETE_PROMPT = """
