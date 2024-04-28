@@ -107,6 +107,7 @@ td {
     border: 1px solid #e1e1e1;
     border-width: 0 0 1px 1px;
     text-overflow: ellipsis; 
+    overflow-wrap: anywhere;
     overflow: hidden; 
     vertical-align: bottom;
 }
