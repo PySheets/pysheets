@@ -229,6 +229,7 @@ def register(email, password):
     logger.info("[Storage] Register %s with %s", email, code)
     registration.document(code).set({
         constants.DATA_KEY_EMAIL: email,
+        constants.DATA_KEY_TIMESTAMP: int(time.time()),
         constants.DATA_KEY_PASSWORD: hash_password(password),
     })
     send_confirmation(
@@ -461,6 +462,10 @@ def get_all_emails():
     ])))
 
 
+def get_all_registrations():
+    return [registration.to_dict() for registration in registration.stream()]
+
+
 def get_files(email):
     return [
         doc.to_dict()
@@ -479,22 +484,40 @@ def get_users(token):
 
 def get_activity(token, ts):
     check_admin(token)
+    print("### Get activity")
     uids = set([
         file.get(constants.DATA_KEY_UID) 
         for email in get_all_emails()
         for file in get_files(email)
     ])
+    print(f"### Found a total of {len(uids)} doc uids")
     MINUTE = 60
     HOUR = 24 * MINUTE
-    edits = collections.defaultdict(list)
-    for uid in uids:
-        for reference in docid_to_edits.document(uid).collection("edits").where(constants.DATA_KEY_TIMESTAMP, ">", float(ts)).get():
+    edits_per_hour = collections.defaultdict(list)
+    for n, uid in enumerate(uids):
+        edits = docid_to_edits.document(uid).collection("edits").where(constants.DATA_KEY_TIMESTAMP, ">", float(ts)).get()
+        if n % 100 == 0:
+            print(f"###  {n}/{len(uids)}")
+        for reference in edits:
             edit = reference.to_dict()
-            if not edit[constants.DATA_KEY_EMAIL] in admins:
-                edits[round(edit[constants.DATA_KEY_TIMESTAMP] / HOUR)].append(edit[constants.DATA_KEY_EMAIL])
+            email = edit[constants.DATA_KEY_EMAIL]
+            if not email in admins:
+                hour_timestamp = round(edit[constants.DATA_KEY_TIMESTAMP] / HOUR)
+                edits_per_hour[hour_timestamp].append(email)
+
+    edits_per_hour_as_dict = dict((ts * HOUR, len(emails)) for ts, emails in edits_per_hour.items())
+    emails_per_hour = dict((ts * HOUR, list(set(emails))) for ts, emails in edits_per_hour.items())
+    all_registered = {}
+    for registration in get_all_registrations():
+        all_registered[registration[constants.DATA_KEY_EMAIL]] = registration.get(constants.DATA_KEY_TIMESTAMP, 0)
+
+    json.dumps(edits_per_hour_as_dict)
+    json.dumps(emails_per_hour)
+    json.dumps(all_registered)
 
     return {
-        "edits": dict((ts * HOUR, len(emails)) for ts, emails in edits.items()),
-        "emails": dict((ts * HOUR, list(set(emails))) for ts, emails in edits.items()),
+        "edits": edits_per_hour_as_dict,
+        "emails": emails_per_hour,
+        "registered": all_registered,
     }
 
