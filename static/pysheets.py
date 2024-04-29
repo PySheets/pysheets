@@ -2136,7 +2136,7 @@ state.console.write(
 )
 state.console.write(
     "welcome",
-    f"[Main] PySheets {version_app} is in Pubkic Beta-mode 😱. Use only for experiments.",
+    f"[Main] PySheets {version_app} is in Beta-mode 😱. Use only for experiments.",
 )
 state.console.write(
     "form",
