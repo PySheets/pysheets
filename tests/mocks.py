@@ -18,6 +18,7 @@ pyscript.window.parseFloat = lambda s: 0
 import state
 state.mobile = lambda: True
 state.show_worker_status = lambda: True
+state.console.write = lambda *args, action=None: True
 
 def schedule(function, key, duration=None):
     try:

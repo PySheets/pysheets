@@ -239,10 +239,14 @@ class Console():
             message = f"Error writing {key}: {e}"
         if message.startswith("[Console] [Network]"):
             return
-        when = ltk.get_time()
-        self.messages[key] = when, f"{when:4.3f}s  {message}", action
+        now = window.Date.new()
+        try:
+            ts = f"{now.getHours()}:{now.getMinutes():02d}:{now.getSeconds():02d}.{now.getMilliseconds():03d}"
+        except:
+            ts = str(now)
+        self.messages[key] = ts, f"{ts} {message}", action
         if "RuntimeError: pystack exhausted" in message:
-            self.messages["critical"] = when, f"{when:4.3f}s  [Critical] MicroPython Error. Enable 'PyOdide' and reload the page."
+            self.messages["critical"] = ts, f"{ts:4.3f}s  [Critical] MicroPython Error. Enable 'PyOdide' and reload the page."
         self.render_message(key, *self.messages[key])
         self.save(message, action)
 

@@ -12,6 +12,7 @@ import re
 import requests
 import subprocess
 import time
+import traceback
 import uuid
 
 
@@ -484,40 +485,48 @@ def get_users(token):
 
 def get_activity(token, ts):
     check_admin(token)
-    print("### Get activity")
-    uids = set([
-        file.get(constants.DATA_KEY_UID) 
-        for email in get_all_emails()
-        for file in get_files(email)
-    ])
-    print(f"### Found a total of {len(uids)} doc uids")
-    MINUTE = 60
-    HOUR = 24 * MINUTE
-    edits_per_hour = collections.defaultdict(list)
-    for n, uid in enumerate(uids):
-        edits = docid_to_edits.document(uid).collection("edits").where(constants.DATA_KEY_TIMESTAMP, ">", float(ts)).get()
-        if n % 100 == 0:
-            print(f"###  {n}/{len(uids)}")
-        for reference in edits:
-            edit = reference.to_dict()
-            email = edit[constants.DATA_KEY_EMAIL]
-            if not email in admins:
-                hour_timestamp = round(edit[constants.DATA_KEY_TIMESTAMP] / HOUR)
-                edits_per_hour[hour_timestamp].append(email)
+    try:
+        uids = set([
+            file.get(constants.DATA_KEY_UID) 
+            for email in get_all_emails()
+            for file in get_files(email)
+        ])
+        MINUTE = 60
+        HOUR = 24 * MINUTE
+        edits_per_hour = collections.defaultdict(list)
+        for n, uid in enumerate(uids):
+            edits = docid_to_edits.document(uid).collection("edits").where(constants.DATA_KEY_TIMESTAMP, ">", float(ts)).get()
+            for reference in edits:
+                edit = reference.to_dict()
+                email = edit[constants.DATA_KEY_EMAIL]
+                if not email in admins:
+                    hour_timestamp = round(edit[constants.DATA_KEY_TIMESTAMP] / HOUR)
+                    edits_per_hour[hour_timestamp].append(email)
 
-    edits_per_hour_as_dict = dict((ts * HOUR, len(emails)) for ts, emails in edits_per_hour.items())
-    emails_per_hour = dict((ts * HOUR, list(set(emails))) for ts, emails in edits_per_hour.items())
-    all_registered = {}
-    for registration in get_all_registrations():
-        all_registered[registration[constants.DATA_KEY_EMAIL]] = registration.get(constants.DATA_KEY_TIMESTAMP, 0)
+        edits_per_hour_as_dict = dict((ts * HOUR, len(emails)) for ts, emails in edits_per_hour.items())
+        emails_per_hour = dict((ts * HOUR, list(set(emails))) for ts, emails in edits_per_hour.items())
+        all_registered = {}
+        for registration in get_all_registrations():
+            all_registered[registration[constants.DATA_KEY_EMAIL]] = registration.get(constants.DATA_KEY_TIMESTAMP, 0)
 
-    json.dumps(edits_per_hour_as_dict)
-    json.dumps(emails_per_hour)
-    json.dumps(all_registered)
+        sheets = dict(
+            (email, len(email_to_files.document(email).collection('files').get()))
+            for email in get_all_emails()
+        )
 
-    return {
-        "edits": edits_per_hour_as_dict,
-        "emails": emails_per_hour,
-        "registered": all_registered,
-    }
+        return {
+            "edits": edits_per_hour_as_dict,
+            "emails": emails_per_hour,
+            "registered": all_registered,
+            "sheets": sheets,
+        }
+    except Exception as e:
+        print(f"Cannot load activity: {e}")
+        traceback.print_exc()
+        return {
+            "error": f"Cannot load activity: {e}",
+            "edits": 0,
+            "emails": 0,
+            "registered": 0,
+        }
 

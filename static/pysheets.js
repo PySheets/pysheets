@@ -58,8 +58,6 @@
         return $("<table>")
             .attr("id", "sheet")
             .addClass("sheet")
-            .css({
-            })
             .append($("<tr>")
                 .attr("id", "sheet-header")
                 .append(
@@ -70,8 +68,30 @@
     }
 
     window.createSheet = (column_count, row_count, parentId) => {
-        const sheet = createBasicSheet(parentId);
+        createBasicSheet(parentId)
+        window.fillSheet(column_count, row_count);
+    }
+
+    const divmod = (x, y) => [Math.floor(x / y), x % y];
+
+    function getColumnName(col) {
+        const parts = [];
+        col += 1;
+        while (col > 0) {
+            var [col, remainder] = divmod(col - 1, 26);
+            parts.splice(0, 0, String.fromCharCode(remainder + "A".charCodeAt(0)));
+        }
+        return parts.join("");
+    }
+
+    function getKeyFromColumnRow(col, row) {
+        return `${getColumnName(col - 1)}${row}`;
+    }
+
+    window.fillSheet = (column_count, row_count) => {
+        const sheet = $("#sheet");
         const header = $("#sheet-header");
+        column_count = Math.max(column_count, header.children().length - 1)
         for (var column=1; column <= column_count; column++) {
             if ($(`#col-${column}`).length == 0) {
                 header.append(
@@ -81,7 +101,7 @@
                             .addClass(`col-${column}`)
                             .attr("id", `col-${column}`)
                             .attr("col", column)
-                            .text(String.fromCharCode("A".charCodeAt(0) + column - 1))
+                            .text(getColumnName(column - 1))
                             .resizable({
                                 handles: "e",
                                 alsoResize: `.col-${column}`,
@@ -91,13 +111,14 @@
                 );
             }
         }
+        row_count = Math.max(row_count, sheet.children().length - 1)
         for (var row=1; row <= row_count; row++) {
             var tr = $(`#row-${row}`);
             if (tr.length == 0) {
                 tr = $("<tr>")
+                    .attr("id", `row-${row}`)
                     .appendTo(sheet)
                     .append($("<td>")
-                        .attr("id", `row-${row}`)
                         .addClass("row-label")
                         .addClass(`row-${row}`)
                         .text(`${row}`)
@@ -109,13 +130,11 @@
                         .on("resize", function(event) { rowResized(event); })
                     )
             }
-            function key(col, row) {
-                return `${String.fromCharCode("A".charCodeAt(0) + col - 1)}${row}`
-            }
             for (var column=1; column <= column_count; column++) {
-                if ($(`#td-${column}-${row}`).length == 0) {
+                const id = getKeyFromColumnRow(column, row);
+                if ($(`#${id}`).length == 0) {
                     tr.append($("<td>")
-                        .attr("id", key(column, row))
+                        .attr("id", id)
                         .addClass(`cell row-${row} col-${column}`)
                         .attr("col", column)
                         .attr("row", row)
@@ -123,6 +142,9 @@
                 }
             }
         }
+        sheet
+            .attr("column_count", column_count)
+            .attr("row_count", row_count);
     }
 
     // if (window.location.search) { $("#main").empty(); } 
@@ -201,18 +223,63 @@
         return window.editor;
     }
 
-    window.clipboardRead = (text_callback, html_callback) => {
-        const callback = {
-            "text/plain": text_callback,
-            "text/html": html_callback,
-        };
+    window.clipboardInsert = (callback, atColumn, atRow, includeStyle) => {
+
+        function paste_cell(column, row, text, style) {
+            const key = getKeyFromColumnRow(atColumn + column, atRow + row);
+            var cell = $(`#${key}`);
+            if (!cell.length) {
+                window.fillSheet(atColumn + column, atRow + row);
+                cell = $(`#${key}`);
+            }
+            cell.text(text);
+            if (style) {
+                const align = cell.css("text-align").replace("start", "left").replace("end", "right");
+                cell.prop("style", style)
+                    .css("border", "")
+                    .css("text-align", align)
+            }
+        }
+
+        function paste_text(text) {
+            const lines = text.split("\n");
+            for (var row=1; row<=lines.length; row++) {
+                const line = lines[row];
+                const words = text.split("\t");
+                for (var col=1; col<=words.length; col++) {
+                    paste_cell(column, row, words[col])
+                }
+            }
+        }
+
+        function paste_html(text) {
+            const html = $(text)
+            const rows = html.find("tr");
+            var rowCount = rows.length;
+            var columnCount = 0;
+            rows.each((row, tr) => {
+                const cols = $(tr).find("td");
+                cols.each((col, td) => {
+                    paste_cell(col + 1, row + 1, $(td).text(), $(td).attr("style"))
+                });
+                columnCount = cols.length;
+            });
+            html.find("col").each((index, col) => {
+                $(`.col-${atColumn + index + 1}`).width($(col).attr("width"))
+            });
+            callback(columnCount, rowCount);
+        }
+
         navigator.clipboard.read().then(items => {
             for (const item of items) {
                 for (const type of item.types) {
                     item.getType(type).then(blob => {
                         blob.text().then(text => {
-                            if (callback[type]) {
-                                callback[type](text)
+                            if (!includeStyle && type == "text/plain") {
+                                paste_text(text);
+                            }
+                            else if (includeStyle && type == "text/html") {
+                                paste_html(text);
                             }
                         })
                     })
@@ -228,5 +295,13 @@
                 ['text/html']: new Blob([html], {type: 'text/html'})
             })
         ]).then(() => {});
+    }
+
+    window.getStyle = (element) => {
+        try {
+            return window.getComputedStyle(element)
+        } catch {
+            return {}
+        }
     }
 })();

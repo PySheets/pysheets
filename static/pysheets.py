@@ -172,46 +172,19 @@ class MultiSelection():
         window.clipboardWrite(text, html)
 
     def paste(self, event):
-        # TODO: remove temporary patch until web caches have flushed with clients
-        def find_list(selector, parent=None):
-            elements = parent.find(selector) if parent else ltk.jQuery(selector)
-            return [ elements.eq(n) for n in range(elements.length) ]
-        ltk.find_list = find_list
-
         current = self.sheet.current
             
-        def paste_cell(column, row, text, style=None):
-            key = get_key_from_col_row(current.column + column, current.row + row)
-            cell = self.sheet.get(key)
-            cell.edited(text)
-            if style:
-                cell.prop("style", style) \
-                    .css("border", "") \
-                    .css("text-align", cell.css("text-align").replace("start", "left").replace("end", "right"))
-            return cell
-
-        def paste_text(text):
-            if event.shiftKey:
-                for row, line in enumerate(text.split("\n")):
-                    for column, text in enumerate(line.split("\t")):
-                        paste_cell(column, row, text)
-            sheet.find_ai_suggestions()
-
-        def paste_html(text):
-            if not event.shiftKey:
-                html = ltk.Div(text)
-                if html.find("tr").length:
-                    for row, tr in enumerate(ltk.find_list("tr", html)):
-                        for column, td in enumerate(ltk.find_list("td", tr)):
-                            paste_cell(column, row, td.text(), td.attr("style"))
-                    for column, col in enumerate(ltk.find_list("col", html)):
-                        ltk.find(f".col-{current.column + column + 1}").width(col.attr("width"))
-                else:
-                    paste_cell(0, 0, html.text())
+        def done(colCount, rowCount):
             sheet.select(sheet.current)
             sheet.find_ai_suggestions()
+            for row in range(rowCount):
+                for col in range(colCount):
+                    cell = self.sheet.get(get_key_from_col_row(current.column + col, current.row + row))
+                    cell.script = cell.text()
+                    state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
+            save()
 
-        window.clipboardRead(proxy(paste_text), proxy(paste_html))
+        window.clipboardInsert(proxy(done), current.column, current.row, not event.shiftKey)
 
     def cut(self, event):
         self.copy(event)
@@ -219,8 +192,6 @@ class MultiSelection():
 
     def clear(self):
         for cell in self.cells:
-            if not cell.script:
-                continue
             cell.clear()
             state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
         self.draw()
@@ -237,6 +208,14 @@ class MultiSelection():
             return
         self.cell2 = cell
         self.draw()
+
+    def select_all(self, event):
+        cells = self.sheet.sorted_cells()
+        if len(cells) > 1:
+            self.cell1 = cells[0]
+            self.cell2 = cells[-1]
+            self.draw()
+        event.preventDefault()
 
     def stop(self, cell):
         self.started = False
@@ -413,7 +392,7 @@ class Spreadsheet():
 
     def setup(self, data, is_doc=True):
         self.load_data(data, is_doc)
-        self.setup_selection()
+        ltk.schedule(self.setup_selection, "allow mouse operations")
 
     def load_data(self, data, is_doc=True):
         url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
@@ -467,9 +446,15 @@ class Spreadsheet():
         state.console.write("network-status", f'[I/O] Loaded sheet "{state.doc.name}", {len(bytes)} bytes ✅')
         ltk.find("#main").animate(ltk.to_js({"opacity": 1}), 400)
         return cells
+        
+    def sorted_cells(self):
+        return sorted(
+            [cell for cell in self.cells.values() if cell.script],
+            key=lambda cell: (cell.column, cell.row)
+        )
 
     def find_ai_suggestions(self):
-        ltk.schedule(lambda: (self.find_frames(),self.find_urls()), "find ai hints", 0.1)
+        ltk.schedule(lambda: (self.find_frames(),self.find_urls()), "find ai hints", 1)
 
     def find_frames(self):
         visited = set()
@@ -511,11 +496,7 @@ pysheets.sheet("{key}:{other_key}")
 """
             add_completion_button(cell.key, lambda: insert_completion(key, prompt, text, { "total": 0 }))
 
-        sorted_cells = sorted(
-            [cell for cell in self.cells.values() if cell.script],
-            key=lambda cell: (cell.column, cell.row)
-        )
-        for cell in sorted_cells:
+        for cell in self.sorted_cells():
             if cell.key in visited:
                 continue
             width = get_width(cell)
@@ -583,11 +564,13 @@ Generate Python code.
             cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
             self.multi_selection.stop(cell)
             event.preventDefault()
+            ltk.find(event.target).trigger("click")
 
-        ltk.find(".cell") \
+        ltk.find(".cell[setup!='true']") \
             .on("mousedown", proxy(mousedown)) \
             .on("mousemove", proxy(mousemove)) \
-            .on("mouseup", proxy(mouseup))
+            .on("mouseup", proxy(mouseup)) \
+            .attr("setup", "true")
 
     def navigate(self, event):
         target = ltk.find(event.target)
@@ -635,7 +618,9 @@ Generate Python code.
             row += 1
         if len(event.key) == 1:
             if is_command_key(event):
-                if event.key == "c":
+                if event.key == "a":
+                    self.multi_selection.select_all(event)
+                elif event.key == "c":
                     self.multi_selection.copy(event)
                 elif event.key == "v":
                     self.multi_selection.paste(event)
@@ -665,8 +650,9 @@ Generate Python code.
         cell.select()
         self.selection_edited = False
         self.selection \
-            .attr("style", cell.attr("style")) \
+            .css("background-color", "white") \
             .css("padding", "") \
+            .attr("style", cell.attr("style")) \
             .css("position", "absolute") \
             .css("color", cell.css("color")) \
             .css("left", 0) \
@@ -776,8 +762,9 @@ class Cell(ltk.TableData):
         self.sheet= sheet
         self.key = get_key_from_col_row(column, row)
         self.element = ltk.find(f"#{self.key}")
-        if not self.element.attr("id"):
-            debug("Error: Cell has no element", self)
+        if not self.element.length:
+            window.fillSheet(column + 1, row + 1)
+            self.element = ltk.find(f"#{self.key}")
         self.column = column
         self.row = row
         self.on("mouseenter", proxy(lambda event: self.enter()))
@@ -790,6 +777,7 @@ class Cell(ltk.TableData):
         self.embed = ""
         if script != "" or preview:
             self.set(script, preview)
+        ltk.schedule(sheet.setup_selection, "allow mouse operations")
         
     def enter(self):
         self.draw_cell_arrows()
@@ -950,20 +938,23 @@ class Cell(ltk.TableData):
         except:
             pass
         self.scroll_selection()
+        state.doc.edits[constants.DATA_KEY_CURRENT] = self.key
 
     def scroll_selection(self):
-        offset = self.offset()
+        offset = self.position()
         container = ltk.find("#sheet-container").get(0)
         scrollable_width = ltk.find("#sheet-scrollable").width()
         scrollable_height = ltk.find("#sheet-container").height()
-        if offset.left < 100:
-            container.scrollLeft -= scrollable_width / 3
-        elif offset.left > scrollable_width - self.width():
-            container.scrollLeft += scrollable_width / 3
-        if offset.top < 100:
-            container.scrollTop -= scrollable_height / 3
-        elif offset.top > scrollable_height - self.height():
-            container.scrollTop += scrollable_height / 3
+        x = offset.left - container.scrollLeft
+        y = offset.top - container.scrollTop
+        if x < 100:
+            container.scrollLeft = max(0, offset.left - 100)
+        elif x > scrollable_width - self.width():
+            container.scrollLeft = offset.left - self.width() + 7
+        if y < 100:
+            container.scrollTop = max(0, offset.top - 100)
+        elif y > scrollable_height - self.height():
+            container.scrollTop = offset.top - self.height() + 7
         return self
     
     def set_css_editors(self):
@@ -983,8 +974,6 @@ class Cell(ltk.TableData):
         ltk.find(f"#preview-{self.key}").remove()
         ltk.find(f"#completion-{self.key}").remove()
         state.console.remove(f"ai-{self.key}")
-        ltk.find(f".row-{self.row + 1}").height(lambda index, height: min(height, constants.DEFAULT_ROW_HEIGHT))
-        ltk.find(f".col-{self.column + 1}").width(lambda index, width: min(width, constants.DEFAULT_COLUMN_WIDTH))
         del self.sheet.cells[self.key]
         if self.key in previews:
             del previews[self.key]
@@ -1268,23 +1257,26 @@ class Cell(ltk.TableData):
                 constants.DATA_KEY_VALUE_PREVIEW: self.preview,
             }
         }
-        style = window.getComputedStyle(self.element.get(0))
-        if style.getPropertyValue("font-family") != constants.DEFAULT_FONT_FAMILY:
-            result[constants.DATA_KEY_VALUE_FONT_FAMILY] = style.getPropertyValue("font-family")
-        if style.getPropertyValue("font-size") != constants.DEFAULT_FONT_SIZE:
-            result[constants.DATA_KEY_VALUE_FONT_SIZE] = style.getPropertyValue("font-size")
-        if style.getPropertyValue("font-weight") != constants.DEFAULT_FONT_WEIGHT:
-            result[constants.DATA_KEY_VALUE_FONT_WEIGHT] = style.getPropertyValue("font-weight")
-        if style.getPropertyValue("font-style") != constants.DEFAULT_FONT_STYLE:
-            result[constants.DATA_KEY_VALUE_FONT_STYLE] = style.getPropertyValue("font-style")
-        if style.getPropertyValue("color") != constants.DEFAULT_COLOR:
-            result[constants.DATA_KEY_VALUE_COLOR] = style.getPropertyValue("color")
-        if style.getPropertyValue("background-color") != constants.DEFAULT_FILL:
-            result[constants.DATA_KEY_VALUE_FILL] = style.getPropertyValue("background-color")
-        if style.getPropertyValue("vertical-align") != constants.DEFAULT_VERTICAL_ALIGN:
-            result[constants.DATA_KEY_VALUE_VERTICAL_ALIGN] = style.getPropertyValue("vertical-align")
-        if style.getPropertyValue("text-align") != constants.DEFAULT_TEXT_ALIGN:
-            result[constants.DATA_KEY_VALUE_TEXT_ALIGN] = style.getPropertyValue("text-align")
+        try:
+            style = window.getStyle(self.element.get(0))
+            if style.getPropertyValue("font-family") != constants.DEFAULT_FONT_FAMILY:
+                result[constants.DATA_KEY_VALUE_FONT_FAMILY] = style.getPropertyValue("font-family")
+            if style.getPropertyValue("font-size") != constants.DEFAULT_FONT_SIZE:
+                result[constants.DATA_KEY_VALUE_FONT_SIZE] = style.getPropertyValue("font-size")
+            if style.getPropertyValue("font-weight") != constants.DEFAULT_FONT_WEIGHT:
+                result[constants.DATA_KEY_VALUE_FONT_WEIGHT] = style.getPropertyValue("font-weight")
+            if style.getPropertyValue("font-style") != constants.DEFAULT_FONT_STYLE:
+                result[constants.DATA_KEY_VALUE_FONT_STYLE] = style.getPropertyValue("font-style")
+            if style.getPropertyValue("color") != constants.DEFAULT_COLOR:
+                result[constants.DATA_KEY_VALUE_COLOR] = style.getPropertyValue("color")
+            if style.getPropertyValue("background-color") != constants.DEFAULT_FILL:
+                result[constants.DATA_KEY_VALUE_FILL] = style.getPropertyValue("background-color")
+            if style.getPropertyValue("vertical-align") != constants.DEFAULT_VERTICAL_ALIGN:
+                result[constants.DATA_KEY_VALUE_VERTICAL_ALIGN] = style.getPropertyValue("vertical-align")
+            if style.getPropertyValue("text-align") != constants.DEFAULT_TEXT_ALIGN:
+                result[constants.DATA_KEY_VALUE_TEXT_ALIGN] = style.getPropertyValue("text-align")
+        except:
+            pass
         return result
 
     def __repr__(self):
@@ -1707,9 +1699,8 @@ def create_sheet():
             ).css("height", "calc(100vh - 51px)")
         )
     window.createSheet(26, 50, "sheet-scrollable")
-    if not ltk.find("#A1").attr("id"):
-        debug("Error: createSheet did not add A1")
-        raise ValueError("No A1")
+    if not ltk.find("#A1").length:
+        raise ValueError("Error: window.createSheet did not add A1")
     ltk.find("#menu").empty().append(menu.create_menu().element)
     ltk.find("#main").focus()
 
