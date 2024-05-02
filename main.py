@@ -146,6 +146,7 @@ FILE_ACTIONS = {
 
 def get_form_data():
     form = request.form.to_dict()
+    print("FORM:", form)
     try:
         json_data = list(form.keys())[0]
         data = json.loads(json_data)
@@ -153,6 +154,7 @@ def get_form_data():
         data = form
     if isinstance(data, list):
         data = data[0]
+    print("DATA:", data)
     return data
 
 @app.route("/login", methods=["POST"])

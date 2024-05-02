@@ -19,7 +19,7 @@ def discord(event):
     window.open("https://discord.com/invite/4jjFF6hj")
 
 
-def create_menu():
+def create_menu(sheet):
     return ltk.MenuBar(
         ltk.Menu("File",
              ltk.MenuItem("➕", "New", "", lambda item: new_sheet()),
@@ -27,10 +27,7 @@ def create_menu():
              ltk.MenuItem("📂", "Import", "", lambda item: import_sheet()),
              ltk.MenuItem("🎁", "Share", "", lambda item: share_sheet()),
              ltk.MenuItem("🗑", "Delete", "", lambda item: delete_doc()),
-        ),
-        ltk.Menu("Edit",
-             ltk.MenuItem("✂️", "Copy", "", lambda: None),
-             ltk.MenuItem("📋", "Paste", "", lambda: None),
+             ltk.MenuItem("R", "Restore", "", lambda item: sheet.restore()),
         ),
         ltk.Menu("View",
              ltk.MenuItem("◱", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),

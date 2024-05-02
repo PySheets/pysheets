@@ -80,6 +80,7 @@
 .sheet {
     width: 100%;
     border-spacing: 0px;
+    table-layout: fixed;
 }
 
 .sheet th,
@@ -106,8 +107,8 @@ td {
     width: 92px;
     border: 1px solid #e1e1e1;
     border-width: 0 0 1px 1px;
+    white-space: nowrap;
     text-overflow: ellipsis; 
-    overflow-wrap: anywhere;
     overflow: hidden; 
     vertical-align: bottom;
 }
@@ -117,6 +118,7 @@ td {
 }
 
 .blank {
+    width: 55px;
     border: 1px solid #e1e1e1;
     border-width: 0 1px 1px 0;
 }
@@ -173,7 +175,7 @@ input.arrow {
 
 .row-label {
     width: 92px;
-    height: 24px;
+    height: 22px;
     margin: 0 0 0 0;
     color: black;
     font-family: Helvetica;

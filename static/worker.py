@@ -132,7 +132,7 @@ def get_image_data(figure):
     bytes.seek(0)
     matplotlib.pyplot.close(figure)
     bytes = base64.b64encode(bytes.read())
-    return f"""<img src="data:image/png;base64,{bytes.decode('utf-8')}" style="width:100%; height:100%">"""
+    return f"""<img src="data:image/png;base64,{bytes.decode('utf-8')}">"""
 
 
 def create_preview(result):

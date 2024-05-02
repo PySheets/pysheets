@@ -2,6 +2,7 @@ import api
 import collections
 import constants
 import js  # type: ignore
+import json
 import ltk
 import logging
 import menu
@@ -176,11 +177,10 @@ class MultiSelection():
             
         def done(colCount, rowCount):
             sheet.select(sheet.current)
-            sheet.find_ai_suggestions()
             for row in range(rowCount):
                 for col in range(colCount):
                     cell = self.sheet.get(get_key_from_col_row(current.column + col, current.row + row))
-                    cell.script = cell.text()
+                    cell.set(cell.text())
                     state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
             save()
 
@@ -446,6 +446,7 @@ class Spreadsheet():
         state.console.write("network-status", f'[I/O] Loaded sheet "{state.doc.name}", {len(bytes)} bytes ✅')
         ltk.find("#main").animate(ltk.to_js({"opacity": 1}), 400)
         return cells
+    
         
     def sorted_cells(self):
         return sorted(
@@ -485,7 +486,7 @@ class Spreadsheet():
                     visited.add(other_key)
             prompt = f"""
 Convert the spreadsheet cells in range "{key}:{other_key}" into a Pandas dataframe.
-To load a Dataframe from cells, use "pysheets.sheet(pysheets.load(url))".
+To load a Dataframe from cells, use "pysheets.sheet(range)".
 Make the last expression refer to the dataframe.
 The pysheets module is already imported.
 Generate Python code.
@@ -516,6 +517,11 @@ pysheets.sheet("{key}:{other_key}")
             for key, cell in self.cells.items()
             if cell.text().startswith("https:")
         ]
+    
+    @saveit
+    def save_current_position(self):
+        state.console.write("sheet-selection", f"[Sheet] Selected cell: {self.current}")
+        state.doc.edits[constants.DATA_KEY_CURRENT] = self.current
 
     def find_urls(self):
         for key in self.get_url_keys():
@@ -582,7 +588,7 @@ Generate Python code.
     def navigate_selection(self, event):
         if event.key == "Escape":
             self.select(self.current)
-        elif event.key in ["Tab", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]:
+        elif event.key in ["Tab", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"]:
             self.navigate_main(event)
         else:
             ltk.schedule(self.copy_selection_to_main_editor, "copy-to-editor")
@@ -610,10 +616,18 @@ Generate Python code.
             self.multi_selection.clear()
         elif event.key == "ArrowLeft":
             column = max(0, column - 1)
+        elif event.key == "Home":
+            column = 0
         elif event.key == "ArrowRight":
             column += 1
+        elif event.key == "End":
+            column = ltk.find("#sheet-header").children().length - 2
         elif event.key == "ArrowUp":
             row = max(0, row - 1)
+        elif event.key == "PageDown":
+            row = row + 25
+        elif event.key == "PageUp":
+            row = max(0, row - 25)
         elif event.key == "ArrowDown" or event.key == "Enter":
             row += 1
         if len(event.key) == 1:
@@ -645,7 +659,6 @@ Generate Python code.
     def select(self, cell):
         if not cell or not cell.hasClass("cell"):
             return
-        state.console.write("sheet-selection", f"[Sheet] Select {cell}")
         self.multi_selection.select(cell)
         cell.select()
         self.selection_edited = False
@@ -671,6 +684,9 @@ Generate Python code.
         self.find_ai_suggestions()
 
     def save_file(self, done=None):
+        take_screenshot(lambda screenshot: self.save_file_with_screenshot(screenshot, done))
+    
+    def save_file_with_screenshot(self, screenshot, done=None):
         try:
             now = ltk.get_time()
             state.doc.timestamp = now
@@ -700,6 +716,7 @@ Generate Python code.
                 constants.DATA_KEY_ROWS: rows,
                 constants.DATA_KEY_RUNTIME: "pyodide" if ltk.find("#run-in-main").prop("checked") == True else "micropython",
                 constants.DATA_KEY_PREVIEWS: previews,
+                constants.DATA_KEY_SCREENSHOT: screenshot,
                 constants.DATA_KEY_EDITOR_WIDTH: main_editor.width(),
                 constants.DATA_KEY_CURRENT: self.current.key,
             }
@@ -718,12 +735,9 @@ Generate Python code.
                 if done:
                     done()
 
-            def send(screenshot):
-                data[constants.DATA_KEY_SCREENSHOT] = screenshot
-                url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
-                ltk.post(state.add_token(url), data, proxy(save_done))
+            url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
+            ltk.post(state.add_token(url), data, proxy(save_done))
 
-            take_screenshot(send)
         except Exception as e:
             logger.error("Error saving file %s", e)
             raise e
@@ -754,6 +768,28 @@ Generate Python code.
             proxy(lambda response: state.doc.empty_edits()),
         )
         self.save_file()
+
+    def restore(self):
+        def reload(history):
+            state.console.write("history", f"[History] Loaded history {history.keys()}")
+            all_edits = sorted(
+                history[constants.DATA_KEY_EDITS],
+                key=lambda edit: -edit.get(constants.DATA_KEY_TIMESTAMP, 0),
+            )
+            for edit in all_edits:
+                for key, data in edit.get(constants.DATA_KEY_CELLS, {}).items():
+                    cell = self.get(key)
+                    value = data[constants.DATA_KEY_VALUE][constants.DATA_KEY_VALUE_FORMULA]
+                    if isinstance(value, str) and not "vf:" in value:
+                        cell.set(value)
+        docid = f"{constants.DATA_KEY_UID}={state.doc.uid}"
+        before = f"{constants.DATA_KEY_BEFORE}={window.time() - 3600 * 20}"
+        after = f"{constants.DATA_KEY_AFTER}=0"
+        url = f"/history?{docid}&{before}&{after}"
+        state.console.write("history", f"[History] Loading history for {constants.ICON_HOUR_GLASS}")
+        ltk.get(state.add_token(url), proxy(reload))
+
+
 
 class Cell(ltk.TableData):
 
@@ -809,14 +845,6 @@ class Cell(ltk.TableData):
                 )
                 for ts, edit in edits
             ]).addClass("history").dialog({ "width": 800, "title": f"Edit history for cell {self.key} (most recent first):" })
-
-        docid = f"{constants.DATA_KEY_UID}={state.doc.uid}"
-        before = f"{constants.DATA_KEY_BEFORE}={window.time()}"
-        after = f"{constants.DATA_KEY_AFTER}={window.time() - 36000}"
-        url = f"/history?{docid}&{before}&{after}"
-        state.console.write("history", f"[History] Loading history for {self.key} {constants.ICON_HOUR_GLASS}")
-        ltk.get(state.add_token(url), proxy(load_history))
-        ltk.find("#main").css("opacity", 1)
 
     def setup_menu(self):
         def show_menu(event):
@@ -925,7 +953,6 @@ class Cell(ltk.TableData):
             for col in range(start_col, end_col + 1)
         ]
 
-    @saveit
     def select(self):
         debug("select", self.key)
         remove_arrows()
@@ -938,7 +965,7 @@ class Cell(ltk.TableData):
         except:
             pass
         self.scroll_selection()
-        state.doc.edits[constants.DATA_KEY_CURRENT] = self.key
+        ltk.schedule(lambda: self.sheet.save_current_position(), "save selection", 3)
 
     def scroll_selection(self):
         offset = self.position()
@@ -1701,7 +1728,7 @@ def create_sheet():
     window.createSheet(26, 50, "sheet-scrollable")
     if not ltk.find("#A1").length:
         raise ValueError("Error: window.createSheet did not add A1")
-    ltk.find("#menu").empty().append(menu.create_menu().element)
+    ltk.find("#menu").empty().append(menu.create_menu(sheet).element)
     ltk.find("#main").focus()
 
     @saveit
