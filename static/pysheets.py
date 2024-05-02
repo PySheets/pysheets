@@ -152,6 +152,10 @@ class MultiSelection():
             state.doc.edits[constants.DATA_KEY_CELLS][cell.key] = cell.to_dict()
         self.draw()
 
+    def bold(self, event):
+        self.css("font-weight", {"400": "700", "700": "400"}[self.cells[0].css("font-weight")])
+
+
     def copy(self, event):
         from_col, to_col, from_row, to_row = self.dimensions
         text = "\n".join([
@@ -634,6 +638,8 @@ Generate Python code.
             if is_command_key(event):
                 if event.key == "a":
                     self.multi_selection.select_all(event)
+                elif event.key == "b":
+                    self.multi_selection.bold(event)
                 elif event.key == "c":
                     self.multi_selection.copy(event)
                 elif event.key == "v":
@@ -960,10 +966,12 @@ class Cell(ltk.TableData):
         main_editor.set(self.script)
         ltk.find("#selection").text(f"Cell: {self.key}")
         ltk.find("#cell-attributes-container").css("display", "block")
+
         try:
             self.set_css_editors()
-        except:
+        except Exception as e:
             pass
+
         self.scroll_selection()
         ltk.schedule(lambda: self.sheet.save_current_position(), "save selection", 3)
 
@@ -991,8 +999,9 @@ class Cell(ltk.TableData):
         ltk.find("#cell-fill").val(rgb_to_hex(self.css("background-color")) or constants.DEFAULT_FILL)
         ltk.find("#cell-vertical-align").val(self.css("vertical-align") or constants.DEFAULT_VERTICAL_ALIGN)
         ltk.find("#cell-text-align").val(self.css("text-align").replace("start", "left") or constants.DEFAULT_TEXT_ALIGN)
-        ltk.find("#cell-font-weight").val(self.css("font-weight").replace("400", "normal") or constants.DEFAULT_FONT_WEIGHT)
+        ltk.find("#cell-font-weight").val({"400": "normal", "700": "bold"}[self.css("font-weight")] or constants.DEFAULT_FONT_WEIGHT)
         ltk.find("#cell-font-style").val(self.css("font-style") or constants.DEFAULT_FONT_STYLE)
+
 
     def clear(self):
         self.inputs = []
