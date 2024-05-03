@@ -70,6 +70,7 @@ Follow these steps (based on [Gitkraken](https://www.gitkraken.com/blog/vs-code-
  - Select the "Github Pull Requests" viewlet and click the "Create Pull Request" button in the hover bar.
  - Change the "MERGE" branch to the new branch.
  - Commit your changes (to the new branch).
+ - The Publish the branch, so that others can see it.
  - Finish the PR description and send it.
 
 
