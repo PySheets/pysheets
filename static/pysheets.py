@@ -1606,6 +1606,7 @@ def setup_login():
 def set_name(event):
     state.doc.edits[constants.DATA_KEY_NAME] = state.doc.name = ltk.find("#title").val()
     state.doc.last_edit = window.time()
+    window.document.title = state.doc.name
 
 
 ltk.find("#title").on("change", proxy(set_name))
