@@ -48,7 +48,6 @@ prompt_to_completion = db.collection('prompt_to_completion')
 
 # Observability
 docid_to_logs = db.collection('docid_to_logs')
-activity = db.collection('activity')
 
 
 EXPIRATION_MINUTE_SECONDS = 60
@@ -457,15 +456,12 @@ def share(token, sheet_id, email):
     email_to_files.document(email).collection("files").document(sheet_id).set({ constants.DATA_KEY_UID: sheet_id })
         
 
-def get_all_emails():
-    return set(list(filter(None, [
+def get_all_emails(token):
+    check_admin(token)
+    return list(set(filter(None, [
         doc.to_dict().get(constants.DATA_KEY_EMAIL, "")
         for doc in token_to_email.stream()
     ])))
-
-
-def get_all_registrations():
-    return [registration.to_dict() for registration in registration.stream()]
 
 
 def get_files(email):
@@ -482,58 +478,3 @@ def get_file_ids(email):
 def get_users(token):
     check_admin(token)
     return { "users": dict((email, get_file_ids(email)) for email in get_all_emails())}
-
-
-def get_activity(token, ts):
-    check_admin(token)
-    try:
-        result = activity.document("stats").get()
-        if result.exists:
-            return result.to_dict()
-
-        emails = get_all_emails()
-        print("GOT EMAIL", len(emails))
-        uids = set([
-            file.get(constants.DATA_KEY_UID) 
-            for email in emails
-            for file in get_files(email)
-        ])
-        print("GOT UIDS", len(uids))
-
-        MINUTE = 60
-        HOUR = 60 * MINUTE
-        DAY = 24 * HOUR
-        edits_per_day = collections.defaultdict(list)
-        for n, uid in enumerate(uids):
-            print(" - handle edits for doc", n, "of", len(uids))
-            edits = docid_to_edits.document(uid).collection("edits").where(constants.DATA_KEY_TIMESTAMP, ">", float(ts)).get()
-            for reference in edits:
-                edit = reference.to_dict()
-                email = edit[constants.DATA_KEY_EMAIL]
-                hour_timestamp = round(edit[constants.DATA_KEY_TIMESTAMP] / DAY)
-                edits_per_day[hour_timestamp].append(email)
-
-        edits_per_day_as_dict = dict((ts * DAY, len(emails)) for ts, emails in edits_per_day.items())
-        emails_per_day = dict((ts * DAY, list(set(emails))) for ts, emails in edits_per_day.items())
-        all_registered = {}
-        print("Get all registered")
-        for registration in get_all_registrations():
-            all_registered[registration[constants.DATA_KEY_EMAIL]] = registration.get(constants.DATA_KEY_TIMESTAMP, 0)
-
-        result = {
-            "edits_per_day": edits_per_day_as_dict,
-            "emails_per_day": emails_per_day,
-            "registered": all_registered,
-            "sheets": sheets,
-        }
-        activity.document("stats").set(result)
-    except Exception as e:
-        print(f"Cannot load activity: {e}")
-        traceback.print_exc()
-        return {
-            "error": f"Cannot load activity: {e}",
-            "edits": 0,
-            "emails": 0,
-            "registered": 0,
-        }
-
