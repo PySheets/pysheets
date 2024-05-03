@@ -477,4 +477,4 @@ def get_file_ids(email):
 
 def get_users(token):
     check_admin(token)
-    return { "users": dict((email, get_file_ids(email)) for email in get_all_emails())}
+    return { "users": dict((email, get_file_ids(email)) for email in get_all_emails(token))}
