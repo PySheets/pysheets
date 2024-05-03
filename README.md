@@ -61,6 +61,27 @@ Then open [the local preview](http://127.0.0.1:8081/). Note that in VS Code, you
 
 Note that this will use local Python source files and CSS, but all data still comes from production.
 
+# Making changes and committing them
+
+First add PR request support to VS Code:
+ - Install the VS Code extension: [Github Pull Requests Extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github)
+
+From now on, do all your work in a new branch:
+ - Create a new branch using the "..." menu in the "Source Control" viewlet. Use a short name that is meaningful to the task.
+ - Commit your changes (to the new branch).
+ - Publish/Synch your changes to the branch, so that others can see it.
+
+Branches are the mechanism used by Git to allow people to work in parallel and merge their work later.
+
+Once you work is ready for a review, create a new PR request:
+ - Select the "Github Pull Requests" viewlet and click the "Create Pull Request" button in the hover bar.
+ - Change the "MERGE" branch to the branch you did your work in.
+ - Choose an assignee and reviewer(s) for the work in the hover bar.
+ - Finish the PR description and send it.
+
+Both the assignee and reviewer now see the changes in their Pull Request viewlet.
+  
+
 # Source folders and their meaning
 
 Folders:
