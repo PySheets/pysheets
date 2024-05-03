@@ -69,7 +69,7 @@ First add PR request support to VS Code:
 From now on, do all your work in a new branch:
  - Create a new branch using the "..." menu in the "Source Control" viewlet. Use a short name that is meaningful to the task.
  - Commit your changes (to the new branch).
- - Publish the branch, so that others can see it.
+ - Publish/Synch your changes to the branch, so that others can see it.
 
 Branches are the mechanism used by Git to allow people to work in parallel and merge their work later.
 
