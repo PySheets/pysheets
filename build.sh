@@ -1,19 +1,18 @@
 clear
-echo "Running unit tests:"
+echo "BUILD: Running unit tests:"
 echo
 
-export version=`grep APP_VERSION app.yaml | sed "s/.* /v/" | sed "s/\\./_/g"`
-pip install pandas
-export PYTHONPATH=./static:./tests
-python3 -m unittest discover
+source ../env/bin/activate; 
+
+./test.sh
 if [[ $? -eq 0 ]]; then
-    echo "Unit tests succeeded"
+    echo "BUILD: Continue building..."
 else
-    echo "Unit tests failed"
+    echo "BUILD: Cannot build when tests are failing..."
     exit 1
 fi
 
-echo "Building production folder in dist"
+echo "BUILD: Building production folder in dist"
 
 mkdir dist
 mkdir dist/static/
@@ -108,7 +107,7 @@ cat dist/static/main_min_3.py | \
     sed "s/main_min_3 /main_min_3_$version /g" | \
     sed "s/pysheets.css/pysheets_$version.css/g" \
     > dist/static/main_$version.py
-echo "After bundling $version:"
+echo "BUILD: After bundling $version:"
 wc dist/static/main_min_0_$version.py dist/static/main_min_1_$version.py dist/static/main_$version.py
 rm dist/static/main_min_0.py
 rm dist/static/main_min_1.py
@@ -122,3 +121,14 @@ mv dist/* dist/.do ../pysheets-prod
 rm -rf dist
 
 rm `find . -name "*.pyc" -print`
+
+echo "BUILD: All code has been bundled and copied to pysheets-prod."
+
+if [[ "$1" != "norun" ]]; then
+    echo "run"
+    cd ../pysheets-prod
+    python3 main*.py &
+    sleep 3
+    open http://127.0.0.1:8080
+    fg %1
+fi
