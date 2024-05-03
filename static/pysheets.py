@@ -525,7 +525,7 @@ pysheets.sheet("{key}:{other_key}")
     @saveit
     def save_current_position(self):
         state.console.write("sheet-selection", f"[Sheet] Selected cell: {self.current}")
-        state.doc.edits[constants.DATA_KEY_CURRENT] = self.current
+        state.doc.edits[constants.DATA_KEY_CURRENT] = self.current.key
 
     def find_urls(self):
         for key in self.get_url_keys():
