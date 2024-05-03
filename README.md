@@ -61,6 +61,18 @@ Then open [the local preview](http://127.0.0.1:8081/). Note that in VS Code, you
 
 Note that this will use local Python source files and CSS, but all data still comes from production.
 
+# Making changes and committing them
+
+Follow these steps (based on [Gitkraken](https://www.gitkraken.com/blog/vs-code-pull-request)):
+
+ - Install the VS Code extension: [Github Pull Requests Extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github)
+ - Create a new branch using the "..." menu in the "Source Control" viewlet. Use a short name that is meaningful to the task.
+ - Select the "Github Pull Requests" viewlet and click the "Create Pull Request" button in the hover bar.
+ - Change the "MERGE" branch to the new branch.
+ - Commit your changes (to the new branch).
+ - Finish the PR description and send it.
+
+
 # Source folders and their meaning
 
 Folders:
