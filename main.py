@@ -234,13 +234,12 @@ def edits():
     )
 
 
-@app.route("/activity", methods=["GET"])
-def activity():
-    print("ACTIVITY SINCE", request.args.get(DATA_KEY_TIMESTAMP))
-    return storage.get_activity(
-        request.args.get(DATA_KEY_TOKEN),
-        request.args.get(DATA_KEY_TIMESTAMP) or 0,
-    )
+@app.route("/emails", methods=["GET"])
+def emails():
+    response = {
+        "emails": storage.get_all_emails(request.args.get(DATA_KEY_TOKEN))
+    }
+    return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
 
 
 @app.route("/history", methods=["GET"])
