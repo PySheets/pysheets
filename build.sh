@@ -2,6 +2,7 @@ clear
 echo "BUILD: Running unit tests:"
 echo
 
+export version=`grep APP_VERSION app.yaml | sed "s/.* /v/" | sed "s/\\./_/g"`
 source ../env/bin/activate; 
 
 ./test.sh
@@ -107,12 +108,12 @@ cat dist/static/main_min_3.py | \
     sed "s/main_min_3 /main_min_3_$version /g" | \
     sed "s/pysheets.css/pysheets_$version.css/g" \
     > dist/static/main_$version.py
-echo "BUILD: After bundling $version:"
-wc dist/static/main_min_0_$version.py dist/static/main_min_1_$version.py dist/static/main_$version.py
 rm dist/static/main_min_0.py
 rm dist/static/main_min_1.py
 rm dist/static/main_min_2.py
 rm dist/static/main_min_3.py
+echo "BUILD: After bundling $version:"
+wc dist/static/main_*.py
 mv dist/static/pysheets.css dist/static/pysheets_$version.css
 mv dist/static/pysheets.js dist/static/pysheets_$version.js
 
