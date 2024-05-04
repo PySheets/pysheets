@@ -74,7 +74,7 @@
 
     const divmod = (x, y) => [Math.floor(x / y), x % y];
 
-    function getColumnName(col) {
+    window.getColumnName = (col) => {
         const parts = [];
         col += 1;
         while (col > 0) {
@@ -84,12 +84,12 @@
         return parts.join("");
     }
 
-    function getKeyFromColumnRow(col, row) {
-        return `${getColumnName(col - 1)}${row}`;
+    window.getKeyFromColumnRow = (col, row) => {
+        return `${window.getColumnName(col - 1)}${row}`;
     }
 
     window.fillSheet = (column, row) => {
-        if ($(`#${getKeyFromColumnRow(column, row)}`).length) return;
+        if ($(`#${window.getKeyFromColumnRow(column, row)}`).length) return;
 
         const sheet = $("#sheet");
         const header = $("#sheet-header");
@@ -107,7 +107,7 @@
                         .addClass(`col-${column}`)
                         .attr("id", `col-${column}`)
                         .attr("col", column)
-                        .text(getColumnName(column - 1))
+                        .text(window.getColumnName(column - 1))
                         .resizable({
                             handles: "e",
                             alsoResize: `.col-${column}`,
@@ -121,7 +121,7 @@
         for (var row=1; row <= existingRowCount; row++) {
             const elements = [];
             for (var column=existingColumnCount; column <= newColumn; column++) {
-                const key = getKeyFromColumnRow(column, row);
+                const key = window.getKeyFromColumnRow(column, row);
                 elements.push(
                     `<td id="${key}" class="cell row-${row} col-${column}" col="${column}" row="${row}">`
                 );
@@ -136,7 +136,7 @@
             elements.push(`<tr id="row-${row}" row="${row}">`);
             elements.push(`<td new="true" class="row-label row-${row}" row="${row}">${row}</td>`);
             for (var column=1; column <= newColumn; column++) {
-                const key = getKeyFromColumnRow(column, row);
+                const key = window.getKeyFromColumnRow(column, row);
                 elements.push(
                     `<td id="${key}" class="cell row-${row} col-${column}" col="${column}" row="${row}">`
                 )
@@ -239,7 +239,7 @@
     window.clipboardInsert = (insertDone, atColumn, atRow, includeStyle) => {
 
         function pasteCell(column, row, text, style) {
-            const key = getKeyFromColumnRow(atColumn + column, atRow + row);
+            const key = window.getKeyFromColumnRow(atColumn + column, atRow + row);
             var cell = $(`#${key}`).text(text);
             if (style) {
                 const align = cell.css("text-align").replace("start", "left").replace("end", "right");
