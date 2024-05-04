@@ -258,9 +258,10 @@ def complete_python(text, line, ch, cache):
                 print(" - subscript", self.inside(node), ast.dump(node))
             if self.inside(node):
                 slice = eval(ast.unparse(node.slice).lower())
-                for key in self.context.get(node.value.id, {}):
-                    if self.matches(key.lower(), slice):
-                        completions.append(f'["{key}"]')
+                if isinstance(node.value, ast.Name):
+                    for key in self.context.get(node.value.id, {}):
+                        if self.matches(key.lower(), slice):
+                            completions.append(f'["{key}"]')
 
         def visit_Name(self, node):
             if DEBUG_COMPLETION:
