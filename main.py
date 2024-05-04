@@ -263,7 +263,7 @@ def embed():
         cell = cells[key]
         if cell.get(DATA_KEY_VALUE_EMBED):
             return cell[DATA_KEY_VALUE].get(DATA_KEY_VALUE_PREVIEW, "")
-    return f'<html><head><meta http-equiv="refresh" content="0; url=https://pysheets.app"></head></html>'
+    return f'<html>[Chart is missing]</html>'
 
 
 @app.route("/forget", methods=["GET"])
