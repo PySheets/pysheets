@@ -1449,8 +1449,6 @@ def remove_marker(email):
 
 
 def take_screenshot(callback):
-    return callback(get_plot_screenshot())
-
     options = ltk.to_js({
         "width": 200 * 4,
         "height": 150 * 4,
