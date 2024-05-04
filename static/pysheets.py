@@ -442,7 +442,10 @@ class Spreadsheet():
         if constants.DATA_KEY_EDITOR_WIDTH in data:
             ltk.find(".main-editor-container").width(data[constants.DATA_KEY_EDITOR_WIDTH])
         ltk.schedule(lambda: remove_arrows(1000), "remove arrows", 2.5)
-        cells = self.load_cells(data.get(constants.DATA_KEY_CELLS, {}))
+        if constants.DATA_KEY_CELLS_ENCODED in data:
+            cells = self.load_cells(json.loads(data[constants.DATA_KEY_CELLS_ENCODED]))
+        else:
+            cells = self.load_cells(data.get(constants.DATA_KEY_CELLS, {}))
         current = data.get(constants.DATA_KEY_CURRENT, "A1")
         ltk.schedule(lambda: self.select(self.get(current)), "select-later", 0.1)
         if is_doc:
@@ -525,7 +528,7 @@ pysheets.sheet("{key}:{other_key}")
     @saveit
     def save_current_position(self):
         state.console.write("sheet-selection", f"[Sheet] Selected cell: {self.current}")
-        state.doc.edits[constants.DATA_KEY_CURRENT] = self.current
+        state.doc.edits[constants.DATA_KEY_CURRENT] = self.current.key
 
     def find_urls(self):
         for key in self.get_url_keys():
@@ -716,7 +719,7 @@ Generate Python code.
                 constants.DATA_KEY_UID: state.doc.uid,
                 constants.DATA_KEY_NAME: state.doc.name,
                 constants.DATA_KEY_TIMESTAMP: window.time(),
-                constants.DATA_KEY_CELLS: cells,
+                constants.DATA_KEY_CELLS_ENCODED: json.dumps(cells),
                 constants.DATA_KEY_PACKAGES: packages,
                 constants.DATA_KEY_COLUMNS: columns,
                 constants.DATA_KEY_ROWS: rows,
@@ -749,7 +752,7 @@ Generate Python code.
             raise e
 
     def save_edits(self, force=False):
-        if not force and (not state.sync_edits or not any(state.doc.edits.values())):
+        if not force and (not state.doc.uid or not state.sync_edits or not any(state.doc.edits.values())):
             return
         for key, cell in list(state.doc.edits[constants.DATA_KEY_CELLS].items()):
             state.doc.edits[constants.DATA_KEY_CELLS][key] = cell if isinstance(cell, dict) else cell.to_dict()
@@ -1446,6 +1449,8 @@ def remove_marker(email):
 
 
 def take_screenshot(callback):
+    return callback(get_plot_screenshot())
+
     options = ltk.to_js({
         "width": 200 * 4,
         "height": 150 * 4,

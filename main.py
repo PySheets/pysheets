@@ -216,8 +216,7 @@ def complete():
 
 @app.route("/users", methods=["GET"])
 def users():
-    response = storage.get_users(request.args.get(DATA_KEY_TOKEN))
-    return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
+    return storage.get_users(request.args.get(DATA_KEY_TOKEN))
 
 
 @app.route("/file", methods=["GET", "POST", "DELETE"])
@@ -257,7 +256,10 @@ def embed():
     key = request.args.get(DATA_KEY_CELL)
     uid = request.args.get(DATA_KEY_UID)
     file = storage.get_file_with_uid(uid)
-    cells = file[DATA_KEY_CELLS]
+    if DATA_KEY_CELLS_ENCODED in file:
+        cells = json.loads(file[DATA_KEY_CELLS_ENCODED])
+    else:
+        cells = file[DATA_KEY_CELLS]
     if key in cells:
         cell = cells[key]
         if cell.get(DATA_KEY_VALUE_EMBED):

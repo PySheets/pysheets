@@ -103,15 +103,17 @@ class PySheets():
     def cell(self, key):
         return self._spreadsheet.get(key) if self._spreadsheet else window.jQuery(f"#{key}")
 
-    def set_cell(self, key, value):
-        cell = self.cell(key)
+    def set_cell(self, column, row, value):
+        cell = self.cell(self.get_key(column, row))
         cell.set(f"={repr(value)}")
         cell.evaluate()
-
+    
+    def get_key(self, column, row):
+        return window.getKeyFromColumnRow(column, row)
 
     def load(self, url, handler=None):
         if handler:
-            ltk.get(window.addToken(url), handler)
+            ltk.get(window.addToken(url), lambda data: handler(data))
         else:
             return urlopen(url)
 
