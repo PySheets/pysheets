@@ -37,9 +37,9 @@ def create_menu(sheet):
             ltk.MenuItem("💀", "Forget me", "", ltk.proxy(state.forget_me)),
         ),
         ltk.Menu("Help",
-            ltk.MenuItem("🅿️", "PySheets Website", "", ltk.proxy(landing)),
-            ltk.MenuItem("👏", "Give Feedback", "", ltk.proxy(feedback)),
-            ltk.MenuItem("💬", "Visit Discord", "", ltk.proxy(discord)),
+            ltk.MenuItem("🅿️", "About", "", ltk.proxy(landing)),
+            ltk.MenuItem("👏", "Feedback", "", ltk.proxy(feedback)),
+            ltk.MenuItem("💬", "Discord", "", ltk.proxy(discord)),
         )
     )
 DELETE_PROMPT = """
