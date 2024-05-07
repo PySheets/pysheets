@@ -14,7 +14,6 @@ import sys
 
 from pyscript import window  # type: ignore
 
-
 def debug(*args):
     if False:
         print("[Debug]", *args)
@@ -103,6 +102,15 @@ class MultiSelection():
         self.line_right = ltk.Div().addClass("multi-select right")
         self.cells = []
         self.cell1 = self.cell2 = None
+
+        self.handler_by_shortcut = {
+            "a":self.select_all,
+            "b":self.bold,
+            "c":self.copy,
+            "i":self.italicize,
+            "v":self.paste,
+            "x":self.cut
+        }
         
     def select(self, cell):
         self.cell1 = self.cell2 = cell
@@ -155,6 +163,8 @@ class MultiSelection():
     def bold(self, event):
         self.css("font-weight", {"400": "700", "700": "400"}[self.cells[0].css("font-weight")])
 
+    def italicize(self, event):
+        self.css("font-style", {"normal":"italic", "italic":"normal"}[self.cells[0].css("font-style")])
 
     def copy(self, event):
         from_col, to_col, from_row, to_row = self.dimensions
@@ -618,7 +628,7 @@ Generate Python code.
         current = self.multi_selection.cell2 if event.shiftKey else self.current
         column, row = current.column, current.row
         if event.key == "Tab":
-            column += -1 if event.shiftKey else 1 
+            column += -1 if event.shiftKey else 1
         elif event.key == "Delete" or event.key == "Backspace":
             self.multi_selection.clear()
         elif event.key == "ArrowLeft":
@@ -637,18 +647,11 @@ Generate Python code.
             row = max(0, row - 25)
         elif event.key == "ArrowDown" or event.key == "Enter":
             row += 1
+
         if len(event.key) == 1:
             if is_command_key(event):
-                if event.key == "a":
-                    self.multi_selection.select_all(event)
-                elif event.key == "b":
-                    self.multi_selection.bold(event)
-                elif event.key == "c":
-                    self.multi_selection.copy(event)
-                elif event.key == "v":
-                    self.multi_selection.paste(event)
-                elif event.key == "x":
-                    self.multi_selection.cut(event)
+                handler = self.multi_selection.handler_by_shortcut[event.key]
+                handler(event)
             if event.metaKey or event.ctrlKey:
                 return
             self.selection_edited = True
