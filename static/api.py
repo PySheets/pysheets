@@ -22,14 +22,30 @@ def to_js(python_object):
         return python_object
     return window.to_js(json.dumps(python_object))
 
-
 def get_col_row(key):
-    for index, c in enumerate(key):
-        if c.isdigit():
-            row = int(key[index:])
-            column = ord(key[index - 1]) - ord('A') + 1
-            return (column, row)
- 
+    column = ''
+    row = ''
+    for char in key:
+        if char.isdigit():
+            row += char
+        else:
+            column += char
+
+    # Convert column letters to a column index (1-based)
+    column_index = 0
+    for i, c in enumerate(reversed(column)):
+        column_index += (ord(c) - ord('A') + 1) * (26 ** i)
+
+    return column_index, int(row)
+
+
+def index_to_col(index):
+    col = ''
+    index -= 1
+    while index >= 0:
+        col = chr(index % 26 + ord('A')) + col
+        index = index // 26 - 1
+    return col
 
 def wrap_as_file(content):
     try:
@@ -83,16 +99,17 @@ class PySheets():
 
     def sheet(self, selection, headers=True):
         import pandas as pd
+
         start, end = selection.split(":")
         start_col, start_row = get_col_row(start)
         end_col, end_row = get_col_row(end)
+
         data = {}
         for col in range(start_col, end_col + 1):
             keys = [
-                f"{chr(ord('A') + col - 1)}{row}"
-                for row in range(start_row, end_row + 1)
+                f"{index_to_col(col)}{row}" for row in range(start_row, end_row + 1)
             ]
-            values = [ self._inputs[ key ] for key in keys ]
+            values = [ self._inputs.get(key, "") for key in keys ]
             header = values.pop(0) if headers else f"col-{col}"
             data[header] = values
         df = pd.DataFrame.from_dict(data)
