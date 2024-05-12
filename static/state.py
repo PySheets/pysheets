@@ -10,33 +10,21 @@ micropython = "Clang" not in sys.version
 local_storage = window.localStorage
 worker_version = constants.WORKER_LOADING
 worker_dots = ""
+force_pyodide = True
 
 class Document():
     uid = ltk.get_url_parameter(constants.DATA_KEY_UID)
     name = ""
     timestamp = 0
-    edits = {}
-    edit_count = 0
     dirty = False
-    last_edit = 0
-    edit_count = 0
-
-    def __init__(self):
-        self.empty_edits()
-
-    def empty_edits(self):
-        self.edits = {
-            constants.DATA_KEY_CELLS: {},
-            constants.DATA_KEY_COLUMNS: {},
-            constants.DATA_KEY_ROWS: {},
-            constants.DATA_KEY_PREVIEWS: {},
-        }
+    screenshot = ""
 
 
 class User():
     def __init__(self):
         self.email = local_storage.getItem(constants.DATA_KEY_EMAIL) or ""
         self.token = local_storage.getItem(constants.DATA_KEY_TOKEN) or ""
+        window.document.cookie = f"{constants.DATA_KEY_TOKEN}={self.token};"
         self.photo = ""
         self.name = ""
 
@@ -60,7 +48,6 @@ doc = Document()
 user = User()
 minimized = __name__ != "state"
 mode = constants.MODE_PRODUCTION if minimized else constants.MODE_DEVELOPMENT
-sync_edits = True
 
 
 def login(email, token):
@@ -196,8 +183,10 @@ class Console():
         if pyodide:
             import warnings
             warnings.warn = self.console_log
+        builtins.orig_print = builtins.print
         builtins.print = self.print
         self.setup_py_error()
+        self.skip = False
     
     def setup(self):
         ltk.find(".console-filter") \
@@ -246,7 +235,7 @@ class Console():
             ts = str(now)
         self.messages[key] = ts, f"{ts} {message}", action
         if "RuntimeError: pystack exhausted" in message:
-            self.messages["critical"] = ts, f"{ts:4.3f}s  [Critical] MicroPython Error. Enable 'PyOdide' and reload the page."
+            self.messages["critical"] = ts, f"{ts}s  [Critical] MicroPython Error. Enable 'PyOdide' and reload the page."
         self.render_message(key, *self.messages[key])
         self.save(message, action)
 
@@ -262,35 +251,50 @@ class Console():
         ltk.find(f"#console-{key}").remove()
     
     def render_message(self, key, when, message, action=None):
-        action = ltk.Span("") if action is None else action
-        if "Discord" in message:
-            window.console.orig_log("render", action)
-        filter = self.get_filter()
-        if filter and not filter in message:
+        if self.skip:
             return
-        self.remove(key)
-        parts = message.split()
-        clazz = parts[1][1:-1].lower() # [Debug] becomes debug
-        ltk.find(".console table").append(
-            ltk.TableRow(
-                ltk.TableData(ltk.Preformatted(parts[0])),
-                ltk.TableData(ltk.Preformatted(parts[1])),
-                ltk.TableData(
-                    ltk.HBox(
-                        action.css("margin-left", 0).css("margin-top", 0),
-                        ltk.Preformatted(" ".join(parts[2:]).replace("<", "&lt;")),
-                    )
-                ).css("width", "100%")
+        self.skip = True
+        try:
+            action = ltk.Span("") if action is None else action
+            filter = self.get_filter()
+            if filter and not filter in message:
+                return
+            self.remove(key)
+            parts = message.split()
+            clazz = parts[1][1:-1].lower() # [Debug] becomes debug
+            ltk.find(".console table").append(
+                ltk.TableRow(
+                    ltk.TableData(ltk.Preformatted(parts[0])),
+                    ltk.TableData(ltk.Preformatted(parts[1])),
+                    ltk.TableData(
+                        ltk.HBox(
+                            action.css("margin-left", 0).css("margin-top", 0),
+                            ltk.Preformatted(" ".join(parts[2:]).replace("<", "&lt;")),
+                        )
+                    ).css("width", "100%")
+                )
+                .attr("id", f"console-{key}").addClass(clazz)
             )
-            .attr("id", f"console-{key}").addClass(clazz)
-        )
+        except:
+            pass
+        finally:
+            self.skip = False
 
     def console_log(self, *args, category=None, stacklevel=0, source=None):
-        message = " ".join(str(arg) for arg in args)
-        if not message.startswith("💀🔒 - Possible deadlock"):
-            key = "Network" if message.startswith("[Network]") else f"{ltk.get_time()}"
-            self.write(key, f"[Console] {message}")
-        window.console.orig_log(message)
+        if self.skip:
+            return
+        self.skip = True
+        try:
+            message = " ".join(str(arg) for arg in args)
+            if message.startswith("js_callable_proxy"):
+                return
+            if not message.startswith("💀🔒 - Possible deadlock"):
+                key = "Network" if message.startswith("[Network]") else f"{ltk.get_time()}"
+                self.write(key, f"[Console] {message}")
+        except:
+            pass
+        finally:
+            self.skip = False
 
     def runtime_error(self, text):
         if "RuntimeError: pystack exhausted" in text:
@@ -308,7 +312,7 @@ class Console():
                         window.alert("\n".join([
                             "The Python runtime reported a programming error in PySheets.",
                             "This does not look like a problem with your scripts.",
-                            "Please reload the sheet by selecting 'PyOdide' and trying again.",
+                            "Please reload the sheet by selecting 'Run in main' and try again.",
                             "This should produce better error messages for PySheets.",
                             "",
                         ]))

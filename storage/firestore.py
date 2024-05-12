@@ -2,23 +2,17 @@ from firebase_admin import credentials
 from firebase_admin import initialize_app
 from firebase_admin import firestore
 
-import collections
-import hashlib
-import json
-import openai
-import os
 import random
 import re
 import requests
-import subprocess
 import time
-import traceback
 import uuid
 
-
-openai.api_key = json.loads(open("openai.json").read())["api_key"]
-sourcegraph = json.loads(open("sourcegraph.json").read())
-
+import storage
+from storage.identity import hash_prompt, hash_password
+import storage.identity
+from storage.settings import admins, EXPIRATION_MINUTE_SECONDS
+from storage.tutorials import TUTORIAL_UIDS
 import static.constants as constants
 
 logger = None
@@ -26,10 +20,12 @@ def set_logger(app_logger):
     global logger
     logger = app_logger
 
-
 cred = credentials.Certificate('firestore.json')
 initialize_app(cred, { 'storageBucket': 'pysheets-399411.appspot.com' })
 db = firestore.client()
+storage.identity.password_salt = f"{cred.project_id}".encode("utf8")
+
+
 
 # User Management
 email_to_info = db.collection('email_to_info')
@@ -40,7 +36,6 @@ reset = db.collection('reset')
 # Document Storage
 email_to_files = db.collection('email_to_files')
 docid_to_doc = db.collection('docid_to_doc')
-docid_to_edits = db.collection('docid_to_edits')
 
 # AI Completion
 email_to_completion_budget = db.collection('email_to_completion_budget')
@@ -50,40 +45,8 @@ prompt_to_completion = db.collection('prompt_to_completion')
 docid_to_logs = db.collection('docid_to_logs')
 
 
-EXPIRATION_MINUTE_SECONDS = 60
-EXPIRATION_HOUR_SECONDS = 60 * EXPIRATION_MINUTE_SECONDS
-EXPIRATION_DAY_SECONDS = 24 * EXPIRATION_HOUR_SECONDS
-EXPIRATION_WEEK_SECONDS = 7 * EXPIRATION_DAY_SECONDS
-
-TUTORIAL_UIDS = [
-    "u2b23OTLgKn91dOKi8UC", # Tutorial 1️⃣ - Welcome 👋
-    "hFxE6WVMpX5A7kb2CjVL", # Tutorial 2️⃣ - Pandas 🐼
-    "0Ych1f6Qfq76eNajGbrz", # Tutorial 3️⃣ - Charts 📊
-    "gOmzk2oWGBlcOK4U4M8m", # Tutorial 4️⃣ - Services 🔧
-    "8TzCv0pjrwZU1jj4XE0c", # Tutorial 5️⃣ - Advanced 🤓
-    "1uTQ3m88BlUNwXFpXRmm", # Tutorial 6️⃣ - AI Completions ⭐
-    "iKyXEDL2ZgaqoAVKEbqL", # Tutorial 7️⃣ - JavaScript 🚀
-]
-
-admins = set([
-    "laffra@gmail.com",
-])
-password_iterations = 100000
-password_key_length = 64
-password_hash_name = 'sha256'
-password_salt = f"{cred.project_id}".encode("utf8")
-
-
-def hash_password(password):
-    password = password.encode("utf-8")
-
-    return hashlib.pbkdf2_hmac(
-        hash_name=password_hash_name,
-        password=password,
-        salt=password_salt,
-        iterations=password_iterations,
-        dklen=password_key_length
-    )
+def dump(name):
+    return [ (doc.id, doc.to_dict()) for doc in db.collection(name).stream() ]
 
 
 class CompletionBudgetException(Exception): pass
@@ -125,61 +88,15 @@ def increment_budget(email, budget):
     email_to_completion_budget.document(email).set(budget)
 
 
-def openai_complete(prompt):
-    model = "davinci-002"
-    model = "babbage-002"
-    model="gpt-3.5-turbo-instruct"
-    return openai.Completion.create(
-        model=model,
-        prompt=prompt,
-        temperature=0,
-        max_tokens=1000,
-        top_p=1.0,
-        frequency_penalty=0.0,
-        presence_penalty=0.0,
-        stop=["\"\"\""]
-    )["choices"][0]
-
-class SourceGraphError(TypeError): pass
-
-def sourcegraph_complete(prompt):
-    os.putenv("SRC_ENDPOINT", "https://sourcegraph.com")
-    os.putenv("SRC_ACCESS_TOKEN", sourcegraph["token"])
-    command = [
-        "node_modules/.bin/cody-agent",
-        "experimental-cli",
-        "chat",
-        "-m",
-        prompt,
-    ]
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = process.communicate()
-    text = f'{out.decode("utf-8")}{err.decode("utf-8")}'
-    if not "```" in text:
-        raise SourceGraphError(text)
-    text = re.sub(".*```", "", text)
-    text = re.sub("```.*", "", text)
-    return {
-        "text": text
-    }
+def get_cached_completion(prompt):
+    hash = hash_prompt(prompt)
+    return prompt_to_completion.document(hash).get().to_dict()
 
 
-def complete(prompt, token):
-    email = get_email(token)
-    if not email:
-        raise ValueError("login")
-    budget = check_completion_budget(email)
-    prompt_hash = str(hashlib.md5(prompt.encode("utf-8")))
-    completion = prompt_to_completion.document(prompt_hash).get().to_dict()
-    if completion:
-        completion["cached"] = True
-    else:
-        completion = openai_complete(prompt)
-        completion["cached"] = False
-        prompt_to_completion.document(prompt_hash).set(completion)
-    completion["budget"] = budget
-    return completion
-    
+def set_cached_completion(prompt, completion):
+    hash = hash_prompt(prompt)
+    prompt_to_completion.document(hash).set(completion)
+
 
 def get_email(token):
     return token_to_email.document(token).get().to_dict()[constants.DATA_KEY_EMAIL] if token else None
@@ -379,40 +296,6 @@ def get_file(token, uid):
 def get_file_with_uid(uid):
     file = docid_to_doc.document(uid).get() 
     return file.to_dict() if file.exists else {}
-
-
-def get_edits(token, uid, ts):
-    if not uid:
-        return f'{{ "{constants.DATA_KEY_ERROR}": "no uid" }}'
-    if get_user_files(token).document(uid).get().exists:
-        edits = docid_to_edits.document(uid).collection("edits").where(constants.DATA_KEY_TIMESTAMP, ">", float(ts)).get()
-        print("get edits ", uid, "=>", len(edits))
-        return {
-            constants.DATA_KEY_UID: uid,
-            constants.DATA_KEY_TIMESTAMP: ts,
-            constants.DATA_KEY_EDITS: [ edit.to_dict() for edit in edits ],
-        }
-
-
-def get_history(token, uid, before, after):
-    if not uid:
-        return f'{{ "{constants.DATA_KEY_ERROR}": "no uid" }}'
-    if get_user_files(token).document(uid).get().exists:
-        edits = docid_to_edits.document(uid).collection("edits") \
-            .where(constants.DATA_KEY_TIMESTAMP, ">=", float(after)) \
-            .where(constants.DATA_KEY_TIMESTAMP, "<=", float(before)) \
-            .get()
-        return {
-            constants.DATA_KEY_UID: uid,
-            constants.DATA_KEY_EDITS: [ edit.to_dict() for edit in edits ],
-        }
-
-
-def add_edit(email, uid, edit):
-    edit[constants.DATA_KEY_EMAIL] = email
-    edit[constants.DATA_KEY_TIMESTAMP] = int(time.time())
-    docid_to_edits.document(uid).collection("edits").add(edit)
-    return f'{{ "{constants.DATA_KEY_RESULT}":  "OK" }}'
 
 
 def get_logs(token, uid, ts):
