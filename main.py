@@ -7,6 +7,7 @@ from flask import send_file
 import base64
 import json
 import logging
+import ai
 import storage
 import time
 import traceback
@@ -54,6 +55,7 @@ FILES = """
     "static/menu.py" = "menu.py"
     "static/state.py" = "state.py"
     "static/pysheets.py" = "pysheets.py"
+    "static/profiler.py" = "profiler.py"
     "static/editor.py" = "editor.py"
     "static/api.py" = "api.py"
     "static/lsp.py" = "lsp.py"
@@ -78,16 +80,139 @@ def root():
 
 @app.route("/go")
 def go():
+    token = request.cookies.get(DATA_KEY_TOKEN)
     package_names = request.args.get(DATA_KEY_PACKAGES, "").split()
-    pyodide = request.args.get(DATA_KEY_RUNTIME, "") == "pyodide"
+    pyodide = True or request.args.get(DATA_KEY_RUNTIME, "") == "pyodide"
     files = FILES + FILES_LTK
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
     interpreter = '' if pyodide else 'interpreter = "1.22.0-272"'
     version_interpreter = 'latest' if pyodide else '1.22.0-272'
+    version_storage = storage.version
     auto = 'experimental_create_proxy = "auto"' if pyodide else ''
     packages = f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else ""
     vm = "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}"
+    uid = request.args.get(DATA_KEY_UID, "")
+    if uid:
+        data = storage.get_file(token, uid)
+        name = data[DATA_KEY_NAME]
+        timestamp = data[DATA_KEY_TIMESTAMP]
+        current = data[DATA_KEY_CURRENT]
+        package_list = request.args.get(DATA_KEY_PACKAGES, "")
+        previews = json.dumps([
+            (key, value)
+            for key, value in data.get(DATA_KEY_PREVIEWS, "{}").items()
+        ])
+        editor_width = request.args.get(DATA_KEY_EDITOR_WIDTH, "350")
+        sheet = make_sheet(data)
+        scripts = make_scripts(data)
+    else:
+        package_list = editor_width = name = current = timestamp = sheet = ""
     return render_template("index.html", **locals())
+
+
+def make_column_label(col, data):
+    label = f"{chr(ord('A') + col - 1)}"
+    width = max(25, data[DATA_KEY_COLUMNS].get(str(col), {}).get(DATA_KEY_WIDTH, 72))
+    return f'<div class="column-label col-{col}" id="col-{col}" col="{col}" style="width: {width}px">{label}</div>'
+
+
+def make_column_header(data):
+    return "".join((
+        [ 
+            '<div id="column-header" class="column-header">',
+            *[ make_column_label(col, data) for col in range(1, DEFAULT_COLUMN_COUNT + 1) ],
+            '</div>'
+        ]
+    ))
+
+
+def make_cell(col, row, data):
+    width = max(25, data[DATA_KEY_COLUMNS].get(str(col), {}).get(DATA_KEY_WIDTH, 72))
+    height = max(20, data[DATA_KEY_ROWS].get(str(row), {}).get(DATA_KEY_HEIGHT, 20))
+    styles = [
+        f"width: {width}px;",
+        f"height: {height}px;",
+    ]
+    preview = ""
+    key = f"{chr(ord('A') + col - 1)}{row}"
+    value = data[DATA_KEY_CELLS].get(key, "")
+    if isinstance(value, dict):
+        if DATA_KEY_VALUE_PREVIEW in value[DATA_KEY_VALUE]:
+            preview = f'preview="{value[DATA_KEY_VALUE][DATA_KEY_VALUE_PREVIEW]}"'
+            print("########", key, preview)
+        if DATA_KEY_VALUE_FONT_FAMILY in value:
+            styles.append(f"font-family: {value[DATA_KEY_VALUE_FONT_FAMILY]}")
+        if DATA_KEY_VALUE_FONT_SIZE in value:
+            styles.append(f"font-size: {value[DATA_KEY_VALUE_FONT_SIZE]}")
+        if DATA_KEY_VALUE_FONT_STYLE in value:
+            styles.append(f"font-style: {value[DATA_KEY_VALUE_FONT_STYLE]}")
+        if DATA_KEY_VALUE_FONT_WEIGHT in value:
+            styles.append(f"font-weight: {value[DATA_KEY_VALUE_FONT_WEIGHT]}")
+        if DATA_KEY_VALUE_VERTICAL_ALIGN in value:
+            styles.append(f"vertical-align: {value[DATA_KEY_VALUE_VERTICAL_ALIGN]}")
+        if DATA_KEY_VALUE_TEXT_ALIGN in value:
+            styles.append(f"text-align: {value[DATA_KEY_VALUE_TEXT_ALIGN]}")
+        if DATA_KEY_VALUE_COLOR in value:
+            styles.append(f"color: {value[DATA_KEY_VALUE_COLOR]}")
+        if DATA_KEY_VALUE_FILL in value:
+            styles.append(f"background-color: {value[DATA_KEY_VALUE_FILL]}")
+        value = value[DATA_KEY_VALUE][DATA_KEY_VALUE_KIND].replace("<", "&lt;").replace(">", "&gt;")
+    style = ";".join(styles)
+    return f'<div id="{key}" class="cell row-{row} col-{col}" col="{col}" row="{row}" style="{style}" {preview}>{value}</div>'
+
+
+def make_row_label(row, data):
+    height = max(18, data[DATA_KEY_ROWS].get(str(row), {}).get(DATA_KEY_HEIGHT, 18))
+    return f'<div class="row-label row-{row}" style="height:{height}px;" row="{row}">{row}</div>\n'
+
+
+def make_row_header(data):
+    return "".join(
+        [
+            f'\n<div id="row-header" class="row-header">',
+                *[ make_row_label(row, data) for row in range(1, DEFAULT_ROW_COUNT + 1) ],
+            '</div>\n',
+        ]
+    )
+
+
+def make_row(row, data):
+    height = max(18, data[DATA_KEY_ROWS].get(str(row), {}).get(DATA_KEY_HEIGHT, 18)) + 4
+    return "\n".join(
+        [
+            f'\n<div id="row-{row}" class="cell-row">',
+                *[ make_cell(col, row, data) for col in range(1, DEFAULT_COLUMN_COUNT + 1) ],
+            '</div>\n',
+        ]
+    )
+
+
+def make_sheet(data):
+    return "".join(
+        [
+            "<div class='sheet' id='sheet' style='display: none;'>",
+                make_column_header(data),
+                make_row_header(data),
+                "<div class='sheet-grid' id='sheet-grid'>",
+                    "\n\n".join([ make_row(row, data) for row in range(1, DEFAULT_ROW_COUNT + 1) ]),
+                "</div>",
+                "<div class='blank'>",
+            "</div>",
+        ]
+    )
+
+
+def make_scripts(data):
+    scripts = dict([
+        (key, value[DATA_KEY_VALUE][DATA_KEY_VALUE_FORMULA].replace('`', '\\`'))
+        for key, value in data[DATA_KEY_CELLS].items()
+        if isinstance(value, dict)
+    ])
+    return "\n".join([
+        "window.scripts = [",
+        "\n".join(f"\t\t[`{key}`, `{script}`]," for key,script in scripts.items()),
+        "\t];\n",
+    ])
 
 
 @app.route("/list")
@@ -127,7 +252,6 @@ def get_file(token):
 def post_file(token):
     data = get_form_data()
     uid = data[DATA_KEY_UID]
-    app.logger.info("POST %s %s", token, uid)
     storage.save(token, uid, data)
     return jsonify({DATA_KEY_STATUS: "OK"})
 
@@ -211,7 +335,7 @@ def complete():
     data = get_form_data()
     token = request.args.get(DATA_KEY_TOKEN)
     prompt = data[DATA_KEY_PROMPT]
-    return storage.complete(prompt, token)
+    return ai.complete(prompt, token)
 
 
 @app.route("/users", methods=["GET"])
@@ -224,15 +348,6 @@ def file():
     return FILE_ACTIONS[request.method](request.args.get(DATA_KEY_TOKEN))
 
 
-@app.route("/edits", methods=["GET"])
-def edits():
-    return storage.get_edits(
-        request.args.get(DATA_KEY_TOKEN),
-        request.args.get(DATA_KEY_UID),
-        request.args.get(DATA_KEY_TIMESTAMP)
-    )
-
-
 @app.route("/emails", methods=["GET"])
 def emails():
     response = {
@@ -241,25 +356,12 @@ def emails():
     return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
 
 
-@app.route("/history", methods=["GET"])
-def history():
-    return storage.get_history(
-        request.args.get(DATA_KEY_TOKEN),
-        request.args.get(DATA_KEY_UID),
-        request.args.get(DATA_KEY_BEFORE),
-        request.args.get(DATA_KEY_AFTER)
-    )
-
-
 @app.route("/embed", methods=["GET"])
 def embed():
     key = request.args.get(DATA_KEY_CELL)
     uid = request.args.get(DATA_KEY_UID)
     file = storage.get_file_with_uid(uid)
-    if DATA_KEY_CELLS_ENCODED in file:
-        cells = json.loads(file[DATA_KEY_CELLS_ENCODED])
-    else:
-        cells = file[DATA_KEY_CELLS]
+    cells = file[DATA_KEY_CELLS]
     if key in cells:
         cell = cells[key]
         if cell.get(DATA_KEY_VALUE_EMBED):
@@ -275,17 +377,6 @@ def forget():
     }
 
 
-@app.route("/edit", methods=["POST"])
-def edit():
-    data = get_form_data()
-    email = storage.get_email(request.args.get(DATA_KEY_TOKEN))
-    return storage.add_edit(
-        email,
-        data[DATA_KEY_UID],
-        data[DATA_KEY_EDIT],
-    )
-
-
 @app.route("/logs", methods=["GET"])
 def logs():
     response = storage.get_logs(
@@ -293,7 +384,6 @@ def logs():
         request.args.get(DATA_KEY_UID),
         request.args.get(DATA_KEY_TIMESTAMP),
     )
-    print("Logs", request.args.get(DATA_KEY_UID), "=>", response)
     return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
 
 

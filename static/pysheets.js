@@ -51,27 +51,6 @@
     setTimeout(() => $("py-splashscreen").text(""), 100);
     setTimeout(() => $("py-splashscreen").text(""), 1000);
 
-    window.createBasicSheet = (parentId) => {
-        if ($("#sheet").length) {
-            return $("#sheet");
-        } 
-        return $("<table>")
-            .attr("id", "sheet")
-            .addClass("sheet")
-            .append($("<tr>")
-                .attr("id", "sheet-header")
-                .append(
-                    $("<th>").addClass("blank")
-                )
-            )
-            .appendTo($(`#${parentId}`));
-    }
-
-    window.createSheet = (columnCount, rowCount, parentId) => {
-        createBasicSheet(parentId)
-        window.fillSheet(columnCount, rowCount);
-    }
-
     const divmod = (x, y) => [Math.floor(x / y), x % y];
 
     window.getColumnName = (col) => {
@@ -92,27 +71,24 @@
         if ($(`#${window.getKeyFromColumnRow(column, row)}`).length) return;
 
         const sheet = $("#sheet");
-        const header = $("#sheet-header");
-        const existingColumnCount = header.children().length;
-        const existingRowCount = sheet.find("tr").length;
+        const columnHeader = $("#column-header");
+        const rowHeader = $("#row-header");
+        const existingColumnCount = columnHeader.children().length - 1;
+        const existingRowCount = rowHeader.children().length - 1;
         const newRow = Math.max(row, existingRowCount - 1);
         const newColumn = Math.max(column, existingColumnCount - 1);
 
         // Add sheet headers
         for (var column=existingColumnCount; column <= newColumn; column++) {
             if ($(`#col-${column}`).length == 0) {
-                header.append(
-                    $("<th>")
+                makeColumnResizable(
+                    $("<div>")
                         .addClass("column-label")
                         .addClass(`col-${column}`)
                         .attr("id", `col-${column}`)
                         .attr("col", column)
                         .text(window.getColumnName(column - 1))
-                        .resizable({
-                            handles: "e",
-                            alsoResize: `.col-${column}`,
-                        })
-                        .on("resize", function(event) { columnResized(event); })
+                        .appendTo(columnHeader)
                 );
             }
         }
@@ -120,48 +96,104 @@
         // fill the top right block
         for (var row=1; row <= existingRowCount; row++) {
             const elements = [];
-            for (var column=existingColumnCount; column <= newColumn; column++) {
+            for (var column=existingColumnCount + 1; column <= newColumn; column++) {
                 const key = window.getKeyFromColumnRow(column, row);
                 elements.push(
-                    `<td id="${key}" class="cell row-${row} col-${column}" col="${column}" row="${row}">`
+                    `<div id="${key}" class="cell row-${row} col-${column}" col="${column}" row="${row}"></div>`
                 );
             }
             const html = elements.join("");
             $(`#row-${row}`).append($(html))
         }
 
+        // add missing row labels
+        const label_elements = [];
+        for (var row=existingRowCount + 2; row <= newRow; row++) {
+            label_elements.push(`<div new="true" class="row-label row-${row}" row="${row}">${row}</div>`);
+        }
+        rowHeader.append($(label_elements.join("\n")));
+
         // fill the entire bottom section
-        const elements = [];
-        for (var row=existingRowCount; row <= newRow; row++) {
-            elements.push(`<tr id="row-${row}" row="${row}">`);
-            elements.push(`<td new="true" class="row-label row-${row}" row="${row}">${row}</td>`);
+        const cell_elements = [];
+        for (var row=existingRowCount + 2; row <= newRow; row++) {
+            cell_elements.push(`<div id="row-${row}" row="${row}" class="cell-row">`);
             for (var column=1; column <= newColumn; column++) {
                 const key = window.getKeyFromColumnRow(column, row);
-                elements.push(
-                    `<td id="${key}" class="cell row-${row} col-${column}" col="${column}" row="${row}">`
+                cell_elements.push(
+                    `<div id="${key}" class="cell row-${row} col-${column}" col="${column}" row="${row}"></div>`
                 )
             }
-            elements.push("</tr>")
+            cell_elements.push("</div>")
         }
-        const html = elements.join("\n");
-        sheet.append($(html));
+        $("#sheet-grid").append($(cell_elements.join("\n")));
+    }
 
-        sheet.find('td[new="true"]').each((index, element) => {
-            const td = $(element);
-            const row = td.attr('row');
-            td
-                .resizable({
-                    handles: "s",
-                    minHeight: 22,
-                    alsoResize: `.row-${row}`,
-                })
-                .removeAttr("new")
-                .on("resize", function(event) { rowResized(event); })
+    window.makeColumnResizable = (node) => {
+        node.resizable({
+            handles: "e",
+            minWidth: 35,
+            alsoResize: `.col-${node.attr("col")}`,
+        }).on("resize", function(event) {
+            columnResized(event);
+        })
+    }
+
+    window.makeRowResizable = (node) => {
+        node.resizable({
+            handles: "s",
+            minHeight: 22,
+            alsoResize: `.row-${node.attr("row")}`,
+        })
+    }
+
+    window.makeSheetResizable = () => {
+        $(".column-label").each((index, element) => {
+            makeColumnResizable($(element));
+        });
+        $(".row-label").each((index, element) => {
+            makeRowResizable($(element));
         });
     }
 
-    // if (window.location.search) { $("#main").empty(); } 
+    window.drawSheet = () => {
+        $("#column-header").css("left", $(".sheet-grid").css("margin-left"));
+        $("#row-header").css("top", $(".sheet-grid").css("margin-top"));
+    }
+
+    window.makeSheetScrollable = () => {
+        const sheet = $("#sheet");
+        sheet.on("wheel", (event) => {
+            const target = $(event.target);
+            if (target.hasClass("cell")) {
+                const columnHeader = $("#column-header");
+                const rowHeader = $("#row-header");
+                const container = $("#sheet-container");
+                const grid = $(".sheet-grid");
+
+                // compute horizontal position based on the deltaX
+                const dx = -event.originalEvent.deltaX;
+                const left = parseFloat(grid.css("margin-left"));
+                const minX = container.width() - columnHeader.width();
+                const x = Math.min(61, Math.max(left + dx, minX))
+                grid.css("margin-left", x);
+
+                // compute vertical position based on the deltaX
+                const dy = -event.originalEvent.deltaY;
+                const top = parseFloat(grid.css("margin-top"));
+                const minY = container.height() - rowHeader.height();
+                const y = Math.min(30, Math.max(top + dy, minY))
+                grid.css("margin-top", y);
+
+                // make sure the column and row headers are in sync
+                window.drawSheet();
+                event.preventDefault();
+            }
+        });
+    }
+
     $("#main").css("display", "block");
+    makeSheetResizable();
+    makeSheetScrollable();
 
     window.addArrow = (from, to, label) => {
         try {
@@ -237,17 +269,17 @@
     }
 
     window.clipboardInsert = (insertDone, atColumn, atRow, includeStyle) => {
-
-        function pasteCell(column, row, text, style) {
+        function pasteCell(column, row, td) {
             const key = window.getKeyFromColumnRow(atColumn + column, atRow + row);
-            var cell = $(`#${key}`).text(text);
-            if (style) {
-                const align = cell.css("text-align").replace("start", "left").replace("end", "right");
-                cell.prop("style", style)
-                    .css("border", "")
-                    .css("padding", "")
-                    .css("text-align", align)
-            }
+            $(`#${key}`).text(td.text())
+                .css("vertical-align", td.css("vertical-align"))
+                .css("text-align", (td.css("text-align") || "left").replace("start", "left").replace("end", "right"))
+                .css("font-family", td.css("font-family"))
+                .css("font-size", td.css("font-size"))
+                .css("font-weight", td.css("font-weight"))
+                .css("font-style", td.css("font-style"))
+                .css("background-color", td.css("background-color"))
+                .css("color", td.css("color"))
         }
 
         function paste_text(text) {
@@ -282,8 +314,12 @@
                     window.fillSheet(atColumn + columnCount, atRow + rowCount);
                 }
                 cols.each((col, td) => {
-                    pasteCell(col + 1, row + 1, $(td).text(), $(td).attr("style"))
+                    pasteCell(col + 1, row + 1, $(td));
                 });
+                const rowIndex = atRow + row + 1;
+                const height = Math.round(Math.max($(`#row-${rowIndex}`).height(), $(tr).height()));
+                $(`.row-${rowIndex}.cell`).height(height)
+                $(`.row-${rowIndex}.row-label`).height(height - 2)
                 columnCount = cols.length;
             });
             html.find("col").each((index, col) => {
@@ -320,10 +356,21 @@
     }
 
     window.getStyle = (element) => {
+        const result = {};
         try {
-            return window.getComputedStyle(element)
-        } catch {
-            return {}
+        const style = window.getComputedStyle(element);
+        result["vff"] = style.getPropertyValue("font-family")
+        result["vfs"] = style.getPropertyValue("font-size")
+        result["vfw"] = style.getPropertyValue("font-weight")
+        result["vfu"] = style.getPropertyValue("font-style")
+        result["vc"] = style.getPropertyValue("color")
+        result["vb"] = style.getPropertyValue("background-color")
+        result["vva"] = style.getPropertyValue("vertical-align")
+        result["vta"] = style.getPropertyValue("text-align")
+        } catch (e) {
+
         }
+        return JSON.stringify(result);
     }
+
 })();

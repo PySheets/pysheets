@@ -1,3 +1,7 @@
+html, body {
+    overscroll-behavior-x: none;
+}
+
 .header {
     display: flex;
     justify-content: space-between;
@@ -18,7 +22,7 @@
 
 .multi-select {
     position: absolute;
-    z-index: 1001;
+    z-index: 2501;
     border-width: 0;
     background: #e4a11c;
 }
@@ -65,52 +69,81 @@
 #sheet-container {
     min-height: 100px;
     min-width: 300px;
-    overflow: auto;
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-}
-#sheet-container::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    overflow: scroll;
 }
 
-#sheet-scrollable {
-    position: relative;
+::-webkit-scrollbar {
+    -webkit-appearance: none;
+    width: 7px;
+    height: 7px;
+}
+  
+::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: rgba(181, 181, 181, 0.5);
+    box-shadow: 0 0 1px rgba(255, 255, 255, .5);
 }
 
 .sheet {
-    width: 100%;
     border-spacing: 0px;
     table-layout: fixed;
 }
 
-.sheet th,
-td {
+.sheet th,td,div {
     padding: 0px;
 }
 
-#sheet tr:first-child {
-    position: sticky;
-    top: 0;
-    background: white;
-    z-index: 2100;
+.sheet-grid {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    margin-top: 30px;
+    margin-left: 61px;
 }
 
-#sheet tr:first-child th:first-child {
-    background: #efefef;
-    z-index: 2100;
+.column-header {
+    display: flex;
+    position: absolute;
+    top: 0px;
+    left: 61px;
+    width: fit-content;
+    max-height: 30px;
+    overflow: hidden;
+    background: white;
+    z-index: 2501;
+}
+
+.cell-row {
+    display: flex;
+    width: fit-content;
+    overflow: hidden;
+}
+
+.row-header {
+    position: absolute;
+    top: 30px;
+    background: white;
+    height: fit-content;
+    max-width: 61px;
+    z-index: 2501;
 }
 
 .cell {
+    display: inline-block;
+    position: relative;
     font-family: Arial;
     background-color: white;
-    padding: 0px 3px;
-    width: 92px;
+    padding: 0px 2px 0 3px;
+    width: 125px;
+    height: 24px;
     border: 1px solid #e1e1e1;
-    border-width: 0 0 1px 1px;
+    border-width: 0 1px 1px 1px;
+    border-right-color: transparent;
     white-space: nowrap;
     text-overflow: ellipsis; 
     overflow: hidden; 
     vertical-align: bottom;
+    z-index: 2100;
 }
 
 .cell.highlighted {
@@ -118,9 +151,16 @@ td {
 }
 
 .blank {
-    width: 55px;
+    position: absolute;
+    display: block;
+    top: 0;
+    left: 0;
+    width: 61px;
+    height: 29px;
     border: 1px solid #e1e1e1;
     border-width: 0 1px 1px 0;
+    background-color: #ececec;
+    z-index: 2503;
 }
 
 input.arrow {
@@ -153,8 +193,9 @@ input.arrow {
 }
 
 .column-label {
+    display: inline-block;
     width: 125px;
-    padding: 4px 8px;
+    padding: 4px 3px 4px 2px;
     color: black;
     text-align: center;
     font-family: Helvetica;
@@ -174,7 +215,10 @@ input.arrow {
 }
 
 .row-label {
-    width: 92px;
+    display: block;
+    background: #efefef;
+    z-index: 2100;
+    width: 25px;
     height: 22px;
     margin: 0 0 0 0;
     color: black;
@@ -268,7 +312,7 @@ h3 {
 .preview {
     position: absolute;
     background-color: white;
-    z-index: 2000;
+    z-index: 2500;
     float: left;
     margin: 20px;
     width: fit-content;
@@ -424,7 +468,7 @@ h3 {
 }
 
 .leader-line {
-    z-index: 2001;
+    z-index: 2501;
 }
 
 body {
@@ -845,7 +889,7 @@ td:hover .debug-info {
 
 .right-panel {
     width: 700px;
-    z-index: 3000;
+    z-index: 5000;
 }
 
 .console {
@@ -887,36 +931,14 @@ td:hover .debug-info {
     max-width: 800px;
 }
 
-.history .ltk-hbox {
-    border: 0 solid gray;
-    border-bottom-width: 1px;
-}
-
-.history .timestamp {
-    margin-right: 10px;
-    font-weight: bold;
-}
-
-.history .copy {
-    min-width: 65px;
-    margin-right: 10px;
-}
-
-.history .formula {
-    height: 20px;
-    max-height: 20px;
-    overflow: hidden;
-    color: navy;
-}
-
 :root {
     --checkbox-border-color: #e9f5fd;
     --checkbox-checked-color: #92bdee;
     --checkbox-hover-color: #a3cef1;
     --checkbox-disabled-bg-color: #d9d9d9;
-  }
+}
   
-  input[type="checkbox"] {
+input[type="checkbox"] {
     box-sizing: border-box;
     width: 20px;
     height: 20px;
@@ -964,4 +986,11 @@ td:hover .debug-info {
     input[type="checkbox"] {
       transition: none;
     }
+  }
+
+  .profiler-toggle {
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    z-index: 10000;
   }

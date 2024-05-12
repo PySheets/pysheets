@@ -19,7 +19,7 @@ mkdir dist
 mkdir dist/static/
 mkdir dist/static/ltk/
 mkdir dist/templates/
-mkdir dist/storage_$version/
+mkdir dist/storage/
 
 mkdir dist/.do
 cp .do/app.yaml dist/.do
@@ -58,20 +58,27 @@ cat static/api.py static/lsp.py static/worker.py | \
 cp static/api.py dist/static/api_$version.py
 cp static/constants.py dist/static/constants_$version.py
 cp static/constants.py dist/static/constants.py
-cp storage/__init__.py dist/storage_$version
+cp storage/__init__.py storage/identity.py storage/settings.py storage/tutorials.py dist/storage
 cat storage/firestore.py | \
-    sed "s/constants as constants/constants_$version as constants/" | \
-    sed "s/constants import/constants_$version import/" \
-    > dist/storage_$version/firestore.py
+    sed "s/constants as constants/constants_$version as constants/" \
+    > dist/storage/firestore.py
+cat storage/mongodb.py | \
+    sed "s/constants as constants/constants_$version as constants/" \
+    > dist/storage/mongodb.py
+echo "copy main.py"
 cat main.py | \
     sed "s/8081/8080/" | \
     sed "s/constants import/constants_$version import/" | \
-    sed "s/constants as constants/constants_$version as constants/" | \
-    sed "s/import storage/import storage_$version as storage/" \
-    > dist/main_$version.py
+    sed "s/constants as constants/constants_$version as constants/" \
+    > dist/main.py
+echo "copy ai.py"
+cat ai.py | \
+    sed "s/constants as constants/constants_$version as constants/" \
+    > dist/ai.py
 
 rm -rf dist/storage/__pycache__
 rm -rf dist/static/__pycache__
+rm -rf dist/__pycache__
 
 cd static
 python3 ../bundle.py main.py  &&  mv main_min_*.py ../dist/static

@@ -21,9 +21,19 @@
     <script defer src="html2canvas.min.js"></script>
     <script src="pysheets.js" type="module"></script>
     <script>
-        window.version_pyscript = '2024.3.1';
+        window.version_pyscript = '2024.5.1';
         window.version_interpreter = '{{version_interpreter}}';
         window.version_app = '';
+        window.version_storage = '{{version_storage}}';
+        window.name = '{{name|safe}}';
+        window.runtime = '{{runtime}}';
+        window.current = '{{current}}';
+        window.editor_width = parseFloat('{{editor_width}}');
+        window.previews = {{previews|safe}};
+        window.timestamp = parseFloat('{{timestamp|safe}}');
+        window.packages = '{{package_list|safe}}';
+        {{scripts|safe}}
+    </script>
     </script>
     <link defer rel="stylesheet" href="pysheets.css">
 
@@ -105,8 +115,8 @@
 
         </center>
     </div>
-    <div id="main" class="main" tabindex="0" style="display: none;"></div>
-    <div id="dashboard" class="dashboard" style="display: none;"></div>
+    <div id="main" class="main" tabindex="0"> </div>
+    {{sheet|safe}}
 
 
 </body>
