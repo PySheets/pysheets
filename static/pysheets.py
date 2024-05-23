@@ -1,4 +1,5 @@
 import api
+import base64
 import collections
 import constants
 import js  # type: ignore
@@ -372,7 +373,9 @@ class Spreadsheet():
             cell.notify()
             debug("Worker result for", key, "=>", result["value"])
         except Exception as e:
-            state.console.write(key, f"[Error] Cannot handle worker result: {type(e)}: {e}")
+            state.console.write(key, f"[Error] Cannot handle worker result: {type(e)}: {e} {result}")
+            import traceback
+            traceback.print_exc()
 
     def notify(self, cell):
         for other in self.cells.values():
@@ -394,11 +397,40 @@ class Spreadsheet():
         ltk.schedule(lambda: self.select(self.get(current)), "select-later", 0.1)
         self.find_ai_suggestions()
         ltk.find(".main-editor-container").width(window.editor_width)
-        load_previews()
+        try:
+            self.load_previews()
+        except:
+            import traceback
+            traceback.print_exc()
+            pass
         for n in range(window.scripts.length):
             key, script = window.scripts[n]
             self.get(key).set(script)
         self.setup_selection()
+
+    def load_previews(self):
+        previews.update(dict(
+            (key, list(preview))
+            for key, preview in window.previews)
+        )
+        for key, values in previews.items():
+            try:
+                left, top, width, height, preview = values
+                self.get(key).add_preview(preview)
+                ltk.find(f"#preview-{key}").css(
+                    ltk.to_js(
+                        {
+                            "left": left,
+                            "top": top,
+                            "width": width,
+                            "height": height,
+                        }
+                    )
+                )
+            except Exception as e:
+                print("Cannot load preview", key, values)
+                import traceback
+                traceback.print_exc()
 
     def find_ai_suggestions(self):
         ltk.schedule(lambda: (self.find_frames(),self.find_urls()), "find ai hints", 1)
@@ -658,7 +690,6 @@ Generate Python code.
                 if round(row.height()) != constants.DEFAULT_ROW_HEIGHT
             )
             packages = " ".join(ltk.find("#packages").val().replace(",", " ").split())
-            print("save previews:", previews)
             data = {
                 constants.DATA_KEY_UID: state.doc.uid,
                 constants.DATA_KEY_NAME: state.doc.name,
@@ -668,29 +699,32 @@ Generate Python code.
                 constants.DATA_KEY_COLUMNS: columns,
                 constants.DATA_KEY_ROWS: rows,
                 constants.DATA_KEY_RUNTIME: "pyodide" if state.force_pyodide or ltk.find("#run-in-main").prop("checked") == True else "micropython",
-                constants.DATA_KEY_PREVIEWS: previews,
+                constants.DATA_KEY_PREVIEWS: list(previews.items()),
                 constants.DATA_KEY_SCREENSHOT: screenshot or state.doc.screenshot or "",
                 constants.DATA_KEY_EDITOR_WIDTH: main_editor.width(),
                 constants.DATA_KEY_CURRENT: self.current.key,
             }
 
-            def save_done(data):
-                if not isinstance(data, dict):
-                    message = f"Full document backup failed {data}"
+            def save_done(response):
+                if not isinstance(response, dict):
+                    message = f"Full document backup failed {response}"
                 else:
-                    status = data[constants.DATA_KEY_STATUS]
+                    status = response[constants.DATA_KEY_STATUS]
                     if "error" in status:
-                        message = f"Full document backup failed {data}"
+                        message = f"Full document backup failed {response}"
                     else:
-                        message = f"Full document, {len(json.dumps(data))} bytes, backed up ✅"
+                        message = f"Full document backed up ✅"
                         state.doc.dirty = False
                 state.console.write("save-response", f"[Save] {message}")
                 if done:
                     done()
                 profiler.stop()
 
-            url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
-            ltk.post(state.add_token(url), data, proxy(save_done))
+                def show_doc(data):
+                    window.console.orig_log(window.JSON.stringify(data))
+                ltk.get(f"/file?{constants.DATA_KEY_UID}={state.doc.uid}", proxy(show_doc))
+
+            ltk.post(f"/file?{constants.DATA_KEY_UID}={state.doc.uid}", data, proxy(save_done))
 
         except Exception as e:
             logger.error("Error saving file %s", e)
@@ -720,10 +754,6 @@ class Cell(ltk.Widget):
     def enter(self):
         self.draw_cell_arrows()
         self.raise_preview()
-
-    def load_script(self):
-        self.set(self.attr("script"))
-        self.attr("script", None)
 
     def set(self, script, preview=None):
         debug("set", self.key, "script:", repr(script))
@@ -917,49 +947,42 @@ class Cell(ltk.Widget):
     def add_preview(self, preview):
         self.preview = preview
         if not preview:
-            ltk.find(f"#preview-{self.key}").remove()
             return
-        debug(f"add preview ", self.key, preview)
 
-        def get_dimension():
+        def get_preview_value():
             return (
                 window.parseInt(preview.css("left")),
                 window.parseInt(preview.css("top")),
-                window.parseInt(preview.css("width")),
-                window.parseInt(preview.css("height"))
+                window.parseInt(preview.css("width")) + 10,
+                window.parseInt(preview.css("height")) + 2,
+                self.preview
             )
         
         @saveit
         def save_preview():
-            previews[self.key] = get_dimension()
+            previews[self.key] = get_preview_value()
             debug(f"[Sheet] Preview position for {self} saved: {previews[self.key]}")
 
         def dragstop(*args):
-            previews[self.key] = get_dimension()
+            previews[self.key] = get_preview_value()
             ltk.schedule(save_preview, "save-preview", 3)
 
         def resize(event, *args):
-            previews[self.key] = get_dimension()
+            previews[self.key] = get_preview_value()
             preview = ltk.find(event.target)
             preview.find("img, iframe").css("width", "100%").css("height", f"calc(100% - {constants.PREVIEW_HEADER_HEIGHT})")
             ltk.schedule(save_preview, "save-preview", 3)
         
         def move():
-            previews[self.key] = get_dimension()
+            previews[self.key] = get_preview_value()
             self.draw_cell_arrows()
             
         def click():
             preview.appendTo(preview.parent())  # raise
 
-        left, top, width, height = previews.get(
-            self.key,
-            (
-                self.offset().left + self.width() + 30,
-                self.offset().top + 30,
-                "fit-content",
-                "fit-content",
-            ),
-        )
+        left, top, width, height = self.offset().left + self.width() + 30, self.offset().top + 30, "fit-content", "fit-content"
+        if len(previews.get(self.key, [])) == 5:
+            left, top, width, height, preview = previews.get(self.key)
 
         ltk.find(f".preview-{self.key}").remove()
         if "# no-preview" in self.script:
@@ -1019,10 +1042,9 @@ class Cell(ltk.Widget):
                 )
             )
         except Exception as e:
-            debug("sheet", f"[Error] No preview for {self}: {e}")
+            print("sheet", f"[Error] No preview for {self}: {e}")
             pass
             
-        debug("add preview", self.key)
         self.make_resizable()
         self.draw_arrows()
         try:
@@ -1146,17 +1168,17 @@ class Cell(ltk.Widget):
         )
 
     def to_dict(self):
-        if self.preview: print("Save", self.key, self.preview)
-        result = {
-            constants.DATA_KEY_VALUE_EMBED: self.embed,
-            constants.DATA_KEY_VALUE: {
-                constants.DATA_KEY_VALUE_FORMULA: self.script,
-                constants.DATA_KEY_VALUE_KIND: self.text(),
-                constants.DATA_KEY_VALUE_PREVIEW: self.preview,
-            }
-        }
-        style = window.getStyle(self.element.get(0))
-        result.update(json.loads(style))
+        result = {}
+        if self.is_formula():
+            result[constants.DATA_KEY_VALUE_FORMULA] = self.script
+        else:
+            result[constants.DATA_KEY_VALUE_KIND] = self.text()
+        if self.preview:
+            result[constants.DATA_KEY_VALUE_PREVIEW] = self.preview
+        if self.embed:
+            result[constants.DATA_KEY_VALUE_EMBED] = self.embed
+        result.update(json.loads(window.getStyle(self.element.get(0))))
+        print("Save", self.is_formula(), self.key, result)
         return result
 
     def __repr__(self):
@@ -1177,7 +1199,7 @@ def create_marker(cells, clazz):
     for cell in cells:
         position = cell.position()
         left = min(position.left, left)
-        top = min(position.top, top)
+        top = min(position.top, top) 
         right = max(position.left + cell.outerWidth(), right)
         bottom = max(position.top + cell.outerHeight(), bottom)
     return (ltk.Div()
@@ -1185,10 +1207,10 @@ def create_marker(cells, clazz):
         .addClass(clazz)
         .css("left", left)
         .css("top", top)
-        .width(right - left)
-        .height(bottom - top)
+        .width(round(right - left - 4))
+        .height(round(bottom - top - 5))
         .on("mousemove", proxy(hide_marker))
-        .appendTo(ltk.find("#sheet-scrollable"))
+        .appendTo(ltk.find(".sheet-grid"))
     )
 
 def remove_arrows(duration=0):
@@ -1207,25 +1229,6 @@ def remove_arrows(duration=0):
     else:
         ltk.find(arrows).remove()
 
-
-def load_previews():
-    settings = dict(window.previews)
-    previews.update(settings)
-    for key, values in previews.items():
-        try:
-            left, top, width, height = values
-            ltk.find(f"#preview-{key}").css(
-                ltk.to_js(
-                    {
-                        "left": left,
-                        "top": top,
-                        "width": width,
-                        "height": height,
-                    }
-                )
-            )
-        except Exception as e:
-            print("Cannot load preview", key, values)
 
 
 def check_network():
@@ -1314,7 +1317,7 @@ def setup_login():
         elif invalid_code(data[0][constants.DATA_KEY_CODE]):
             error(f"This is not a valid 6-digit code. Check your email.")
         else:
-            ltk.post(state.add_token("/confirm"), data, proxy(handle_login))
+            ltk.post("/confirm", data, proxy(handle_login))
 
 
     def login(event):
@@ -1322,7 +1325,7 @@ def setup_login():
         if invalid_email(data[0][constants.DATA_KEY_EMAIL]) or invalid_password(data[0][constants.DATA_KEY_PASSWORD]):
             error("Please enter valid email/password.")
         else:
-            ltk.post(state.add_token(f"/login"), get_data(), proxy(handle_login))
+            ltk.post(f"/login", get_data(), proxy(handle_login))
 
     def invalid_email(email):
         return not re.match(r"^\S+@\S+\.\S+$", email)
@@ -1371,7 +1374,7 @@ def setup_login():
         elif invalid_password(data[0][constants.DATA_KEY_PASSWORD]):
             error(f"The password is too short. PySheets has a {constants.MIN_PASSWORD_LENGTH} character minimum.")
         else:
-            ltk.post(state.add_token("/register"), data, proxy(handle_register))
+            ltk.post("/register", data, proxy(handle_register))
 
     def reset_password_with_code(event):
         error("checking details...")
@@ -1383,7 +1386,7 @@ def setup_login():
         elif invalid_code(data[0][constants.DATA_KEY_CODE]):
             error(f"This is not a valid 6-digit code. Check your email.")
         else:
-            ltk.post(state.add_token("/reset_code"), data, proxy(handle_login))
+            ltk.post("/reset_code", data, proxy(handle_login))
 
     def reset_password(event):
         def handle_reset_password(event):
@@ -1400,7 +1403,7 @@ def setup_login():
         else:
             error("Resetting password...")
             ltk.find("#login-password-reset").css("display", "none")
-            ltk.post(state.add_token("/reset"), get_data(), proxy(handle_reset_password))
+            ltk.post("/reset", get_data(), proxy(handle_reset_password))
 
     ltk.find("#login-register-link").on("click", proxy(enable_register))
     ltk.find("#login-signin-link").on("click", proxy(enable_signin))
@@ -1655,7 +1658,7 @@ def list_sheets():
         ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
     )
     ltk.find(".temporary").css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), 2000)
-    ltk.get(state.add_token("/list"), proxy(show_document_list))
+    ltk.get("/list", proxy(show_document_list))
 
 
 def show_document_list(documents):
@@ -2003,5 +2006,4 @@ def convert(value):
         return float(value) if "." in value else int(value)
     except:
         return value if value else 0
-
 

@@ -81,8 +81,9 @@ def root():
 @app.route("/go")
 def go():
     token = request.cookies.get(DATA_KEY_TOKEN)
+    uid = request.args.get(DATA_KEY_UID, "")
     package_names = request.args.get(DATA_KEY_PACKAGES, "").split()
-    pyodide = True or request.args.get(DATA_KEY_RUNTIME, "") == "pyodide"
+    pyodide = uid # request.args.get(DATA_KEY_RUNTIME, "") == "pyodide"
     files = FILES + FILES_LTK
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
     interpreter = '' if pyodide else 'interpreter = "1.22.0-272"'
@@ -91,17 +92,15 @@ def go():
     auto = 'experimental_create_proxy = "auto"' if pyodide else ''
     packages = f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else ""
     vm = "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}"
-    uid = request.args.get(DATA_KEY_UID, "")
+    previews = []
     if uid:
         data = storage.get_file(token, uid)
         name = data[DATA_KEY_NAME]
         timestamp = data[DATA_KEY_TIMESTAMP]
         current = data[DATA_KEY_CURRENT]
+        cells = data[DATA_KEY_CELLS]
         package_list = request.args.get(DATA_KEY_PACKAGES, "")
-        previews = json.dumps([
-            (key, value)
-            for key, value in data.get(DATA_KEY_PREVIEWS, "{}").items()
-        ])
+        previews = json.dumps(data.get(DATA_KEY_PREVIEWS) or [])
         editor_width = request.args.get(DATA_KEY_EDITOR_WIDTH, "350")
         sheet = make_sheet(data)
         scripts = make_scripts(data)
@@ -127,38 +126,37 @@ def make_column_header(data):
 
 
 def make_cell(col, row, data):
+    styles = []
     width = max(25, data[DATA_KEY_COLUMNS].get(str(col), {}).get(DATA_KEY_WIDTH, 72))
+    if width and width != 72:
+        styles.append(f"width: {width}px;")
     height = max(20, data[DATA_KEY_ROWS].get(str(row), {}).get(DATA_KEY_HEIGHT, 20))
-    styles = [
-        f"width: {width}px;",
-        f"height: {height}px;",
-    ]
-    preview = ""
+    if height and height != 20:
+        styles.append(f"height: {height}px;")
     key = f"{chr(ord('A') + col - 1)}{row}"
-    value = data[DATA_KEY_CELLS].get(key, "")
-    if isinstance(value, dict):
-        if DATA_KEY_VALUE_PREVIEW in value[DATA_KEY_VALUE]:
-            preview = f'preview="{value[DATA_KEY_VALUE][DATA_KEY_VALUE_PREVIEW]}"'
-            print("########", key, preview)
-        if DATA_KEY_VALUE_FONT_FAMILY in value:
-            styles.append(f"font-family: {value[DATA_KEY_VALUE_FONT_FAMILY]}")
-        if DATA_KEY_VALUE_FONT_SIZE in value:
-            styles.append(f"font-size: {value[DATA_KEY_VALUE_FONT_SIZE]}")
-        if DATA_KEY_VALUE_FONT_STYLE in value:
-            styles.append(f"font-style: {value[DATA_KEY_VALUE_FONT_STYLE]}")
-        if DATA_KEY_VALUE_FONT_WEIGHT in value:
-            styles.append(f"font-weight: {value[DATA_KEY_VALUE_FONT_WEIGHT]}")
-        if DATA_KEY_VALUE_VERTICAL_ALIGN in value:
-            styles.append(f"vertical-align: {value[DATA_KEY_VALUE_VERTICAL_ALIGN]}")
-        if DATA_KEY_VALUE_TEXT_ALIGN in value:
-            styles.append(f"text-align: {value[DATA_KEY_VALUE_TEXT_ALIGN]}")
-        if DATA_KEY_VALUE_COLOR in value:
-            styles.append(f"color: {value[DATA_KEY_VALUE_COLOR]}")
-        if DATA_KEY_VALUE_FILL in value:
-            styles.append(f"background-color: {value[DATA_KEY_VALUE_FILL]}")
-        value = value[DATA_KEY_VALUE][DATA_KEY_VALUE_KIND].replace("<", "&lt;").replace(">", "&gt;")
-    style = ";".join(styles)
-    return f'<div id="{key}" class="cell row-{row} col-{col}" col="{col}" row="{row}" style="{style}" {preview}>{value}</div>'
+    cell = data[DATA_KEY_CELLS].get(key, {})
+    if DATA_KEY_VALUE_FONT_FAMILY in cell:
+        styles.append(f"font-family: {cell[DATA_KEY_VALUE_FONT_FAMILY]}")
+    if DATA_KEY_VALUE_FONT_SIZE in cell:
+        styles.append(f"font-size: {cell[DATA_KEY_VALUE_FONT_SIZE]}")
+    if DATA_KEY_VALUE_FONT_STYLE in cell:
+        styles.append(f"font-style: {cell[DATA_KEY_VALUE_FONT_STYLE]}")
+    if DATA_KEY_VALUE_FONT_WEIGHT in cell:
+        styles.append(f"font-weight: {cell[DATA_KEY_VALUE_FONT_WEIGHT]}")
+    if DATA_KEY_VALUE_VERTICAL_ALIGN in cell:
+        styles.append(f"vertical-align: {cell[DATA_KEY_VALUE_VERTICAL_ALIGN]}")
+    if DATA_KEY_VALUE_TEXT_ALIGN in cell:
+        styles.append(f"text-align: {cell[DATA_KEY_VALUE_TEXT_ALIGN]}")
+    if DATA_KEY_VALUE_COLOR in cell:
+        styles.append(f"color: {cell[DATA_KEY_VALUE_COLOR]}")
+    if DATA_KEY_VALUE_FILL in cell:
+        styles.append(f"background-color: {cell[DATA_KEY_VALUE_FILL]}")
+
+    value = cell.get(DATA_KEY_VALUE_KIND) or ""
+    value = value.replace("<", "&lt;").replace(">", "&gt;")
+    style = f'style="{";".join(styles)}"' if styles else ""
+    if cell: print("render", key, value, styles, cell)
+    return f'<div id="{key}" class="cell row-{row} col-{col}" col="{col}" row="{row}" {style}>{value}</div>'
 
 
 def make_row_label(row, data):
@@ -203,11 +201,16 @@ def make_sheet(data):
 
 
 def make_scripts(data):
+    def clean_script(cell):
+        script = cell.get(DATA_KEY_VALUE_FORMULA)
+        return script.replace('`', '\\`') if isinstance(script, str) else script
+
     scripts = dict([
-        (key, value[DATA_KEY_VALUE][DATA_KEY_VALUE_FORMULA].replace('`', '\\`'))
-        for key, value in data[DATA_KEY_CELLS].items()
-        if isinstance(value, dict)
+        (key, clean_script(cell))
+        for key, cell in data[DATA_KEY_CELLS].items()
+        if DATA_KEY_VALUE_FORMULA in cell
     ])
+
     return "\n".join([
         "window.scripts = [",
         "\n".join(f"\t\t[`{key}`, `{script}`]," for key,script in scripts.items()),
@@ -217,7 +220,7 @@ def make_scripts(data):
 
 @app.route("/list")
 def list_files():
-    files = storage.list_files(request.args.get(DATA_KEY_TOKEN))
+    files = storage.list_files(request.cookies.get(DATA_KEY_TOKEN))
     return jsonify({ DATA_KEY_IDS: files })
 
 
@@ -325,7 +328,7 @@ def confirm():
 def share():
     uid = request.args.get(DATA_KEY_UID)
     email = request.args.get(DATA_KEY_EMAIL)
-    token = request.args.get(DATA_KEY_TOKEN)
+    token = request.cookies.get(DATA_KEY_TOKEN)
     storage.share(token, uid, email)
     return jsonify({ DATA_KEY_STATUS: "OK" })
 
@@ -333,25 +336,25 @@ def share():
 @app.route("/complete", methods=["POST"])
 def complete():
     data = get_form_data()
-    token = request.args.get(DATA_KEY_TOKEN)
+    token = request.cookies.get(DATA_KEY_TOKEN)
     prompt = data[DATA_KEY_PROMPT]
     return ai.complete(prompt, token)
 
 
 @app.route("/users", methods=["GET"])
 def users():
-    return storage.get_users(request.args.get(DATA_KEY_TOKEN))
+    return storage.get_users(request.cookies.get(DATA_KEY_TOKEN))
 
 
 @app.route("/file", methods=["GET", "POST", "DELETE"])
 def file():
-    return FILE_ACTIONS[request.method](request.args.get(DATA_KEY_TOKEN))
+    return FILE_ACTIONS[request.method](request.cookies.get(DATA_KEY_TOKEN))
 
 
 @app.route("/emails", methods=["GET"])
 def emails():
     response = {
-        "emails": storage.get_all_emails(request.args.get(DATA_KEY_TOKEN))
+        "emails": storage.get_all_emails(request.cookies.get(DATA_KEY_TOKEN))
     }
     return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
 
@@ -365,7 +368,7 @@ def embed():
     if key in cells:
         cell = cells[key]
         if cell.get(DATA_KEY_VALUE_EMBED):
-            return cell[DATA_KEY_VALUE].get(DATA_KEY_VALUE_PREVIEW, "")
+            return cell.get(DATA_KEY_VALUE_PREVIEW, "")
     return f'<html>[Chart is missing]</html>'
 
 
@@ -380,7 +383,7 @@ def forget():
 @app.route("/logs", methods=["GET"])
 def logs():
     response = storage.get_logs(
-        request.args.get(DATA_KEY_TOKEN),
+        request.cookies.get(DATA_KEY_TOKEN),
         request.args.get(DATA_KEY_UID),
         request.args.get(DATA_KEY_TIMESTAMP),
     )
@@ -391,7 +394,7 @@ def logs():
 def log():
     data = get_form_data()
     doc_uid = data[DATA_KEY_UID]
-    token = request.args.get(DATA_KEY_TOKEN)
+    token = request.cookies.get(DATA_KEY_TOKEN)
     for time, message in data[DATA_KEY_ENTRIES]:
         storage.log(token, doc_uid, time, message)
     return f'{{ "{DATA_KEY_RESULT}":  "OK" }}'
@@ -424,8 +427,8 @@ load_cache = {}
 
 @app.route("/load", methods=["GET", "POST"])
 def load():
-    app.logger.info("Load, url=%s token=%s", request.args.get(DATA_KEY_URL), request.args.get(DATA_KEY_TOKEN))
-    if storage.get_email(request.args.get(DATA_KEY_TOKEN)):
+    app.logger.info("Load, url=%s token=%s", request.args.get(DATA_KEY_URL), request.cookies.get(DATA_KEY_TOKEN))
+    if storage.get_email(request.cookies.get(DATA_KEY_TOKEN)):
         url = request.args.get(DATA_KEY_URL)
         if url in load_cache:
             when, response = load_cache[url]

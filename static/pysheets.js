@@ -204,7 +204,7 @@
                     dash: { },
                     size: 3,
                     middleLabel: LeaderLine.pathLabel(label || "")
-                })).appendTo($("#sheet-scrollable"));
+                })).appendTo($(".sheet-grid"));
             }
         } catch(e) {
             // ignore
@@ -354,21 +354,26 @@
             })
         ]).then(() => {});
     }
+   
+    const styleOptions = [
+        ["vff", "font-family", "Arial"],
+        ["vfs", "font-size", "14px"],
+        ["vfw", "font-weight", "400"],
+        ["vfu", "font-style", "normal"],
+        ["vc", "color", "rgb(33, 37, 41)"],
+        ["vb", "background-color", "rgb(255, 255, 255)"],
+        ["vva", "vertical-align", "bottom"],
+        ["vta", "text-align", "start"],
+    ];
 
     window.getStyle = (element) => {
         const result = {};
-        try {
         const style = window.getComputedStyle(element);
-        result["vff"] = style.getPropertyValue("font-family")
-        result["vfs"] = style.getPropertyValue("font-size")
-        result["vfw"] = style.getPropertyValue("font-weight")
-        result["vfu"] = style.getPropertyValue("font-style")
-        result["vc"] = style.getPropertyValue("color")
-        result["vb"] = style.getPropertyValue("background-color")
-        result["vva"] = style.getPropertyValue("vertical-align")
-        result["vta"] = style.getPropertyValue("text-align")
-        } catch (e) {
-
+        for (const [key, name, defaultValue] of styleOptions) {
+            const value = style.getPropertyValue(name)
+            if (value !== defaultValue) {
+                result[key] = value;
+            }
         }
         return JSON.stringify(result);
     }

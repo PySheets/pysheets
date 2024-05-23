@@ -54,7 +54,7 @@ Enter the name of the sheet to actually delete it:")
 def delete_doc():
     if window.prompt(DELETE_PROMPT) == state.doc.name:
         url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
-        ltk.delete(state.add_token(url), lambda data: go_go())
+        ltk.delete(url, lambda data: go_go())
 
 
 IMPORT_MESSAGE = """
@@ -94,7 +94,7 @@ def share(uid, email):
         logger.info(f"Sheet {state.doc.uid} was shared with {email}")
 
     url = f"/share?{constants.DATA_KEY_UID}={uid}&{constants.DATA_KEY_EMAIL}={email}"
-    ltk.get(state.add_token(url), ltk.proxy(confirm))
+    ltk.get(url, ltk.proxy(confirm))
     close_share_dialog()
 
 
@@ -104,7 +104,7 @@ def close_share_dialog():
 
 def new_sheet():
     state.doc.name = "Untitled"
-    ltk.get(state.add_token("/file"), ltk.proxy(lambda data: load_doc(data[constants.DATA_KEY_UID])))
+    ltk.get("/file", ltk.proxy(lambda data: load_doc(data[constants.DATA_KEY_UID])))
 
 
 def share_sheet():

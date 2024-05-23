@@ -115,7 +115,7 @@ def forget_result(result):
 def really_forget_me():
     window.localStorage.clear()
     console.write("main", "User activated really_forget_me")
-    ltk.get(add_token(f"/forget"), ltk.proxy(forget_result))
+    ltk.get(f"/forget", ltk.proxy(forget_result))
 
     
 def forget_me(event):
@@ -156,11 +156,6 @@ def forget_me(event):
         )
     ).dialog().addClass("permanent-forget")
     dialog.parent().css("width", 400)
-
-
-def add_token(url):
-    sep = "&" if "?" in url else "?"
-    return f"{url}{sep}{constants.DATA_KEY_TOKEN}={user.token}"
 
 
 class ConsoleLogger(ltk.Logger):
@@ -208,7 +203,7 @@ class Console():
     
     def flush_log_queue(self):
         if self.log_queue:
-            ltk.post(add_token("/log"), { 
+            ltk.post("/log", { 
                 constants.DATA_KEY_UID: doc.uid,
                 constants.DATA_KEY_ENTRIES: self.log_queue,
             }, lambda response: None)

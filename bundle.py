@@ -12,8 +12,7 @@ files = []
 module_children = {}
 global_imports = { }
 names = [
-    "Blank", "Cell", "progress", "hide_progress", "show_progress",
-    "setup", "normalize_key", "add_token", "post_with_token", "get_with_token",
+    "Blank", "Cell", "progress", "hide_progress", "show_progress", "setup", "normalize_key", 
     "Document", "User", "Progress", "set_title", "login", "logout",
     "uid", "name", "timestamp", "dirty", "last_edit",
     "email", "token", "photo", "self", "ltk", "js", "json", "logging", 

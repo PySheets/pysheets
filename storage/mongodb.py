@@ -466,7 +466,10 @@ def get_files(email):
 
 def get_file_ids(email):
     files = email_to_files.find_one({"_id": email}, {"_id": 0, "files": 1})
-    return [file[constants.DATA_KEY_UID] for file in files["files"] or []]
+    try:
+        return [file[constants.DATA_KEY_UID] for file in files["files"] or []]
+    except:
+        return [file for file in files["files"] or []]
 
 
 def get_users(token):
@@ -484,6 +487,10 @@ if __name__ == "__main__":
         n = 0
         for n, (token, obj) in enumerate(dump(name)):
             obj["_id"] = token
+            if constants.DATA_KEY_VALUE in obj:
+                value = obj[constants.DATA_KEY_VALUE]
+                for key, value in value.items():
+                    obj[key] = value
             try:
                 db[name].insert_one(obj)
             except:
