@@ -92,7 +92,7 @@ class PySheets():
                 f"{chr(ord('A') + col - 1)}{row}"
                 for row in range(start_row, end_row + 1)
             ]
-            values = [ self._inputs[ key ] for key in keys ]
+            values = [ self._inputs.get(key, "") for key in keys ]
             header = values.pop(0) if headers else f"col-{col}"
             data[header] = values
         df = pd.DataFrame.from_dict(data)
