@@ -16,7 +16,7 @@ def feedback(event):
 
 
 def discord(event):
-    window.open("https://discord.com/invite/4jjFF6hj")
+    window.open("https://discord.gg/4wy23872th")
 
 
 def create_menu(sheet):

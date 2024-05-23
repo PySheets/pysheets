@@ -2162,7 +2162,7 @@ state.console.write(
     f"[Main] Meet the PySheets community on our Discord server.",
     action=ltk.Button(
         "💬 Join",
-        lambda event: ltk.window.open("https://discord.gg/4jjFF6hj")
+        lambda event: ltk.window.open("https://discord.gg/4wy23872th")
     ).addClass("small-button")
 )
 state.console.write(
