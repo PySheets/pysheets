@@ -690,6 +690,7 @@ Generate Python code.
                 if round(row.height()) != constants.DEFAULT_ROW_HEIGHT
             )
             packages = " ".join(ltk.find("#packages").val().replace(",", " ").split())
+            print("save previews:", previews)
             data = {
                 constants.DATA_KEY_UID: state.doc.uid,
                 constants.DATA_KEY_NAME: state.doc.name,
@@ -713,7 +714,7 @@ Generate Python code.
                     if "error" in status:
                         message = f"Full document backup failed {response}"
                     else:
-                        message = f"Full document backed up ✅"
+                        message = f"Full document, {len(json.dumps(data))} bytes, backed up ✅"
                         state.doc.dirty = False
                 state.console.write("save-response", f"[Save] {message}")
                 if done:
@@ -1230,11 +1231,9 @@ def remove_arrows(duration=0):
         ltk.find(arrows).remove()
 
 
-
 def check_network():
     if ltk.find(".cell").length == 0:
         state.console.write("network-status", "[I/O] Error: Cannot reach PySheet's document storage ️️🤬🤬🤬. Try reloading the page...")
-
 
 
 def email_to_class(email):

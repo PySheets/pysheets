@@ -133,9 +133,8 @@ html, body {
     position: relative;
     font-family: Arial;
     background-color: white;
-    padding: 0px 2px 0 3px;
-    width: 72px;
-    height: 20px;
+    padding: 0px 3px;
+    width: 92px;
     border: 1px solid #e1e1e1;
     border-width: 0 1px 1px 1px;
     border-right-color: transparent;
