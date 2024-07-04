@@ -21,19 +21,18 @@
     <script defer src="html2canvas.min.js"></script>
     <script src="pysheets.js" type="module"></script>
     <script>
-        window.version_pyscript = '2024.5.1';
+        window.version_pyscript = '2024.5.2';
         window.version_interpreter = '{{version_interpreter}}';
         window.version_app = '';
         window.version_storage = '{{version_storage}}';
         window.name = '{{name|safe}}';
         window.runtime = '{{runtime}}';
-        window.current = '{{current}}';
+        window.selected = '{{selected}}';
+        window.path = '{{path}}';
         window.editor_width = parseFloat('{{editor_width}}');
         window.previews = {{previews|safe}};
         window.timestamp = parseFloat('{{timestamp|safe}}');
         window.packages = '{{package_list|safe}}';
-        {{scripts|safe}}
-    </script>
     </script>
     <link defer rel="stylesheet" href="pysheets.css">
 
@@ -47,9 +46,16 @@
         ### "static/main_min_2.py" = "main_min_2.py"
         {{files|safe}}
     </{{runtime}}-config>
-    <script type="{{runtime}}" src="main.py"></script>
+    <script type="{{runtime}}">
+        import pysheets
+        import models
+        false = False
+        pysheets.main(models.Sheet({{"**" if encoded_sheet else ""}}{{encoded_sheet|safe}}))
+    </script>
+    <style>
+        {{css}}
+    </style>
 </head>
-
 <body>
     <img referrerpolicy="no-referrer-when-downgrade" src="https://chrislaffra.com/piwik/matomo.php?idsite=2&amp;rec=1" style="border:0;position:absolute" alt="" />
     <div class="header">
@@ -59,7 +65,7 @@
         </div>
         <div id="cell-attributes-container" class="cell-attributes-container"></div>
         <div id="info" class="info">
-            <input id="title" value="⏳ Loading{{vm}}...">
+            <input id="title" value={{loading}}>
         </div>
         <div class="column buttons-container"></div>
         <div class="column user-image-container">
@@ -115,8 +121,9 @@
 
         </center>
     </div>
-    <div id="main" class="main" tabindex="0"> </div>
-    {{sheet|safe}}
+    <div id="main" class="main" tabindex="0">
+    {{sheet_html|safe}}
+    </div>
 
 
 </body>

@@ -66,10 +66,14 @@ html, body {
     padding: 0 0 0 8px;
 }
 
+#sheet-scrollable {
+    background: #c5c5c5;
+}
+
 #sheet-container {
     min-height: 100px;
     min-width: 300px;
-    overflow: scroll;
+    overflow: hidden;
 }
 
 ::-webkit-scrollbar {
@@ -87,6 +91,8 @@ html, body {
 .sheet {
     border-spacing: 0px;
     table-layout: fixed;
+    z-index: 10;
+    cursor: wait;
 }
 
 .sheet th,td,div {
@@ -101,31 +107,73 @@ html, body {
     margin-left: 61px;
 }
 
+.cell-row {
+    display: flex;
+    width: fit-content;
+    height: fit-content;
+    overflow: hidden;
+}
+
 .column-header {
     display: flex;
     position: absolute;
-    top: 0px;
+    top: 48px;
     left: 61px;
     width: fit-content;
     max-height: 30px;
     overflow: hidden;
     background: white;
-    z-index: 2501;
-}
-
-.cell-row {
-    display: flex;
-    width: fit-content;
-    overflow: hidden;
+    z-index: 2505;
 }
 
 .row-header {
     position: absolute;
-    top: 30px;
+    top: 77px;
     background: white;
     height: fit-content;
     max-width: 61px;
-    z-index: 2501;
+    z-index: 2505;
+}
+
+.column-label {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 92px;
+    color: black;
+    font-family: Arial;
+    border: 0 solid #e1e1e1;
+    border-width: 0 0 1px 1px;
+    border-color: #c5c5c5;
+    background-color: white;
+    margin-left: 0;
+    font-weight: normal;
+    height: 29px;
+    padding: 0 2px;
+}
+
+.column-label:hover {
+    border-right-color: #AAF;
+    background-color: #EEE;
+}
+
+.row-label {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #efefef;
+    z-index: 2100;
+    width: 60px;
+    height: 24px;
+    margin: 0 0 0 0;
+    color: black;
+    font-family: Helvetica;
+    border: 0 solid transparent;
+    border-width: 0 1px 1px 1px;
+    border-color: #c5c5c5;
+    border-bottom-color: #dbdbdb;
+    background-color: white;
+    padding: 2px 0;
 }
 
 .cell {
@@ -133,10 +181,11 @@ html, body {
     position: relative;
     font-family: Arial;
     background-color: white;
-    padding: 0px 3px;
+    padding: 2px;
     width: 92px;
+    height: 24px;
     border: 1px solid #e1e1e1;
-    border-width: 0 1px 1px 1px;
+    border-width: 0 0 1px 1px;
     border-right-color: transparent;
     white-space: nowrap;
     text-overflow: ellipsis; 
@@ -145,21 +194,25 @@ html, body {
     z-index: 2100;
 }
 
+.hidden {
+    display: none;
+}
+
 .cell.highlighted {
     background-color: rgb(248, 250, 253);
 }
 
 .blank {
     position: absolute;
-    display: block;
-    top: 0;
+    display: none;
+    top: 50;
     left: 0;
     width: 61px;
     height: 29px;
     border: 1px solid #e1e1e1;
     border-width: 0 1px 1px 0;
-    background-color: #ececec;
-    z-index: 2503;
+    background-color: #f7f7f7;
+    z-index: 2510;
 }
 
 input.arrow {
@@ -189,45 +242,6 @@ input.arrow {
 
 .current-marker {
     position: absolute;
-}
-
-.column-label {
-    display: inline-block;
-    width: 125px;
-    padding: 4px 3px 4px 2px;
-    color: black;
-    text-align: center;
-    font-family: Helvetica;
-    border: 0 solid #e1e1e1;
-    border-width: 0 2px 1px 0;
-    border-bottom-color: #dbdbdb;
-    border-right-color: #dbdbdb;
-    background-color: white;
-    margin-right: -1px;
-    margin-left: 1px;
-    font-weight: normal;
-}
-
-.column-label:hover {
-    border-color: #AAF;
-    background-color: #EEE;
-}
-
-.row-label {
-    display: block;
-    background: #efefef;
-    z-index: 2100;
-    width: 25px;
-    height: 22px;
-    margin: 0 0 0 0;
-    color: black;
-    font-family: Helvetica;
-    border: 0 solid transparent;
-    border-width: 0 1px 1px 0;
-    border-right-color: #dbdbdb;
-    border-bottom-color: #dbdbdb;
-    background-color: white;
-    padding: 2px 18px 0 18px;
 }
 
 .row-label:hover {
@@ -391,6 +405,15 @@ h3 {
     color: white;
 }
 
+.internals .ui-tabs-panel {
+    height: 100%;
+    padding: 1px;
+}
+
+.internals .ui-widget-header {
+    background-color: #f7f7f7;
+}
+
 .ui-widget-header {
     background-color: #2077b4;
     color: white;
@@ -448,12 +471,11 @@ h3 {
 }
 
 #main {
-    display: block;
     opacity: 0;
     width: 100vw;
     height: calc(100vh - 51px);
     overflow: hidden;
-    background-color: #f7f7f7;
+    background-color: white;
     position: absolute;
     top: 48px;
     z-index: 1;
@@ -473,7 +495,7 @@ h3 {
 body {
     padding: 0;
     margin: 0;
-    background-color: #f7f7f7;
+    background-color: white;
     height: 100vh;
 }
 
@@ -811,8 +833,73 @@ td:hover .debug-info {
     margin-left: 12px;
     margin-right: 12px;
 }
-    
-.small-button {
+
+.timeline-container {
+    display: contents;
+    width: 100%;
+    height: 100%;
+    overflow-x: scroll;
+    overflow-y: hidden;
+    display: flex;
+    flex-flow: row wrap;
+    align-items: flex-start;
+    font-family: "Helvetica Narrow","Arial Narrow",Tahoma,Arial,Helvetica,sans-serif;border: 3px solid #BBB;
+}
+
+.timeline-container .flame-header {
+    display: flex;
+    justify-content: flex-end;
+    background-color: #2077b4;
+    height: 28px;
+    width: 100%;
+    padding: 2px 8px;
+}
+
+.timeline-container .flame-header .ltk-button {
+    width: 24px;
+    min-width: 24px;
+    margin-top: 1px;
+    height: 24px;
+    font-size: 18px;
+    margin-right: 4px;
+}
+
+.timeline-container .flame-header .flame-title {
+    background-color: transparent;
+    color: white;
+    height: 24px;
+    overflow: hidden;
+}
+
+.timeline-container .flame {
+    position: relative;
+    overflow: hidden;
+    border-radius: 2px;
+    border: 1px solid gray;
+    min-width: 92px;
+    background-color: #f2f2f2;
+    margin: 14px 0 0 14px;
+    box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
+}
+
+.timeline-container .flame .label {
+    margin-left: 10px;
+    color: rgb(32, 32, 32);
+    height: 20px;
+    font-size: 15px;
+}
+
+.timeline-container .flame .call {
+    position: absolute;
+    background-color: white;
+    height: 20px;
+    font-size: 15px;
+    border: 1px solid gray;
+    text-overflow: ellipsis; 
+    overflow: hidden; 
+}
+
+.internals .small-button {
     background-color: #2077b4;
     border: 1px solid gray;
     color: white;
@@ -831,16 +918,15 @@ td:hover .debug-info {
 }
 
 #run-button {
-    background-color: var(--ltk-success);
-    margin-top: 4px;
-    min-width: 45px;
+    font-size: 15px;
 }
 
-.completion-button {
+.toolbar-button {
     min-width: 41px;
     margin-left: 10px;
-    margin-top: 4px;
+    margin-top: 2px;
     cursor: pointer;
+    font-size: 10px;
 }
 
 #packages {
@@ -852,6 +938,7 @@ td:hover .debug-info {
     background-color: #f9f9ff;
     min-height: 100px;
     width: 100%;
+    height: 100%;
     padding: "0 8px";
     overflow: auto;
     -ms-overflow-style: none;  /* IE and Edge */
@@ -914,7 +1001,7 @@ td:hover .debug-info {
     color: rgb(46, 158, 178);
 }
 
-.console .sheet td {
+.console .dag td {
     color: rgb(51, 74, 227);
 }
 
@@ -985,11 +1072,4 @@ input[type="checkbox"] {
     input[type="checkbox"] {
       transition: none;
     }
-  }
-
-  .profiler-toggle {
-    position: absolute;
-    top: 10px;
-    right: 50px;
-    z-index: 10000;
   }

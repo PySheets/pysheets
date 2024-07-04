@@ -1,6 +1,5 @@
 from pymongo import MongoClient
 
-import json
 import random
 import re
 import requests
@@ -11,6 +10,7 @@ import uuid
 sys.path.append(".")
 
 import static.constants as constants
+import static.models as models
 
 from storage.settings import admins
 from storage.settings import EXPIRATION_MINUTE_SECONDS
@@ -22,7 +22,7 @@ __all__ = [
     # ai
     "get_completion_budget", "get_cached_completion", "set_cached_completion", "increment_budget",
     # files
-    "new", "save", "get_file", "get_file_with_uid", "list_files", "delete",
+    "new", "save", "get_sheet", "get_sheet_with_uid", "list_files", "delete", "save_edits", "get_edits",
     # sharing
     "share",
     # identity
@@ -57,6 +57,7 @@ reset = db["reset"]
 # Document Storage
 email_to_files = db["email_to_files"]
 docid_to_doc = db["docid_to_doc"]
+docid_to_edits = db["docid_to_edits"]
 
 # AI Completion
 email_to_completion_budget = db["email_to_completion_budget"]
@@ -67,6 +68,22 @@ docid_to_logs = db["docid_to_logs"]
 
 logger = None
 
+
+def drop_all():
+    db.drop_collection("email_to_info")
+    db.drop_collection("token_to_email")
+    db.drop_collection("registration")
+    db.drop_collection("reset")
+    db.drop_collection("email_to_files")
+    db.drop_collection("docid_to_doc")
+    db.drop_collection("docid_to_edits")
+    db.drop_collection("email_to_completion_budget")
+    db.drop_collection("prompt_to_completion")
+    db.drop_collection("docid_to_logs")
+
+if False:
+    db.drop_collection("email_to_files")
+    db.drop_collection("docid_to_doc")
 
 def set_logger(app_logger):
     global logger
@@ -237,7 +254,7 @@ def copy_tutorial(email):
     for tutorial_uid in TUTORIAL_UIDS:
         uid = str(uuid.uuid4())
         logger.info("[Storage] Copy tutorial %s to %s for %s", tutorial_uid, uid, email)
-        data = get_file_with_uid(tutorial_uid)
+        data = get_sheet_with_uid(tutorial_uid)
         data[constants.DATA_KEY_UID] = uid
         docid_to_doc.insert_one(data)
         files["files"].append(uid)
@@ -258,17 +275,20 @@ def list_files(token):
         return []
     files = []
     for uid in get_user_files(token):
-        document = docid_to_doc.find_one({"_id": uid})
-        if document:
-            files.append(
-                (
-                    uid,
-                    document.get(constants.DATA_KEY_NAME, ""),
-                    document.get(constants.DATA_KEY_SCREENSHOT, ""),
-                    document.get(constants.DATA_KEY_RUNTIME, "micropython"),
-                    document.get(constants.DATA_KEY_PACKAGES, "") or [],
+        try:
+            sheet = get_sheet_with_uid(uid)
+            if sheet:
+                files.append(
+                    (
+                        uid,
+                        sheet.name,
+                        sheet.screenshot,
+                        "micropython",
+                        [], # sheet.packages,
+                    )
                 )
-            )
+        except:
+            pass
     return files
 
 
@@ -319,9 +339,9 @@ def new(token):
     return new_uid
 
 
-def save(token, uid, data):
-    data["_id"] = uid
-    docid_to_doc.update_one({"_id": uid}, {"$set": data}, upsert=True)
+def save(token, uid, sheet):
+    doc = { constants.SHEET: models.encode(sheet) }
+    docid_to_doc.update_one({"_id": uid}, {"$set": doc}, upsert=True)
     email = get_email(token)
     if email:
         files = email_to_files.find_one({"_id": email}, {"_id": 0, "files": 1})
@@ -361,23 +381,14 @@ def forget(token):
     return len(files["files"]) if files else 0
 
 
-def get_file(token, uid):
+def get_sheet(token, uid):
     if uid in get_user_files(token):
-        return get_file_with_uid(uid)
+        return get_sheet_with_uid(uid)
 
 
-def get_file_with_uid(uid):
-    data = docid_to_doc.find_one({"_id": uid}) or {
-        constants.DATA_KEY_NAME: "Untitled Sheet",
-        constants.DATA_KEY_CURRENT: "A1",
-        constants.DATA_KEY_TIMESTAMP: time.time(),
-        constants.DATA_KEY_COLUMNS: {},
-        constants.DATA_KEY_ROWS: {},
-        constants.DATA_KEY_CELLS: {},
-    }
-    if constants.DATA_KEY_CELLS_ENCODED in data:
-        data[constants.DATA_KEY_CELLS] = json.loads(data[constants.DATA_KEY_CELLS_ENCODED])
-    return data
+def get_sheet_with_uid(uid) -> models.Sheet:
+    doc = docid_to_doc.find_one({"_id": uid}) or { constants.SHEET: models.encode(models.Sheet()) }
+    return models.decode(doc[constants.SHEET])
 
 
 def get_logs(token, uid, ts):
@@ -405,7 +416,7 @@ def log(token, doc_uid, time, message):
     }
     docid_to_logs.update_one(
         {"_id": doc_uid},
-        {"$addToSet": {"logs": entry}},
+        {"$push": {"logs": entry}},
         upsert=True
     )
 
@@ -416,7 +427,7 @@ def check_owner(token, uid):
         files = email_to_files.find_one({"_id": email}, {"_id": 0, "files": 1})
         if files and uid in files["files"]:
             return
-    raise ValueError("owner")
+    raise ValueError(f"Not owner of {uid}: {token}")
 
 
 def check_admin(token):
@@ -436,7 +447,7 @@ def share(token, sheet_id, email):
             }
         )
     email_to_files.update_one(
-        {"_id": email}, {"$addToSet": {"files": sheet_id}}, upsert=True
+        {"_id": email}, {"$push": {"files": sheet_id}}, upsert=True
     )
 
 
@@ -455,6 +466,36 @@ def get_all_emails(token):
             )
         )
     )
+
+
+def save_edits(token, sheet_id, start, edits):
+    if not edits:
+        return
+    check_owner(token, sheet_id)
+    user = f"{token}-{start}"
+    edits[constants.DATA_KEY_USER] = user
+    docid_to_edits.update_one(
+        {"_id": sheet_id},
+        {"$push": {
+            constants.DATA_KEY_USER: f"{token}-{start}",
+            constants.DATA_KEY_EDITS: edits,
+        }},
+        upsert=True
+    )
+
+
+def get_edits(token, sheet_id, start, timestamp):
+    check_owner(token, sheet_id)
+    user = f"{token}-{start}"
+    all_edits = docid_to_edits.find_one({ "_id": sheet_id })
+    if not all_edits:
+        return []
+    edits = [
+        edits
+        for edits in all_edits[constants.DATA_KEY_EDITS]
+        if edits.get(constants.DATA_KEY_USER, user) != user and edits[constants.DATA_KEY_TIMESTAMP] > timestamp
+    ]
+    return edits
 
 
 def get_files(email):

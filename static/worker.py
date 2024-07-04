@@ -23,6 +23,8 @@ get = window.get
 cache = {
     "pysheets": PySheets(),
 }
+results = {
+}
 token = window.localStorage.getItem(constants.DATA_KEY_TOKEN)
 
 OriginalSession = requests.Session
@@ -104,16 +106,6 @@ class Logger():
 logger = Logger()
 
 
-
-def run_in_worker(script):
-    _globals = {}
-    _globals.update(cache)
-    _globals["pyodide"] = pyodide
-    _globals["pyscript"] = pyscript
-    _globals["pysheets"] = sys.modules["pysheets"] = PySheets(None, cache)
-    _locals = _globals
-    exec(script, _globals, _locals)
-    return _locals["_"]
 
 
 def get_image_data(figure):
@@ -212,12 +204,24 @@ def generate_completion(key, prompt):
     )
 
 
+def run_in_worker(key, script):
+    _globals = {}
+    _globals.update(cache)
+    _globals.update(results)
+    _globals["pyodide"] = pyodide
+    _globals["pyscript"] = pyscript
+    _globals["pysheets"] = sys.modules["pysheets"] = PySheets(None, cache)
+    _locals = _globals
+    exec(script, _globals, _locals)
+    return _locals["_"]
+
+
 def run(data):
     start = time.time()
     try:
         key, script, inputs = data
         cache.update(inputs)
-        result = run_in_worker(script)
+        result = run_in_worker(key, script)
     except Exception as e:
         import re
         tb = traceback.format_exc()
@@ -287,7 +291,7 @@ def handle_request(sender, topic, request):
         elif topic == ltk.pubsub.TOPIC_WORKER_RUN:
             run(data)
         else:
-            print("Error: Unexpect topic request", topic)
+            print("Error: Unexpected topic request", topic)
     except Exception as e:
         print("Error: Handling topic", topic)
         traceback.print_exc()

@@ -55,7 +55,6 @@
 
     window.getColumnName = (col) => {
         const parts = [];
-        col += 1;
         while (col > 0) {
             var [col, remainder] = divmod(col - 1, 26);
             parts.splice(0, 0, String.fromCharCode(remainder + "A".charCodeAt(0)));
@@ -64,30 +63,28 @@
     }
 
     window.getKeyFromColumnRow = (col, row) => {
-        return `${window.getColumnName(col - 1)}${row}`;
+        return `${window.getColumnName(col)}${row}`;
     }
 
     window.fillSheet = (column, row) => {
         if ($(`#${window.getKeyFromColumnRow(column, row)}`).length) return;
 
-        const sheet = $("#sheet");
         const columnHeader = $("#column-header");
         const rowHeader = $("#row-header");
-        const existingColumnCount = columnHeader.children().length - 1;
-        const existingRowCount = rowHeader.children().length - 1;
-        const newRow = Math.max(row, existingRowCount - 1);
-        const newColumn = Math.max(column, existingColumnCount - 1);
+        const existingColumnCount = columnHeader.children().length;
+        const existingRowCount = rowHeader.children().length;
+        const newRowCount = Math.max(row + 1, existingRowCount);
+        const newColumnCount = Math.max(column, existingColumnCount);
 
-        // Add sheet headers
-        for (var column=existingColumnCount; column <= newColumn; column++) {
+        // Add column headers
+        for (var column=existingColumnCount + 1; column <= newColumnCount; column++) {
             if ($(`#col-${column}`).length == 0) {
                 makeColumnResizable(
                     $("<div>")
-                        .addClass("column-label")
-                        .addClass(`col-${column}`)
+                        .addClass(`column-label col-${column}`)
                         .attr("id", `col-${column}`)
                         .attr("col", column)
-                        .text(window.getColumnName(column - 1))
+                        .text(window.getColumnName(column))
                         .appendTo(columnHeader)
                 );
             }
@@ -96,28 +93,32 @@
         // fill the top right block
         for (var row=1; row <= existingRowCount; row++) {
             const elements = [];
-            for (var column=existingColumnCount + 1; column <= newColumn; column++) {
+            for (var column=existingColumnCount + 1; column <= newColumnCount; column++) {
                 const key = window.getKeyFromColumnRow(column, row);
                 elements.push(
                     `<div id="${key}" class="cell row-${row} col-${column}" col="${column}" row="${row}"></div>`
                 );
             }
-            const html = elements.join("");
-            $(`#row-${row}`).append($(html))
+            $(`#row-${row}`).append($(elements.join("")))
         }
 
         // add missing row labels
-        const label_elements = [];
-        for (var row=existingRowCount + 2; row <= newRow; row++) {
-            label_elements.push(`<div new="true" class="row-label row-${row}" row="${row}">${row}</div>`);
+        for (var row=existingRowCount + 1; row < newRowCount; row++) {
+            makeRowResizable(
+                $("<div>")
+                    .addClass(`row-label row-${row}`)
+                    .attr("id", `row-${row}`)
+                    .attr("row", row)
+                    .text(row)
+                    .appendTo(rowHeader)
+            )
         }
-        rowHeader.append($(label_elements.join("\n")));
 
         // fill the entire bottom section
         const cell_elements = [];
-        for (var row=existingRowCount + 2; row <= newRow; row++) {
-            cell_elements.push(`<div id="row-${row}" row="${row}" class="cell-row">`);
-            for (var column=1; column <= newColumn; column++) {
+        for (var row=existingRowCount + 1; row < newRowCount; row++) {
+            cell_elements.push(`<div id="row-${row-1}" class="cell-row">`);
+            for (var column=1; column <= newColumnCount; column++) {
                 const key = window.getKeyFromColumnRow(column, row);
                 cell_elements.push(
                     `<div id="${key}" class="cell row-${row} col-${column}" col="${column}" row="${row}"></div>`
@@ -132,18 +133,18 @@
         node.resizable({
             handles: "e",
             minWidth: 35,
-            alsoResize: `.col-${node.attr("col")}`,
-        }).on("resize", function(event) {
-            columnResized(event);
         })
+        .on("resize", (event) => columnResizing(event))
+        .on("resizestop", (event) => columnResized(event));
     }
 
     window.makeRowResizable = (node) => {
         node.resizable({
             handles: "s",
-            minHeight: 22,
-            alsoResize: `.row-${node.attr("row")}`,
+            minHeight: 20,
         })
+        .on("resize", (event) => rowResizing(event))
+        .on("resizestop", (event) => rowResized(event));
     }
 
     window.makeSheetResizable = () => {
@@ -155,14 +156,21 @@
         });
     }
 
-    window.drawSheet = () => {
-        $("#column-header").css("left", $(".sheet-grid").css("margin-left"));
-        $("#row-header").css("top", $(".sheet-grid").css("margin-top"));
+    window.adjustSheetPosition = () => {
+        $("#column-header")
+            .css("top", 0)
+            .css("left", $(".sheet-grid").css("margin-left"));
+        $(".blank")
+            .css("top", 0)
+            .css("display", "block");
+        $("#row-header")
+            .css("top", $(".sheet-grid").css("margin-top"));
     }
 
     window.makeSheetScrollable = () => {
         const sheet = $("#sheet");
         sheet.on("wheel", (event) => {
+            $(".leader-line, .inputs-marker").remove()
             const target = $(event.target);
             if (target.hasClass("cell")) {
                 const columnHeader = $("#column-header");
@@ -170,32 +178,32 @@
                 const container = $("#sheet-container");
                 const grid = $(".sheet-grid");
 
-                // compute horizontal position based on the deltaX
-                const dx = -event.originalEvent.deltaX;
+                // compute horizontal position
+                const dx = -event.originalEvent.deltaX * 2;
                 const left = parseFloat(grid.css("margin-left"));
                 const minX = container.width() - columnHeader.width();
-                const x = Math.min(61, Math.max(left + dx, minX))
-                grid.css("margin-left", x);
+                const marginLeft = Math.min(61, Math.max(left + dx, minX))
+                grid.css("margin-left", marginLeft);
 
-                // compute vertical position based on the deltaX
-                const dy = -event.originalEvent.deltaY;
+                // compute vertical position
+                const dy = -event.originalEvent.deltaY * 2;
                 const top = parseFloat(grid.css("margin-top"));
                 const minY = container.height() - rowHeader.height();
-                const y = Math.min(30, Math.max(top + dy, minY))
-                grid.css("margin-top", y);
+                const marginTop = Math.min(30, Math.max(top + dy, minY))
+                grid.css("margin-top", marginTop);
 
-                // make sure the column and row headers are in sync
-                window.drawSheet();
+                // sync column and row headers
+                window.adjustSheetPosition();
                 event.preventDefault();
             }
         });
     }
 
-    $("#main").css("display", "block");
     makeSheetResizable();
     makeSheetScrollable();
 
     window.addArrow = (from, to, label) => {
+        if ($("#main").css("opacity") !== "1") return;
         try {
             const start = from[0];
             const end = to[0];
@@ -207,7 +215,19 @@
                 })).appendTo($(".sheet-grid"));
             }
         } catch(e) {
-            // ignore
+        }
+    }
+
+    window.highlightColRow = (from_col, to_col, from_row, to_row) => {
+        // remove old row/col highlights
+        $(".column-label").css("background-color", "white")
+        $(".row-label").css("background-color", "white")
+        // add current row/col highlights
+        for (var col=from_col; col<=to_col; col++) {
+            $(`.column-label.col-${col}`).css("background-color", "#d3e2fc")
+        }
+        for (var row=from_row; row<=to_row; row++) {
+            $(`.row-label.row-${row}`).css("background-color", "#d3e2fc")
         }
     }
 
@@ -268,76 +288,123 @@
         return window.editor;
     }
 
-    window.clipboardInsert = (insertDone, atColumn, atRow, includeStyle) => {
-        function pasteCell(column, row, td) {
-            const key = window.getKeyFromColumnRow(atColumn + column, atRow + row);
-            $(`#${key}`).text(td.text())
-                .css("vertical-align", td.css("vertical-align"))
-                .css("text-align", (td.css("text-align") || "left").replace("start", "left").replace("end", "right"))
-                .css("font-family", td.css("font-family"))
-                .css("font-size", td.css("font-size"))
-                .css("font-weight", td.css("font-weight"))
-                .css("font-style", td.css("font-style"))
-                .css("background-color", td.css("background-color"))
-                .css("color", td.css("color"))
-        }
+    window.fixFont = (font) => {
+        const fonts = { Arial: "Arial", Courier: "Courier", Roboto: "Roboto" };
+        try { return fonts[font]; } catch { return "Arial" }
+    }
 
-        function paste_text(text) {
-            const lines = text.split("\n");
-            if (lines.length == 0) return;
-            var rowCount = lines.length;
-            var columnCount = 0;
-            window.fillSheet(atColumn + columnCount, atRow + rowCount);
-            for (var row=1; row<=lines.length; row++) {
-                const line = lines[row];
-                const words = line.split("\t");
-                if (columnCount == 0) {
-                    columnCount = words.length;
-                    window.fillSheet(atColumn + columnCount, atRow + rowCount);
-                }
-                for (var col=1; col<=words.length; col++) {
-                    pasteCell(column, row, words[col])
-                }
+    window.pasteCell = (column, row, td) => {
+        const key = window.getKeyFromColumnRow(column, row);
+        const text = td.text();
+        const valign = td.css("vertical-align");
+        const textAlign = (td.css("text-align") || "left").replace("start", "left").replace("end", "right");
+        const fontFamily = window.fixFont(td.css("font-family"));
+        const fontSize = td.css("font-size");
+        const fontWeight = td.css("font-weight");
+        const fontStyle = td.css("font-style");
+        const backgroundColor = td.css("background-color");
+        const color = td.css("color");
+
+        $(`#${key}`).text(text)
+            .css("vertical-align", valign)
+            .css("text-align", textAlign)
+            .css("font-family", fontFamily)
+            .css("font-size", fontSize)
+            .css("font-weight", fontWeight)
+            .css("font-style", fontStyle)
+            .css("background-color", backgroundColor)
+            .css("color", color);
+        
+        const style = {};
+        if (valign !== "top") {
+            style["vertical-align"] = valign;
+        }
+        if (textAlign !== "left") {
+            style["text-align"] = textAlign;
+        }
+        if (fontFamily !== "Arial") {
+            style["font-family"] = fontFamily;
+        }
+        if (fontSize !== "12px") {
+            style["font-size"] = fontSize;
+        }
+        if (fontWeight !== "400") {
+            style["font-weight"] = fontWeight;
+        }
+        if (fontStyle !== "normal") {
+            style["font-style"] = fontStyle;
+        }
+        if (backgroundColor !== "rgb(255, 255, 255)") {
+            style["background-color"] = backgroundColor;
+        }
+        if (color !== "rgb(0, 0, 0)") {
+            style["color"] = color;
+        }
+        return [key, text, JSON.stringify(style)];
+    }
+
+    window.pasteText = (text, atColumn, atRow, insertDone) => {
+        const lines = text.split("\n");
+        const cells = {};
+        if (lines.length == 0) return;
+        var rowCount = lines.length;
+        var columnCount = 0;
+        window.fillSheet(atColumn + columnCount, atRow + rowCount);
+        for (var row=1; row<=lines.length; row++) {
+            const line = lines[row];
+            const words = line.split("\t");
+            if (columnCount == 0) {
+                columnCount = words.length;
+                window.fillSheet(atColumn + columnCount, atRow + rowCount);
             }
-            setTimeout(() => insertDone(columnCount, rowCount));
+            for (var col=1; col<=words.length; col++) {
+                window.pasteCell(atColumn + column, atRow + row, words[col])
+                cells[`${col}-${row}`] = td.text();
+            }
         }
+        setTimeout(() => insertDone(columnCount, rowCount, cells));
+    }
 
-        function pasteHTML(text) {
-            const html = $(text)
-            const rows = html.find("tr");
-            var rowCount = rows.length;
-            var columnCount = 0;
-            rows.each((row, tr) => {
-                const cols = $(tr).find("td");
-                if (columnCount == 0) {
-                    columnCount = cols.length;
-                    window.fillSheet(atColumn + columnCount, atRow + rowCount);
-                }
-                cols.each((col, td) => {
-                    pasteCell(col + 1, row + 1, $(td));
-                });
-                const rowIndex = atRow + row + 1;
-                const height = Math.round(Math.max($(`#row-${rowIndex}`).height(), $(tr).height()));
-                $(`.row-${rowIndex}.cell`).height(height)
-                $(`.row-${rowIndex}.row-label`).height(height - 2)
+    window.getattr = (obj, property) => {
+        return obj[property];
+    }
+
+    window.pasteHTML = (text, atColumn, atRow, insertDone) => {
+        const html = $(text);
+        const rows = html.find("tr");
+        const keys = [];
+        var rowCount = rows.length;
+        var columnCount = 0;
+        rows.each((row, tr) => {
+            const cols = $(tr).find("td");
+            if (columnCount == 0) {
                 columnCount = cols.length;
+                window.fillSheet(atColumn + columnCount, atRow + rowCount);
+            }
+            cols.each((col, element) => {
+                const td = $(element);
+                const info = window.pasteCell(atColumn + col, atRow + row, td);
+                keys.push(info);
             });
-            html.find("col").each((index, col) => {
-                $(`.col-${atColumn + index + 1}`).width($(col).attr("width"))
-            });
-            setTimeout(() => insertDone(columnCount, rowCount));
-        }
+            columnCount = cols.length;
+        });
+        html.find("col").each((index, col) => {
+            $(`.col-${atColumn + index}`).width($(col).attr("width"))
+        });
+        setTimeout(() => insertDone(keys));
+    }
 
+    window.getClipboard = (handler, includeStyle) => {
         navigator.clipboard.read().then(items => {
             for (const item of items) {
                 for (const type of item.types) {
                     item.getType(type).then(blob => {
                         blob.text().then(text => {
                             if (!includeStyle && type == "text/plain") {
-                                paste_text(text);
+                                handler(text);
                             }
                             else if (includeStyle && type == "text/html") {
-                                pasteHTML(text);
+                                handler(text);
                             }
                         })
                     })
@@ -356,22 +423,31 @@
     }
    
     const styleOptions = [
-        ["vff", "font-family", "Arial"],
-        ["vfs", "font-size", "14px"],
-        ["vfw", "font-weight", "400"],
-        ["vfu", "font-style", "normal"],
-        ["vc", "color", "rgb(33, 37, 41)"],
-        ["vb", "background-color", "rgb(255, 255, 255)"],
-        ["vva", "vertical-align", "bottom"],
-        ["vta", "text-align", "start"],
+        ["vff", "font-family", ["Arial"]],
+        ["vfs", "font-size", ["14px"]],
+        ["vfw", "font-weight", ["normal", "400"]],
+        ["vfu", "font-style", ["normal"]],
+        ["vc", "color", ["rgb(33, 37, 41)"]],
+        ["vb", "background-color", ["white", "rgb(255, 255, 255)"]],
+        ["vva", "vertical-align", ["bottom"]],
+        ["vta", "text-align", ["start", "left"]],
     ];
+
+    window.isDefaultStyle = (value, defaultValues) => {
+        for (const defaultValue of defaultValues) {
+            if (value === defaultValue) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     window.getStyle = (element) => {
         const result = {};
         const style = window.getComputedStyle(element);
-        for (const [key, name, defaultValue] of styleOptions) {
+        for (const [key, name, defaultValues] of styleOptions) {
             const value = style.getPropertyValue(name)
-            if (value !== defaultValue) {
+            if (!window.isDefaultStyle(value, defaultValues)) {
                 result[key] = value;
             }
         }

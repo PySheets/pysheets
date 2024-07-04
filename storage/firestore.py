@@ -206,7 +206,7 @@ def copy_tutorial(email):
     for tutorial_uid in TUTORIAL_UIDS:
         uid = docid_to_doc.document().id
         logger.info("[Storage] Copy tutorial %s to %s for %s", tutorial_uid, uid, email)
-        data = get_file_with_uid(tutorial_uid)
+        data = get_sheet_with_uid(tutorial_uid)
         data[ constants.DATA_KEY_UID ] = uid
         docid_to_doc.document(uid).set(data)
         files.document(uid).set({ constants.DATA_KEY_UID: uid})
@@ -288,12 +288,12 @@ def forget(token):
     return count
 
 
-def get_file(token, uid):
+def get_sheet(token, uid):
     if get_user_files(token).document(uid).get().exists:
-        return get_file_with_uid(uid)
+        return get_sheet_with_uid(uid)
 
 
-def get_file_with_uid(uid):
+def get_sheet_with_uid(uid):
     file = docid_to_doc.document(uid).get() 
     return file.to_dict() if file.exists else {}
 

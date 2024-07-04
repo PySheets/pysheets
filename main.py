@@ -13,7 +13,9 @@ import time
 import traceback
 import requests
 
-from static.constants import *
+from templates import html
+import static.constants as constants
+import static.models as models
 
 
 app = Flask(__name__)
@@ -36,8 +38,8 @@ def handle_error(error):
     app.logger.error(error)
     traceback.print_exc()
     response = { 
-        DATA_KEY_ERROR: f"{error.__class__.__name__}: {error}",
-        DATA_KEY_STATUS: "error",
+        constants.DATA_KEY_ERROR: f"{error.__class__.__name__}: {error}",
+        constants.DATA_KEY_STATUS: "error",
     }
     return response
 
@@ -49,16 +51,24 @@ def handle_error(error):
 
 
 RUNTIME_PYODIDE = "py"
+import os
+PATH = os.path.join(os.path.dirname(__file__), "static")
 RUNTIME_MICROPYTHON = "mpy"
 FILES = """
     "static/constants.py" = "constants.py"
     "static/menu.py" = "menu.py"
     "static/state.py" = "state.py"
     "static/pysheets.py" = "pysheets.py"
-    "static/profiler.py" = "profiler.py"
+    "static/timeline.py" = "timeline.py"
     "static/editor.py" = "editor.py"
     "static/api.py" = "api.py"
     "static/lsp.py" = "lsp.py"
+    "static/preview.py" = "preview.py"
+    "static/inventory.py" = "inventory.py"
+    "static/login.py" = "login.py"
+    "static/models.py" = "models.py"
+    "static/selection.py" = "selection.py"
+    "static/history.py" = "history.py"
 """
 FILES_LTK = """
     "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/jquery.py" = "ltk/jquery.py"
@@ -80,196 +90,56 @@ def root():
 
 @app.route("/go")
 def go():
-    token = request.cookies.get(DATA_KEY_TOKEN)
-    uid = request.args.get(DATA_KEY_UID, "")
-    package_names = request.args.get(DATA_KEY_PACKAGES, "").split()
-    pyodide = uid # request.args.get(DATA_KEY_RUNTIME, "") == "pyodide"
+    token = request.cookies.get(constants.DATA_KEY_TOKEN)
+    uid = request.args.get(constants.DATA_KEY_UID, "")
+    package_names = request.args.get(constants.DATA_KEY_PACKAGES, "").split()
+    pyodide = package_names or request.args.get(constants.DATA_KEY_RUNTIME) == "pyodide"
+    loading = "⏳ Loading..." if pyodide else ""
     files = FILES + FILES_LTK
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
-    interpreter = '' if pyodide else 'interpreter = "1.22.0-272"'
-    version_interpreter = 'latest' if pyodide else '1.22.0-272'
+    interpreter = '' if pyodide else 'interpreter = "1.23.0"'
+    version_interpreter = 'latest' if pyodide else '1.23.0'
     version_storage = storage.version
     auto = 'experimental_create_proxy = "auto"' if pyodide else ''
-    packages = f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else ""
     vm = "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}"
+    packages = f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else ""
     previews = []
+    path = PATH
     if uid:
-        data = storage.get_file(token, uid)
-        name = data[DATA_KEY_NAME]
-        timestamp = data[DATA_KEY_TIMESTAMP]
-        current = data[DATA_KEY_CURRENT]
-        cells = data[DATA_KEY_CELLS]
-        package_list = request.args.get(DATA_KEY_PACKAGES, "")
-        previews = json.dumps(data.get(DATA_KEY_PREVIEWS) or [])
-        editor_width = request.args.get(DATA_KEY_EDITOR_WIDTH, "350")
-        sheet = make_sheet(data)
-        scripts = make_scripts(data)
+        sheet = storage.get_sheet(token, uid)
+        name = sheet.name
+        timestamp = sheet.updated_timestamp
+        selected = sheet.selected
+        package_list = request.args.get(constants.DATA_KEY_PACKAGES, "")
+        editor_width = request.args.get(constants.DATA_KEY_EDITOR_WIDTH, "350")
+        sheet_html = html.make_html(sheet)
+        css = html.make_css(sheet)
+        encoded_sheet = models.encode(sheet)
     else:
-        package_list = editor_width = name = current = timestamp = sheet = ""
+        package_list = editor_width = name = selected = timestamp = sheet = ""
+        cells = []
     return render_template("index.html", **locals())
-
-
-def make_column_label(col, data):
-    label = f"{chr(ord('A') + col - 1)}"
-    width = max(25, data[DATA_KEY_COLUMNS].get(str(col), {}).get(DATA_KEY_WIDTH, 72))
-    return f'<div class="column-label col-{col}" id="col-{col}" col="{col}" style="width: {width}px">{label}</div>'
-
-
-def make_column_header(data):
-    return "".join((
-        [ 
-            '<div id="column-header" class="column-header">',
-            *[ make_column_label(col, data) for col in range(1, DEFAULT_COLUMN_COUNT + 1) ],
-            '</div>'
-        ]
-    ))
-
-
-def make_cell(col, row, data):
-    styles = []
-    width = max(25, data[DATA_KEY_COLUMNS].get(str(col), {}).get(DATA_KEY_WIDTH, 72))
-    if width and width != 72:
-        styles.append(f"width: {width}px;")
-    height = max(20, data[DATA_KEY_ROWS].get(str(row), {}).get(DATA_KEY_HEIGHT, 20))
-    if height and height != 20:
-        styles.append(f"height: {height}px;")
-    key = f"{chr(ord('A') + col - 1)}{row}"
-    cell = data[DATA_KEY_CELLS].get(key, {})
-    if DATA_KEY_VALUE_FONT_FAMILY in cell:
-        styles.append(f"font-family: {cell[DATA_KEY_VALUE_FONT_FAMILY]}")
-    if DATA_KEY_VALUE_FONT_SIZE in cell:
-        styles.append(f"font-size: {cell[DATA_KEY_VALUE_FONT_SIZE]}")
-    if DATA_KEY_VALUE_FONT_STYLE in cell:
-        styles.append(f"font-style: {cell[DATA_KEY_VALUE_FONT_STYLE]}")
-    if DATA_KEY_VALUE_FONT_WEIGHT in cell:
-        styles.append(f"font-weight: {cell[DATA_KEY_VALUE_FONT_WEIGHT]}")
-    if DATA_KEY_VALUE_VERTICAL_ALIGN in cell:
-        styles.append(f"vertical-align: {cell[DATA_KEY_VALUE_VERTICAL_ALIGN]}")
-    if DATA_KEY_VALUE_TEXT_ALIGN in cell:
-        styles.append(f"text-align: {cell[DATA_KEY_VALUE_TEXT_ALIGN]}")
-    if DATA_KEY_VALUE_COLOR in cell:
-        styles.append(f"color: {cell[DATA_KEY_VALUE_COLOR]}")
-    if DATA_KEY_VALUE_FILL in cell:
-        styles.append(f"background-color: {cell[DATA_KEY_VALUE_FILL]}")
-
-    value = cell.get(DATA_KEY_VALUE_KIND) or ""
-    value = value.replace("<", "&lt;").replace(">", "&gt;")
-    style = f'style="{";".join(styles)}"' if styles else ""
-    if cell: print("render", key, value, styles, cell)
-    return f'<div id="{key}" class="cell row-{row} col-{col}" col="{col}" row="{row}" {style}>{value}</div>'
-
-
-def make_row_label(row, data):
-    height = max(18, data[DATA_KEY_ROWS].get(str(row), {}).get(DATA_KEY_HEIGHT, 18))
-    return f'<div class="row-label row-{row}" style="height:{height}px;" row="{row}">{row}</div>\n'
-
-
-def make_row_header(data):
-    return "".join(
-        [
-            f'\n<div id="row-header" class="row-header">',
-                *[ make_row_label(row, data) for row in range(1, DEFAULT_ROW_COUNT + 1) ],
-            '</div>\n',
-        ]
-    )
-
-
-def make_row(row, data):
-    height = max(18, data[DATA_KEY_ROWS].get(str(row), {}).get(DATA_KEY_HEIGHT, 18)) + 4
-    return "\n".join(
-        [
-            f'\n<div id="row-{row}" class="cell-row">',
-                *[ make_cell(col, row, data) for col in range(1, DEFAULT_COLUMN_COUNT + 1) ],
-            '</div>\n',
-        ]
-    )
-
-
-def make_sheet(data):
-    return "".join(
-        [
-            "<div class='sheet' id='sheet' style='display: none;'>",
-                make_column_header(data),
-                make_row_header(data),
-                "<div class='sheet-grid' id='sheet-grid'>",
-                    "\n\n".join([ make_row(row, data) for row in range(1, DEFAULT_ROW_COUNT + 1) ]),
-                "</div>",
-                "<div class='blank'>",
-            "</div>",
-        ]
-    )
-
-
-def make_scripts(data):
-    def clean_script(cell):
-        script = cell.get(DATA_KEY_VALUE_FORMULA)
-        return script.replace('`', '\\`') if isinstance(script, str) else script
-
-    scripts = dict([
-        (key, clean_script(cell))
-        for key, cell in data[DATA_KEY_CELLS].items()
-        if DATA_KEY_VALUE_FORMULA in cell
-    ])
-
-    return "\n".join([
-        "window.scripts = [",
-        "\n".join(f"\t\t[`{key}`, `{script}`]," for key,script in scripts.items()),
-        "\t];\n",
-    ])
 
 
 @app.route("/list")
 def list_files():
-    files = storage.list_files(request.cookies.get(DATA_KEY_TOKEN))
-    return jsonify({ DATA_KEY_IDS: files })
+    files = storage.list_files(request.cookies.get(constants.DATA_KEY_TOKEN))
+    return jsonify({ constants.DATA_KEY_IDS: files })
 
 
-def get_file(token):
-    if not token:
-        return "{}"
-    uid = request.args.get(DATA_KEY_UID)
-    if not uid:
-        return jsonify({
-            DATA_KEY_UID: storage.new(token),
-            DATA_KEY_NAME: "Untitled Sheet",
-        })
-    else:
-        timestamp = float(request.args.get(DATA_KEY_TIMESTAMP, "0"))
-        data = storage.get_file(token, uid) or {
-            DATA_KEY_NAME: "Untitled Sheet",
-            DATA_KEY_CELLS: {},
-            DATA_KEY_UID: uid,
-            DATA_KEY_SCREENSHOT: None
-        }
-        if timestamp and timestamp == data[DATA_KEY_TIMESTAMP]:
-            return jsonify({
-                DATA_KEY_STATUS: "Unchanged",
-                DATA_KEY_UID: uid,
-            })
-        data[DATA_KEY_STATUS] = "Changed" if timestamp else "Fetched"
-        if DATA_KEY_SCREENSHOT in data:
-            del data[DATA_KEY_SCREENSHOT]
-        return jsonify(data)
+@app.route("/new")
+def new_file():
+    token = request.cookies.get(constants.DATA_KEY_TOKEN)
+    return jsonify({constants.DATA_KEY_UID: storage.new(token)})
 
 
-def post_file(token):
-    data = get_form_data()
-    uid = data[DATA_KEY_UID]
-    storage.save(token, uid, data)
-    return jsonify({DATA_KEY_STATUS: "OK"})
-
-
+@app.route("/delete")
 def delete_file(token):
-    uid = request.args.get(DATA_KEY_UID)
+    token = request.cookies.get(constants.DATA_KEY_TOKEN)
+    uid = request.args.get(constants.DATA_KEY_UID)
     storage.delete(token, uid)
-    return jsonify({DATA_KEY_STATUS: "OK"})
+    return jsonify({constants.DATA_KEY_STATUS: "OK"})
 
-
-FILE_ACTIONS = {
-    "GET": get_file,
-    "POST": post_file,
-    "DELETE": delete_file,
-}
 
 def get_form_data():
     form = request.form.to_dict()
@@ -285,90 +155,106 @@ def get_form_data():
 @app.route("/login", methods=["POST"])
 def login():
     data = get_form_data()
-    token = storage.login(data[DATA_KEY_EMAIL], data[DATA_KEY_PASSWORD])
+    token = storage.login(data[constants.DATA_KEY_EMAIL], data[constants.DATA_KEY_PASSWORD])
     return {
-        DATA_KEY_TOKEN: token,
-        DATA_KEY_STATUS: "OK" if token else "error",
+        constants.DATA_KEY_TOKEN: token,
+        constants.DATA_KEY_STATUS: "OK" if token else "error",
     }
 
 
 @app.route("/register", methods=["POST"])
 def register():
     data = get_form_data()
-    return { DATA_KEY_STATUS: storage.register(data[DATA_KEY_EMAIL], data[DATA_KEY_PASSWORD]) }
+    return { constants.DATA_KEY_STATUS: storage.register(data[constants.DATA_KEY_EMAIL], data[constants.DATA_KEY_PASSWORD]) }
 
 
 @app.route("/reset", methods=["POST"])
 def reset():
     data = get_form_data()
-    return { DATA_KEY_STATUS: storage.reset_password(data[DATA_KEY_EMAIL]) }
+    return { constants.DATA_KEY_STATUS: storage.reset_password(data[constants.DATA_KEY_EMAIL]) }
 
 
 @app.route("/reset_code", methods=["POST"])
 def reset_code():
     data = get_form_data()
-    token = storage.reset_password_with_code(data[DATA_KEY_EMAIL], data[DATA_KEY_PASSWORD], data[DATA_KEY_CODE])
+    token = storage.reset_password_with_code(data[constants.DATA_KEY_EMAIL], data[constants.DATA_KEY_PASSWORD], data[constants.DATA_KEY_CODE])
     return {
-        DATA_KEY_TOKEN: token,
-        DATA_KEY_STATUS: "OK" if token else "error",
+        constants.DATA_KEY_TOKEN: token,
+        constants.DATA_KEY_STATUS: "OK" if token else "error",
     }
 
 
 @app.route("/confirm", methods=["POST"])
 def confirm():
     data = get_form_data()
-    token = storage.confirm(data[DATA_KEY_EMAIL], data[DATA_KEY_PASSWORD], data[DATA_KEY_CODE])
+    token = storage.confirm(data[constants.DATA_KEY_EMAIL], data[constants.DATA_KEY_PASSWORD], data[constants.DATA_KEY_CODE])
     return {
-        DATA_KEY_TOKEN: token,
-        DATA_KEY_STATUS: "OK" if token else "error",
+        constants.DATA_KEY_TOKEN: token,
+        constants.DATA_KEY_STATUS: "OK" if token else "error",
     }
 
 
 @app.route("/share", methods=["GET"])
 def share():
-    uid = request.args.get(DATA_KEY_UID)
-    email = request.args.get(DATA_KEY_EMAIL)
-    token = request.cookies.get(DATA_KEY_TOKEN)
+    uid = request.args.get(constants.DATA_KEY_UID)
+    email = request.args.get(constants.DATA_KEY_EMAIL)
+    token = request.cookies.get(constants.DATA_KEY_TOKEN)
     storage.share(token, uid, email)
-    return jsonify({ DATA_KEY_STATUS: "OK" })
+    return jsonify({ constants.DATA_KEY_STATUS: "OK" })
 
 
 @app.route("/complete", methods=["POST"])
 def complete():
     data = get_form_data()
-    token = request.cookies.get(DATA_KEY_TOKEN)
-    prompt = data[DATA_KEY_PROMPT]
+    token = request.cookies.get(constants.DATA_KEY_TOKEN)
+    prompt = data[constants.DATA_KEY_PROMPT]
     return ai.complete(prompt, token)
 
 
 @app.route("/users", methods=["GET"])
 def users():
-    return storage.get_users(request.cookies.get(DATA_KEY_TOKEN))
+    return storage.get_users(request.cookies.get(constants.DATA_KEY_TOKEN))
 
 
-@app.route("/file", methods=["GET", "POST", "DELETE"])
-def file():
-    return FILE_ACTIONS[request.method](request.cookies.get(DATA_KEY_TOKEN))
+@app.route("/edits", methods=["GET", "POST"])
+def edits():
+    token = request.cookies.get(constants.DATA_KEY_TOKEN)
+    start = float(request.args.get(constants.DATA_KEY_START, 0))
+    timestamp = float(request.args.get(constants.DATA_KEY_TIMESTAMP))
+    uid = request.args.get(constants.DATA_KEY_UID)
+
+    # save edits
+    edits = get_form_data()
+    storage.save_edits(token, uid, start, edits)
+    sheet = storage.get_sheet(token, uid)
+    for edit_dict in eval(edits[constants.DATA_KEY_EDITS]):
+        models.convert(edit_dict).apply(sheet)
+    sheet.updated_timestamp = timestamp
+    storage.save(token, uid, sheet)
+
+    # get new edits
+    return {
+        constants.DATA_KEY_EDITS: storage.get_edits(token, uid, start, timestamp)
+    }
 
 
 @app.route("/emails", methods=["GET"])
 def emails():
     response = {
-        "emails": storage.get_all_emails(request.cookies.get(DATA_KEY_TOKEN))
+        "emails": storage.get_all_emails(request.cookies.get(constants.DATA_KEY_TOKEN))
     }
     return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
 
 
 @app.route("/embed", methods=["GET"])
 def embed():
-    key = request.args.get(DATA_KEY_CELL)
-    uid = request.args.get(DATA_KEY_UID)
-    file = storage.get_file_with_uid(uid)
-    cells = file[DATA_KEY_CELLS]
-    if key in cells:
-        cell = cells[key]
-        if cell.get(DATA_KEY_VALUE_EMBED):
-            return cell.get(DATA_KEY_VALUE_PREVIEW, "")
+    key = request.args.get(constants.DATA_KEY_CELL)
+    uid = request.args.get(constants.DATA_KEY_UID)
+    sheet = storage.get_sheet_with_uid(uid)
+    if key in sheet.cells:
+        cell = sheet.cells[key]
+        if cell.embed:
+            return cell.preview
     return f'<html>[Chart is missing]</html>'
 
 
@@ -376,16 +262,16 @@ def embed():
 def forget():
     return { 
         "status": "OK",
-        "removed": storage.forget(request.args[DATA_KEY_TOKEN]),
+        "removed": storage.forget(request.args[constants.DATA_KEY_TOKEN]),
     }
 
 
 @app.route("/logs", methods=["GET"])
 def logs():
     response = storage.get_logs(
-        request.cookies.get(DATA_KEY_TOKEN),
-        request.args.get(DATA_KEY_UID),
-        request.args.get(DATA_KEY_TIMESTAMP),
+        request.cookies.get(constants.DATA_KEY_TOKEN),
+        request.args.get(constants.DATA_KEY_UID),
+        request.args.get(constants.DATA_KEY_TIMESTAMP),
     )
     return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
 
@@ -393,11 +279,11 @@ def logs():
 @app.route("/log", methods=["POST"])
 def log():
     data = get_form_data()
-    doc_uid = data[DATA_KEY_UID]
-    token = request.cookies.get(DATA_KEY_TOKEN)
-    for time, message in data[DATA_KEY_ENTRIES]:
+    doc_uid = data[constants.DATA_KEY_UID]
+    token = request.cookies.get(constants.DATA_KEY_TOKEN)
+    for time, message in data[constants.DATA_KEY_ENTRIES]:
         storage.log(token, doc_uid, time, message)
-    return f'{{ "{DATA_KEY_RESULT}":  "OK" }}'
+    return f'{{ "{constants.DATA_KEY_RESULT}":  "OK" }}'
 
 
 def ssl_get(url, headers=None):
@@ -427,9 +313,9 @@ load_cache = {}
 
 @app.route("/load", methods=["GET", "POST"])
 def load():
-    app.logger.info("Load, url=%s token=%s", request.args.get(DATA_KEY_URL), request.cookies.get(DATA_KEY_TOKEN))
-    if storage.get_email(request.cookies.get(DATA_KEY_TOKEN)):
-        url = request.args.get(DATA_KEY_URL)
+    app.logger.info("Load, url=%s token=%s", request.args.get(constants.DATA_KEY_URL), request.cookies.get(constants.DATA_KEY_TOKEN))
+    if storage.get_email(request.cookies.get(constants.DATA_KEY_TOKEN)):
+        url = request.args.get(constants.DATA_KEY_URL)
         if url in load_cache:
             when, response = load_cache[url]
             if time.time() - when < 60:

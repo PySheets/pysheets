@@ -18,6 +18,7 @@ class Document():
     timestamp = 0
     dirty = False
     screenshot = ""
+    last_edit = window.time()
 
 
 class User():
@@ -88,13 +89,12 @@ def set_title(title):
 
 
 def show_message(message):
-    ltk.find("#title").val(message)
+    ltk.find("#title").val(message).css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), 2000)
 
 
 def clear():
     global doc
     set_title("")
-    ltk.find("#main").empty()
     ltk.find(".dataframe-preview").remove()
     ltk.find(".arrow").removeClass("arrow")
     ltk.find(".leader-line").remove()
@@ -165,7 +165,6 @@ class ConsoleLogger(ltk.Logger):
 
 class Console():
     messages = {}
-    log_queue = []
     ignore_log = [ "[Debug]", "[Worker] Starting PyOdide" ]
 
     def __init__(self):
@@ -198,23 +197,14 @@ class Console():
         for ignore in self.ignore_log:
             if message.startswith(ignore):
                 return
-        self.log_queue.append((round(ltk.get_time(), 3), message))
-        ltk.schedule(self.flush_log_queue, "flush log queue", 3)
     
-    def flush_log_queue(self):
-        if self.log_queue:
-            ltk.post("/log", { 
-                constants.DATA_KEY_UID: doc.uid,
-                constants.DATA_KEY_ENTRIES: self.log_queue,
-            }, lambda response: None)
-            self.log_queue = []
-
     def clear(self, key=None):
         if key is None:
             self.messages.clear()
+            self.render()
         elif key in self.messages:
             del self.messages[key]
-        self.render()
+            self.render()
 
     def write(self, key, *args, action=None):
         try:
@@ -235,6 +225,9 @@ class Console():
         self.save(message, action)
 
     def render(self):
+        ltk.schedule(lambda: self.render_later(), "render later", 0.1)
+
+    def render_later(self):
         ltk.find(".console .ltk-tr").remove()
         for key, (when, message, action) in sorted(self.messages.items(), key=lambda pair: pair[1][0]):
             self.render_message(key, when, message, action)
@@ -315,13 +308,22 @@ class Console():
                         self.write("py-error", f"[Error] {text}")
             finally:
                 py_error.remove()
-        ltk.repeat(find_errors, 1)
+        ltk.repeat(find_errors, 5)
 
 console = Console()
 print = console.print
 
 def vm_type(sys_version):
     return "PyOdide" if "Clang" in sys_version else "MicroPython"
+
+
+def print_stack(exc = None):
+    try:
+        import traceback
+        traceback.print_stack()
+    except:
+        raise exc
+    print(f"{exc.__class__.__name__}: {exc}")
 
 
 def show_worker_status():

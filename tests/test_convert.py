@@ -1,6 +1,9 @@
 import mocks
 import unittest
 
+import sys
+sys.path.append("..")
+
 from static.pysheets import convert
 
 

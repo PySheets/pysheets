@@ -1,5 +1,7 @@
 import sys
 sys.path.append("static")
+sys.path.append("..")
+
 
 import ast
 import lsp

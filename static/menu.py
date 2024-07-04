@@ -41,19 +41,19 @@ def create_menu(sheet):
             ltk.MenuItem("👏", "Feedback", "", ltk.proxy(feedback)),
             ltk.MenuItem("💬", "Discord", "", ltk.proxy(discord)),
         )
-    )
+    ).css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
+
+
 DELETE_PROMPT = """
 This will permanently delete the current sheet.
 You and anyone it has been shared with will lose access.
 We cannot recover the contents.
-
-Enter the name of the sheet to actually delete it:")
 """
 
 
 def delete_doc():
-    if window.prompt(DELETE_PROMPT) == state.doc.name:
-        url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
+    if window.confirm(DELETE_PROMPT):
+        url = f"/delete?{constants.DATA_KEY_UID}={state.doc.uid}"
         ltk.delete(url, lambda data: go_go())
 
 
@@ -104,7 +104,7 @@ def close_share_dialog():
 
 def new_sheet():
     state.doc.name = "Untitled"
-    ltk.get("/file", ltk.proxy(lambda data: load_doc(data[constants.DATA_KEY_UID])))
+    ltk.get("/new", ltk.proxy(lambda data: load_doc(data[constants.DATA_KEY_UID])))
 
 
 def share_sheet():

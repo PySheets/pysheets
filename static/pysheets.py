@@ -1,59 +1,38 @@
+import ltk
 import api
-import base64
 import collections
 import constants
-import js  # type: ignore
-import json
-import ltk
-import logging
+import history
+import inventory
+import login
 import menu
+import models
+import preview
+import timeline
 import random
-import re
+import selection
 import state
 import editor
 import sys
-import profiler
+
+from models import *
 
 from pyscript import window  # type: ignore
 
-def debug(*args):
-    if False:
-        print("[Debug]", *args)
-
+ACTIVITY_PASTE = "Paste from clipboard"
 
 state.console.write("pysheets", f"[Main] Pysheets starting {constants.ICON_HOUR_GLASS}")
 
-sheet = None
-previews = {}
 completion_cache = {}
-logger = logging.getLogger("root")
-logger.setLevel(
-    logging.DEBUG if state.mode == constants.MODE_DEVELOPMENT else logging.INFO
-)
-local_storage = window.localStorage
 proxy = ltk.proxy
-
-
 is_mac = window.navigator.platform.upper().startswith("MAC")
 is_ios = window.navigator.platform.upper().startswith("I")
 is_apple = is_mac or is_ios
+sheet = None
 
 
 def is_command_key(event):
     return (event.metaKey or event.ctrlKey) if is_apple else event.ctrlKey
-
-
-def save():
-    state.doc.dirty = True
-    ltk.schedule(lambda: sheet.save_file(), "save", constants.SAVE_DELAY)
-
-
-def saveit(func):
-    def inner(*args):
-        save()
-        return func(*args)
-
-    return inner
 
 
 def rgb_to_hex(rgb):
@@ -64,204 +43,44 @@ def rgb_to_hex(rgb):
         return "#404"
 
 
-def get_col_row_from_key(key):
-    row = 0
-    col = 0
-    for c in key:
-        if c.isdigit():
-            row = row * 10 + int(c)
-        else:
-            col = col * 26 + ord(c) - ord("A") + 1
-    return col - 1, row - 1
-
-
-def get_column_name(col):
-    parts = []
-    col += 1
-    while col > 0:
-        col, remainder = divmod(col - 1, 26)
-        parts.insert(0, chr(remainder + ord("A")))
-    return "".join(parts)
-
-
-def get_key_from_col_row(col, row):
-    return f"{get_column_name(col)}{row + 1}"
-
-
-class MultiSelection():
-
-    def __init__(self, sheet):
-        self.sheet = sheet
-        self.started = False
-        self.line_top = ltk.Div().addClass("multi-select top")
-        self.line_left = ltk.Div().addClass("multi-select left")
-        self.line_bottom = ltk.Div().addClass("multi-select bottom")
-        self.line_right = ltk.Div().addClass("multi-select right")
-        self.cells = []
-        self.cell1 = self.cell2 = None
-
-        self.handler_by_shortcut = {
-            "a":self.select_all,
-            "b":self.bold,
-            "c":self.copy,
-            "i":self.italicize,
-            "v":self.paste,
-            "x":self.cut
-        }
-        
-    def select(self, cell):
-        self.cell1 = self.cell2 = cell
-        self.draw()
-
-    def draw(self):
-        ltk.find(".multi-select").remove()
-        if not self.cell1 or not self.cell2:
-            return
-        pos1, pos2 = self.cell1.position(), self.cell2.position()
-        left = min(pos1.left, pos2.left)
-        top = min(pos1.top, pos2.top) - 1
-        right = max(pos1.left + self.cell1.outerWidth(), pos2.left + self.cell2.outerWidth()) - 1
-        bottom = max(pos1.top + self.cell1.outerHeight(), pos2.top + self.cell2.outerHeight()) - 2
-        if self.cell1 is not self.cell2:
-            ltk.find(".sheet-grid").append(
-                self.line_top.css("left", left).css("top", top).css("width", right - left),
-                self.line_left.css("left", left).css("top", top).css("height", bottom - top),
-                self.line_bottom.css("left", left).css("top", bottom).css("width", right - left + 2),
-                self.line_right.css("left", right).css("top", top).css("height", bottom - top),
-            )
-        self.dimensions = [
-            self.cell1.column if pos1.left < pos2.left else self.cell2.column,
-            self.cell2.column if pos1.left < pos2.left else self.cell1.column,
-            self.cell1.row if pos1.top < pos2.top else self.cell2.row,
-            self.cell2.row if pos1.top < pos2.top else self.cell1.row,
-        ]
-        self.highlight_row_col()
-
-    def highlight_row_col(self):
-        from_col, to_col, from_row, to_row = self.dimensions
-        # remove row/col highlights
-        ltk.find(".column-label").css("background-color", "white")
-        ltk.find(".row-label").css("background-color", "white")
-        self.cells = []
-        for col in range(from_col, to_col + 1):
-            for row in range(from_row, to_row + 1):
-                ltk.find(f".column-label.col-{col + 1}").css("background-color", "#d3e2fc")
-                ltk.find(f".row-label.row-{row + 1}").css("background-color", "#d3e2fc")
-                cell = self.sheet.get(get_key_from_col_row(col, row))
-                self.cells.append(cell)
-
-    def css(self, name, value):
-        sheet.selection.css(name, value)
-        for cell in self.cells:
-            cell.css(name, value)
-        self.draw()
-
-    def bold(self, event):
-        self.css("font-weight", {"400": "700", "700": "400"}[self.cells[0].css("font-weight")])
-
-    def italicize(self, event):
-        self.css("font-style", {"normal":"italic", "italic":"normal"}[self.cells[0].css("font-style")])
-
-    def copy(self, event):
-        from_col, to_col, from_row, to_row = self.dimensions
-        text = "\n".join([
-                "\t".join([
-                    str(self.sheet.get(get_key_from_col_row(col, row)).script)
-                    for col in range(from_col, to_col + 1)
-                ])
-                for row in range(from_row, to_row + 1)
-            ])
-        html = ltk.Div(ltk.Table( *[
-            ltk.TableRow(*[
-                ltk.TableData(
-                    self.sheet.get(get_key_from_col_row(col, row)).script
-                ).attr("style", self.sheet.get(get_key_from_col_row(col, row)).attr("style"))
-                for col in range(from_col, to_col + 1)
-            ])
-            for row in range(from_row, to_row + 1)
-        ])).html()
-        window.clipboardWrite(text, html)
-
-    def paste(self, event):
-        current = self.sheet.current
-            
-        @saveit
-        def done(col_count, row_count, start_row=0):
-            if start_row >= row_count:
-                sheet.select(sheet.current)
-                return
-            for row in range(start_row, min(row_count, start_row + 10)):
-                for col in range(col_count):
-                    column = current.column + col
-                    row = current.row + row
-                    cell = self.sheet.get(
-                        get_key_from_col_row(column, row),
-                        column,
-                        row
-                    )
-                    cell.set(cell.text())
-            ltk.schedule(lambda: done(col_count, row_count, start_row + 10), "paste-processing")
-
-        window.clipboardInsert(proxy(done), current.column, current.row, not event.shiftKey)
-
-    def cut(self, event):
-        self.copy(event)
-        self.clear()
-
-    def clear(self):
-        for cell in self.cells:
-            cell.clear()
-        self.draw()
-
-    def start(self, cell):
-        ltk.find("#main").focus()
-        self.sheet.select(cell)
-        self.cell1 = self.cell2 = cell
-        self.started = True
-        self.draw()
-
-    def extend(self, cell, force=False):
-        if not force and not self.started:
-            return
-        self.cell2 = cell
-        self.draw()
-
-    def select_all(self, event):
-        cells = self.sheet.sorted_cells()
-        if len(cells) > 1:
-            self.cell1 = cells[0]
-            self.cell2 = cells[-1]
-            self.draw()
-        event.preventDefault()
-
-    def stop(self, cell):
-        self.started = False
-        self.draw()
-
-
-class Spreadsheet():
-    def __init__(self):
+class SpreadsheetView():
+    def __init__(self, model):
+        self.model = model
+        self.model.listen(self.model_changed)
         self.clear()
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_WORKER_RESULT, self.handle_worker_result)
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.pubsub.TOPIC_WORKER_READY, self.worker_ready)
-
+        self.cell_views = {}
         self.selection = ltk.Input("").addClass("selection")
-        self.multi_selection = MultiSelection(self)
+        self.multi_selection = selection.MultiSelection(self)
         self.selection_edited = False
         self.mousedown = False
+        self.fill_cache()
         self.post_load()
 
-        # ltk.find(".column-label").on("contextmenu", proxy(lambda event: self.show_column_menu(event)))
-        # ltk.find(".row-label").on("contextmenu", proxy(lambda event: self.show_row_menu(event)))
+    def fill_cache(self):
+        for model in self.model.cells.values():
+            self.cache[model.key] = convert(model.value)
 
-    def get(self, key, column=0, row=0):
-        if not key:
-            return None
-        if not key in self.cells:
-            if not column and not row:
-                column, row = get_col_row_from_key(key)
-            self.cells[key] = Cell(self, column, row, "", None, key)
-        return self.cells[key]
+    def model_changed(self, sheet, info):
+        field_name = info["name"]
+        if field_name == "rows":
+            ltk.find(f".row-{info['row']}").css("height", info['height'])
+        if field_name == "columns":
+            ltk.find(f".col-{info['column']}").css("width", info['width'])
+        if field_name == "name":
+            old_name = state.doc.name
+            new_name = sheet.name
+            if old_name != new_name:
+                window.document.title = state.doc.name = new_name
+                ltk.find("#title").val(new_name)
+                history.add(models.NameChanged(old_name, new_name))
+        sheet_resized()
+
+    def get_cell(self, key):
+        if key not in self.cell_views:
+            self.cell_views[key] = CellView(self, key, self.model.get_cell(key))
+        return self.cell_views[key]
 
     def clear(self):
         self.cells = {}
@@ -269,14 +88,8 @@ class Spreadsheet():
         self.counts = collections.defaultdict(int)
         self.current = None
 
-    def sorted_cells(self):
-        return sorted(
-            [cell for cell in self.cells.values() if cell.script],
-            key=lambda cell: (cell.column, cell.row)
-        )
-
     def copy(self, from_cell, to_cell):
-        to_cell.set(from_cell.script)
+        to_cell.set(from_cell.model.script)
         to_cell.value.get()
         to_cell.store_edit()
         from_cell.store_edit()
@@ -286,31 +99,29 @@ class Spreadsheet():
         label = ltk.find(event.target)
         selected_column = int(label.attr("col")) - 1
 
-        @saveit
         def insert_column(event):
-            for cell in sorted(self.cells.values(), key=lambda cell: -cell.column):
-                if cell.column >= selected_column:
-                    next_key = get_key_from_col_row(cell.column + 1, cell.row)
-                    self.copy(cell, self.get(next_key))
-                if cell.column == selected_column:
+            for cell in sorted(self.cells.values(), key=lambda cell: -cell.model.column):
+                if cell.model.column >= selected_column:
+                    next_key = models.get_key_from_col_row(cell.model.column + 1, cell.model.row)
+                    self.copy(cell, self.get_cell(next_key, cell.model.column + 1, cell.model.row))
+                if cell.model.column == selected_column:
                     cell.clear()
-                if cell.column > 1:
-                    previous_key = get_key_from_col_row(cell.column - 1, cell.row)
+                if cell.model.column > 1:
+                    previous_key = models.get_key_from_col_row(cell.model.column - 1, cell.model.row)
                     if not previous_key in self.cells:
                         cell.clear()
 
-        @saveit
         def delete_column(event):
-            for cell in sorted(self.cells.values(), key=lambda cell: cell.column):
-                next_key = get_key_from_col_row(cell.column + 1, cell.row)
-                if cell.column >= selected_column:
+            for cell in sorted(self.cells.values(), key=lambda cell: cell.model.column):
+                next_key = models.get_key_from_col_row(cell.model.column + 1, cell.model.row)
+                if cell.model.column >= selected_column:
                     if not next_key in self.cells:
                         cell.clear()
-                    self.copy(self.get(next_key), cell)
+                    self.copy(self.get_cell(next_key, cell.model.column + 1, cell.model.row), cell)
 
         ltk.MenuPopup(
             ltk.MenuItem("+", f"insert column", None, proxy(insert_column)),
-            ltk.MenuItem("-", f"delete column {get_column_name(selected_column)}", None, proxy(delete_column)),
+            ltk.MenuItem("-", f"delete column {models.get_column_name(selected_column)}", None, proxy(delete_column)),
         ).show(label)
         event.preventDefault()
 
@@ -318,27 +129,25 @@ class Spreadsheet():
         label = ltk.find(event.target)
         selected_row = int(label.attr("row")) - 1
 
-        @saveit
         def insert_row(event):
-            for cell in sorted(self.cells.values(), key=lambda cell: -cell.row):
-                if cell.row >= selected_row:
-                    next_key = get_key_from_col_row(cell.column, cell.row + 1)
-                    self.copy(cell, self.get(next_key))
-                if cell.row == selected_row:
+            for cell in sorted(self.cells.values(), key=lambda cell: -cell.model.row):
+                if cell.model.row >= selected_row:
+                    next_key = models.get_key_from_col_row(cell.model.column, cell.model.row + 1)
+                    self.copy(cell, self.get_cell(next_key, cell.model.column + 1, cell.model.row))
+                if cell.model.row == selected_row:
                     cell.clear()
-                if cell.row > 1:
-                    previous_key = get_key_from_col_row(cell.column, cell.row - 1)
+                if cell.model.row > 1:
+                    previous_key = models.get_key_from_col_row(cell.model.column, cell.model.row - 1)
                     if not previous_key in self.cells:
                         cell.clear()
 
-        @saveit
         def delete_row(event):
-            for cell in sorted(self.cells.values(), key=lambda cell: cell.row):
-                next_key = get_key_from_col_row(cell.column, cell.row + 1)
-                if cell.row >= selected_row:
+            for cell in sorted(self.cells.values(), key=lambda cell: cell.model.row):
+                next_key = models.get_key_from_col_row(cell.model.column, cell.model.row + 1)
+                if cell.model.row >= selected_row:
                     if not next_key in self.cells:
                         cell.clear()
-                    self.copy(self.get(next_key), cell)
+                    self.copy(self.get_cell(next_key, cell.model.column + 1, cell.model.row), cell)
 
         ltk.MenuPopup(
             ltk.MenuItem("+", f"insert row", None, proxy(insert_row)),
@@ -347,123 +156,102 @@ class Spreadsheet():
         event.preventDefault()
 
     def handle_worker_result(self, result):
-        try:
-            key = result["key"]
-            cell: Cell = self.get(key)
-            cell.running = False
-            if result["error"]:
-                error = result["error"]
-                duration = result["duration"]
-                tb = result["traceback"]
-                parts = error.split("'")
-                if len(parts) == 3 and parts[0] == "name " and parts[2] == " is not defined":
-                    key = parts[1]
-                    if key in cell.inputs:
-                        # The worker job ran out of sequence, ignore this error for now
-                        return
-                cell.update(duration, error)
-                state.console.write(key, f"[Error] {key}: {error} {tb}")
-                return
-            if not cell.script:
-                return
-            value = result["value"]
-            if isinstance(value, str):
-                value = value[1:-1] if value.startswith("'") and value.endswith("'") else value
-            cell.update(result["duration"], value, result["preview"])
-            cell.notify()
-            debug("Worker result for", key, "=>", result["value"])
-        except Exception as e:
-            state.console.write(key, f"[Error] Cannot handle worker result: {type(e)}: {e} {result}")
-            import traceback
-            traceback.print_exc()
-
-    def notify(self, cell):
-        for other in self.cells.values():
-            if other.key != cell.key and cell.key in other.inputs:
-                debug("notify", other.key, "for", cell.key)
-                other.evaluate()
+        key = result["key"]
+        preview.add(self, key, result["preview"])
+        cell = self.get_cell(key)
+        cell.running = False
+        if result["error"]:
+            error = result["error"]
+            duration = result["duration"]
+            tb = result["traceback"]
+            parts = error.split("'")
+            if len(parts) == 3 and parts[0] == "name " and parts[2] == " is not defined":
+                key = parts[1]
+                if key in cell.inputs:
+                    # The worker job ran out of sequence, ignore this error for now
+                    return
+            cell.update(duration, error)
+            state.console.write(key, f"[Error] {key}: {error} {tb}")
+            return
+        if not cell.model.script:
+            return
+        value = result["value"]
+        if isinstance(value, str):
+            value = value[1:-1] if value.startswith("'") and value.endswith("'") else value
+        cell.update(result["duration"], value)
+        cell.find_inputs(cell.model.script)
+        cell.notify()
 
     def post_load(self):
         ltk.find("#main").focus().on("keydown", proxy(lambda event: self.navigate(event)))
+        ltk.find(".hidden").removeClass("hidden")
         url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
         if window.packages and not url_packages:
             reload_with_packages(window.packages)
         state.doc.name = window.document.title = window.name
-        state.doc.last_edit = state.doc.timestamp = window.timestamp
         state.set_title(state.doc.name)
-        current = window.current
+        current = window.selected
         if window.runtime == "py":
             ltk.find("#run-in-main").prop("checked", True)
-        ltk.schedule(lambda: self.select(self.get(current)), "select-later", 0.1)
-        self.find_ai_suggestions()
+        ltk.schedule(lambda: self.select(self.get_cell(current)), "select-later", 0.1)
         ltk.find(".main-editor-container").width(window.editor_width)
-        try:
-            self.load_previews()
-        except:
-            import traceback
-            traceback.print_exc()
-            pass
-        for n in range(window.scripts.length):
-            key, script = window.scripts[n]
-            self.get(key).set(script)
-        self.setup_selection()
+        ltk.find(".sheet").css("cursor", "default")
+        self.show_loading()
+        preview.load(self)
+    
+    def run_ai(self):
+        ltk.schedule(self.find_frames, "find frames", 1)
+        ltk.schedule(self.find_urls, "find urls", 1)
 
-    def load_previews(self):
-        previews.update(dict(
-            (key, list(preview))
-            for key, preview in window.previews)
-        )
-        for key, values in previews.items():
-            try:
-                left, top, width, height, preview = values
-                self.get(key).add_preview(preview)
-                ltk.find(f"#preview-{key}").css(
-                    ltk.to_js(
-                        {
-                            "left": left,
-                            "top": top,
-                            "width": width,
-                            "height": height,
-                        }
-                    )
-                )
-            except Exception as e:
-                print("Cannot load preview", key, values)
-                import traceback
-                traceback.print_exc()
+    def sync(self):
+        ltk.schedule(self.check_edits, "check edits", 0.5)
 
-    def find_ai_suggestions(self):
-        ltk.schedule(lambda: (self.find_frames(),self.find_urls()), "find ai hints", 1)
+    def check_edits(self):
+        def handle_edits(groups):
+            for group in groups:
+                try:
+                    for edit_dict in eval(group[constants.DATA_KEY_EDITS]):
+                        class_name = edit_dict["_class"]
+                        del edit_dict["_class"]
+                        del edit_dict["_listeners"]
+                        edit = globals()[class_name](**edit_dict)
+                        if isinstance(edit, models.CellChanged):
+                            _ = self.get_cell(edit.key)
+                        edit.apply(sheet.model)
+                except Exception as e:
+                    print("ERROR EVAL", e, group[constants.DATA_KEY_EDITS])
+                    state.print_stack(e)
+        history.sync_edits(handle_edits)
 
     def find_frames(self):
         visited = set()
-        def get_width(cell):
-            col = cell.column
+        def get_width(cell_model):
+            col = cell_model.column
             while True:
                 col += 1
-                key = get_key_from_col_row(col, cell.row)
+                key = models.get_key_from_col_row(col, cell_model.row)
                 visited.add(key)
-                if not key in self.cells or self.cells[key].script == "":
+                if not key in self.model.cells:
                     break
-            return col - cell.column
+            return col - cell_model.column
 
-        def get_height(cell):
-            row = cell.row
+        def get_height(cell_model):
+            row = cell_model.row
             while True:
                 row += 1
-                key = get_key_from_col_row(cell.column, row)
+                key = models.get_key_from_col_row(cell_model.column, row)
                 visited.add(key)
-                if not key in self.cells or self.cells[key].script == "":
+                if not key in self.model.cells:
                     break
-            return row - cell.row
+            return row - cell_model.row
 
-        def add_frame(key, width, height):
-            for col in range(cell.column, cell.column + width):
-                for row in range(cell.row, cell.row + height):
-                    other_key = get_key_from_col_row(col, row)
+        def add_frame(cell_model, width, height):
+            for col in range(cell_model.column, cell_model.column + width):
+                for row in range(cell_model.row, cell_model.row + height):
+                    other_key = models.get_key_from_col_row(col, row)
                     visited.add(other_key)
             prompt = f"""
-Convert the spreadsheet cells in range "{key}:{other_key}" into a Pandas dataframe.
+Convert the spreadsheet cells in range "{cell_model.key}:{other_key}" into a Pandas dataframe.
 To load a Dataframe from cells, use "pysheets.sheet(range)".
 Make the last expression refer to the dataframe.
 The pysheets module is already imported.
@@ -471,47 +259,36 @@ Generate Python code.
 """
             text = f"""
 # Create a Pandas DataFrame from values found in the current sheet
-pysheets.sheet("{key}:{other_key}")
+pysheets.sheet("{cell_model.key}:{other_key}")
 """
-            add_completion_button(cell.key, lambda: insert_completion(key, prompt, text, { "total": 0 }))
+            add_completion_button(cell_model.key, lambda: insert_completion(cell_model.key, prompt, text, { "total": 0 }))
 
-        for cell in self.sorted_cells():
-            if cell.key in visited:
-                continue
-            width = get_width(cell)
-            height = get_height(cell)
-            if width > 1 and height > 1:
-                add_frame(cell.key, width, height)
-
-    def is_a_dependent(self, key):
-        for cell in self.cells.values():
-            if key in cell.inputs:
-                return True
-        return False
+        cell = sheet.get_cell("A1")
+        width = get_width(cell.model)
+        height = get_height(cell.model)
+        if width > 1 and height > 1:
+            add_frame(cell.model, width, height)
 
     def get_url_keys(self):
         return [
             key
-            for key, cell in self.cells.items()
-            if cell.text().startswith("https:")
+            for key, cell in self.model.cells.items()
+            if cell.value.startswith("https:")
         ]
-    
-    @saveit
+
     def save_current_position(self):
-        state.console.write("sheet-selection", f"[Sheet] Selected cell: {self.current}")
+        # history.add(models.SelectionChanged(key=self.current.model.key))
+        pass
 
     def find_urls(self):
         for key in self.get_url_keys():
-            if self.is_a_dependent(key):
-                state.console.remove(f"ai-{key}")
-            else:
-                prompt = f"""
+            prompt = f"""
 Load the data URL already stored in variable {key} into a Pandas Dataframe.
 To load a Dataframe from a url, use "pysheets.load_sheet(url)".
 Make the last expression refer to the dataframe.
 Generate Python code.
 """
-                request_completion(key, prompt.strip())
+            request_completion(key, prompt.strip())
 
     def setup_selection(self):
         
@@ -522,11 +299,12 @@ Generate Python code.
                 self.selection_edited = True
                 return
             self.mousedown = True
-            cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
-            if not cell:
+            element = ltk.find(event.target).closest(".cell")
+            if element.length == 0:
                 return
+            key = element.attr("id")
+            cell = self.get_cell(key)
             if cell.hasClass("cell"):
-                debug("sheet.setup.selection", cell.attr("id"))
                 self.save_selection()
                 if event.shiftKey:
                     self.multi_selection.extend(cell, force=True)
@@ -535,26 +313,36 @@ Generate Python code.
             event.preventDefault()
 
         def mousemove(event):
+            ltk.schedule(self.sync, "check edits", 1)
             if not self.mousedown:
                 return
-            cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
-            if not cell:
+            element = ltk.find(event.target).closest(".cell")
+            if element.length == 0:
                 return
+            key = element.attr("id")
+            cell = self.get_cell(key)
             self.multi_selection.extend(cell)
             event.preventDefault()
 
         def mouseup(event):
             if not self.mousedown:
                 return
-            cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
-            if not cell:
+            element = ltk.find(event.target).closest(".cell")
+            if element.length == 0:
                 return
+            key = element.attr("id")
+            cell = self.get_cell(key)
             self.multi_selection.stop(cell)
             event.preventDefault()
             ltk.find(event.target).trigger("click")
 
         def show_menu(event):
-            cell = self.get(ltk.find(event.target).closest(".cell").attr("id"))
+            return
+            div = ltk.find(event.target).closest(".cell")
+            key = div.attr("id")
+            col = int(div.attr("col"))
+            row = int(div.attr("row"))
+            cell = self.get_cell(key, col, row)
             if not cell:
                 return
             event.preventDefault()
@@ -583,61 +371,59 @@ Generate Python code.
         ltk.find("#main").focus()
 
     def save_selection(self, event=None):
-        debug("sheet.save_selection", self.selection_edited, self.selection.val(), self.current and self.current.text())
         if self.selection_edited and self.current and self.selection.val() != self.current.text():
             self.current.edited(self.selection.val())
-        self.find_ai_suggestions()
+        self.sync()
     
     def copy_selection_to_main_editor(self):
-        debug("copy", self.selection.val())
         main_editor.set(self.selection.val())
 
     def navigate_main(self, event):
         if not self.current or event.key == "Meta":
             return
         current = self.multi_selection.cell2 if event.shiftKey else self.current
-        column, row = current.column, current.row
+        column, row = current.model.column, current.model.row
         if event.key == "Tab":
             column += -1 if event.shiftKey else 1
         elif event.key == "Delete" or event.key == "Backspace":
             self.multi_selection.clear()
         elif event.key == "ArrowLeft":
-            column = max(0, column - 1)
+            column = max(1, column - 1)
         elif event.key == "Home":
-            column = 0
+            column = 1
         elif event.key == "ArrowRight":
             column += 1
         elif event.key == "End":
-            column = ltk.find("#column-header").children().length - 2
+            column = ltk.find("#column-header").children().length - 1
         elif event.key == "ArrowUp":
-            row = max(0, row - 1)
+            row = max(1, row - 1)
         elif event.key == "PageDown":
             row = row + 25
         elif event.key == "PageUp":
-            row = max(0, row - 25)
+            row = max(1, row - 25)
         elif event.key == "ArrowDown" or event.key == "Enter":
             row += 1
 
         if len(event.key) == 1:
             if is_command_key(event):
-                handler = self.multi_selection.handler_by_shortcut[event.key]
-                handler(event)
+                handler = self.multi_selection.handler_by_shortcut.get(event.key)
+                if handler:
+                    handler(event)
             if event.metaKey or event.ctrlKey:
                 return
             self.selection_edited = True
             self.selection.css("caret-color", "black").val("").focus()
             ltk.schedule(self.copy_selection_to_main_editor, "copy-to-editor")
         else:
-            if self.current and (column != self.current.column or row != self.current.row):
+            if self.current and (column != self.current.model.column or row != self.current.model.row):
                 self.save_selection()
-            cell = self.get(get_key_from_col_row(column, row))
+            cell = self.get_cell(models.get_key_from_col_row(column, row))
             if event.shiftKey:
                 self.multi_selection.extend(cell, force=True)
             else:
                 self.select(cell)
             event.preventDefault()
 
-    @saveit
     def select(self, cell):
         if not cell or not cell.hasClass("cell"):
             print("Not a cell", cell)
@@ -653,7 +439,7 @@ Generate Python code.
             .css("color", cell.css("color")) \
             .css("left", 0) \
             .css("top", 0) \
-            .css("height", "calc(100% - 6px)") \
+            .css("height", "calc(100% - 8px)") \
             .css("width", "calc(100% - 8px)") \
             .appendTo(cell.element) \
             .attr("class", self.current.attr("class").replace("cell", "selection")) \
@@ -661,139 +447,97 @@ Generate Python code.
         self.selection.css("caret-color", "transparent")
         self.current = cell
 
+    def show_loading(self):
+        for key, cell in self.model.cells.items():
+            if cell.script.startswith("="):
+                self.get_cell(key).show_loading()
+
     def worker_ready(self, data):
-        for cell in self.cells.values():
-            cell.worker_ready()
-        self.find_ai_suggestions()
+        for key, cell in self.model.cells.items():
+            if cell.script.startswith("="):
+                self.get_cell(key).worker_ready()
+        self.sync()
 
-    def save_file(self, done=None):
-        take_screenshot(lambda screenshot: self.save_file_with_screenshot(screenshot, done))
-    
-    def save_file_with_screenshot(self, screenshot=None, done=None):
-        profiler.start("Save file")
-        try:
-            now = ltk.get_time()
-            state.doc.timestamp = now
-            cells = dict(
-                (key, cell.to_dict())
-                for key, cell in self.cells.items()
-                if cell.script != "" and ltk.find(f"#{key}").length
-            )
-            columns = dict(
-                (n, {constants.DATA_KEY_WIDTH: column.width()})
-                for n, column in enumerate(ltk.find_list(".column-label"), 1)
-                if round(column.width()) != constants.DEFAULT_COLUMN_WIDTH
-            )
-            rows = dict(
-                (n, {constants.DATA_KEY_HEIGHT: row.height() - 4})
-                for n, row in enumerate(ltk.find_list(".row-label"), 1)
-                if round(row.height()) != constants.DEFAULT_ROW_HEIGHT
-            )
-            packages = " ".join(ltk.find("#packages").val().replace(",", " ").split())
-            print("save previews:", previews)
-            data = {
-                constants.DATA_KEY_UID: state.doc.uid,
-                constants.DATA_KEY_NAME: state.doc.name,
-                constants.DATA_KEY_TIMESTAMP: window.time(),
-                constants.DATA_KEY_CELLS_ENCODED: json.dumps(cells),
-                constants.DATA_KEY_PACKAGES: packages,
-                constants.DATA_KEY_COLUMNS: columns,
-                constants.DATA_KEY_ROWS: rows,
-                constants.DATA_KEY_RUNTIME: "pyodide" if state.force_pyodide or ltk.find("#run-in-main").prop("checked") == True else "micropython",
-                constants.DATA_KEY_PREVIEWS: list(previews.items()),
-                constants.DATA_KEY_SCREENSHOT: screenshot or state.doc.screenshot or "",
-                constants.DATA_KEY_EDITOR_WIDTH: main_editor.width(),
-                constants.DATA_KEY_CURRENT: self.current.key,
-            }
-
-            def save_done(response):
-                if not isinstance(response, dict):
-                    message = f"Full document backup failed {response}"
-                else:
-                    status = response[constants.DATA_KEY_STATUS]
-                    if "error" in status:
-                        message = f"Full document backup failed {response}"
-                    else:
-                        message = f"Full document, {len(json.dumps(data))} bytes, backed up ✅"
-                        state.doc.dirty = False
-                state.console.write("save-response", f"[Save] {message}")
-                if done:
-                    done()
-                profiler.stop()
-
-                def show_doc(data):
-                    window.console.orig_log(window.JSON.stringify(data))
-                ltk.get(f"/file?{constants.DATA_KEY_UID}={state.doc.uid}", proxy(show_doc))
-
-            ltk.post(f"/file?{constants.DATA_KEY_UID}={state.doc.uid}", data, proxy(save_done))
-
-        except Exception as e:
-            logger.error("Error saving file %s", e)
-            raise e
+    def save_file(self, done=lambda response: None):
+        def handle_screenshot(screenshot):
+            self.save_screenshot(screenshot, done)
+        take_screenshot(handle_screenshot)
+ 
+    def save_screenshot(self, screenshot=None, done=lambda response: None):
+        history.add(models.ScreenshotChanged(url=screenshot or state.doc.screenshot))
 
 
-class Cell(ltk.Widget):
+class CellView(ltk.Widget):
 
-    def __init__(self, sheet: Spreadsheet, column: int, row: int, script: str, preview: str, key: str = None):
+    def __init__(self, sheet: SpreadsheetView, key: str, model: models.Cell, td=None):
         self.sheet= sheet
-        self.key = key or get_key_from_col_row(column, row)
-        self.element = ltk.find(f"#{self.key}")
+        self.model = model
+        if not key:
+            raise ValueError(f"Missing key for cell")
+        if not self.model:
+            raise ValueError(f"No model for cell {key}")
+        self.element = td or ltk.find(f"#{self.model.key}")
         if not self.element.length:
-            window.fillSheet(column + 1, row + 1)
-            self.element = ltk.find(f"#{self.key}")
-        self.column = column
-        self.row = row
+            window.fillSheet(model.column, model.row)
+            self.element = ltk.find(f"#{self.model.key}")
         self.running = False
         self.needs_worker = False
-        self.inputs = []
-        self.script = ""
-        self.preview = None
-        self.embed = ""
-        if script != "" or preview:
-            self.set(script, preview)
+        self.inputs = set()
+        self.dependents = set()
+        if self.model.script != self.model.value:
+            self.set(self.model.script, evaluate=False)
+        self.on("mouseenter", ltk.proxy(lambda event: self.enter()))
+        self.find_inputs(self.model.script)
+        self.setup_listener()
+        
+    def setup_listener(self):
+        self.model.listen(self.model_changed)
+
+    def model_changed(self, model, info):
+        if info["name"] == "script":
+            self.set(model.script)
+        if info["name"] == "value":
+            self.text(model.value)
+        if info["name"] == "style":
+            self.css(model.style)
         
     def enter(self):
         self.draw_cell_arrows()
         self.raise_preview()
-
-    def set(self, script, preview=None):
-        debug("set", self.key, "script:", repr(script))
-        self.script = script
+    
+    def set(self, script, evaluate=True):
+        if self.model.script != script:
+            history.add(models.CellScriptChanged(self.model.key, self.model.script, script))
+            self.model.script = script
+            self.find_inputs(script)
         if script == "":
             self.clear()
-        self.add_preview(preview)
         if self.sheet.current == self:
-            main_editor.set(self.script)
+            main_editor.set(self.model.script)
             self.sheet.select(self)
         if not self.is_formula():
-            self.sheet.cache[self.key] = convert(script)
-        ltk.schedule(self.evaluate, f"eval-{self.key}")
-    
-    def load(self, script, kind, preview, embed):
-        self.embed = embed
-        self.set(script, preview)
-        self.text(kind)
+            self.sheet.cache[self.model.key] = convert(script)
+        if evaluate:
+            ltk.schedule(self.evaluate, f"eval-{self.model.key}")
 
     def is_formula(self):
-        return self.script and isinstance(self.script, str) and self.script.startswith("=")
+        return self.model.script and isinstance(self.model.script, str) and self.model.script.startswith("=")
 
-    def update(self, duration, value, preview=None):
-        debug("update value", self.key, value)
-        self.add_preview(preview or self.get_preview(value))
-        if self.script:
-            count = self.sheet.counts[self.key]
+    def update(self, duration, value):
+        if self.model.script:
+            count = self.sheet.counts[self.model.key]
             if count:
                 speed = '🐌' if duration > 1.0 else '🚀'
                 if isinstance(value, str) and not "Error" in value:
                     state.console.write(
-                        self.key,
-                        f"[Sheet] {self.key}: Ran in worker {count} time{'s' if count > 1 else ''}, last run took {duration:.3f}s {speed}"
+                        self.model.key,
+                        f"[DAG] {self.model.key}: Ran in worker {count} time{'s' if count > 1 else ''}, last run took {duration:.3f}s {speed}"
                     )
-        self.notify()
-        self.find(".loading-indicator").remove()
-        children = self.children()
         self.text(str(value))
-        self.append(children)
+        if self.model.value != value and self.model.script != value:
+            history.add(models.CellValueChanged(self.model.key, self.model.value, value))
+        self.notify()
+        self.model.value = value
         if self.sheet.current == self:
             self.sheet.selection.val(self.text())
         self.sheet.multi_selection.draw()
@@ -803,25 +547,26 @@ class Cell(ltk.Widget):
             return api.get_dict_table(value)
 
     def notify(self):
-        self.sheet.notify(self)
+        for key in self.dependents:
+            self.sheet.get_cell(key).evaluate()
     
     def worker_ready(self):
-        if self.needs_worker:
-            debug(f"[Worker] Worker ready, run {self.key}")
-            if self.key in self.sheet.cache:
-                del self.sheet.cache[self.key]
-            self.running = False
-            self.evaluate()
+        if self.model.key in self.sheet.cache:
+            del self.sheet.cache[self.model.key]
+        self.running = False
+        self.evaluate()
 
-    def get_inputs(self, script):
+    def find_inputs(self, script):
+        for input in self.inputs:
+            self.sheet.get_cell(input).dependents.remove(self.model.key)
         if not isinstance(script, str) or not script or script[0] != "=" or "no-inputs" in script:
-            return set()
+            return
         # TODO: sort first and last by min/max col/row
-        inputs = []
+        self.inputs = set()
         index = 0
         is_col = lambda c: c >= "A" and c <= "Z"
         is_row = lambda c: c.isdigit()
-        string = self.script[1:]
+        string = self.model.script[1:]
         while index < len(string):
             c = string[index]
             if is_col(string[index]):
@@ -832,29 +577,32 @@ class Cell(ltk.Widget):
                     while index < len(string) and is_row(string[index]):
                         index += 1
                     key = string[start:index]
-                    if start > 0 and string[start - 1] == ":" and inputs:
-                        inputs.extend(self.get_input_range(inputs.pop(), key))
-                    elif key != self.key:
-                        inputs.append(key)
+                    if start > 0 and string[start - 1] == ":" and self.inputs:
+                        keys = self.get_input_range(self.inputs.pop(), key)
+                    else:
+                        keys = set([key])
+                    for key in keys:
+                        if key != self.model.key:
+                            self.inputs.add(key)
+                            self.sheet.get_cell(key).dependents.add(self.model.key)
             index += 1
-        debug("get inputs", self.key, inputs)
-        return set(inputs)
 
     def get_input_range(self, start, end):
-        start_col, start_row = get_col_row_from_key(start)
-        end_col, end_row = get_col_row_from_key(end)
+        start_col, start_row = models.get_col_row_from_key(start)
+        end_col, end_row = models.get_col_row_from_key(end)
         return [
-            get_key_from_col_row(col, row)
+            models.get_key_from_col_row(col, row)
             for row in range(start_row, end_row + 1)
             for col in range(start_col, end_col + 1)
         ]
 
     def select(self):
-        debug("select", self.key)
-        remove_arrows()
+        self.remove_arrows()
+        if self.sheet.current and self.sheet.current is not self:
+            ltk.schedule(lambda: self.sheet.save_current_position(), "save selection", 3)
         self.sheet.current = self
-        main_editor.set(self.script)
-        ltk.find("#selection").text(f"Cell: {self.key}")
+        main_editor.set(self.model.script)
+        ltk.find("#selection").text(f"Cell: {self.model.key}")
         ltk.find("#cell-attributes-container").css("display", "block")
 
         try:
@@ -862,26 +610,8 @@ class Cell(ltk.Widget):
         except Exception as e:
             pass
 
-        self.scroll_selection()
-        ltk.schedule(lambda: self.sheet.save_current_position(), "save selection", 3)
+        selection.scroll(self)
 
-    def scroll_selection(self):
-        offset = self.position()
-        container = ltk.find("#sheet-container").get(0)
-        scrollable_width = ltk.find("#sheet-scrollable").width()
-        scrollable_height = ltk.find("#sheet-container").height()
-        x = offset.left - container.scrollLeft
-        y = offset.top - container.scrollTop
-        if x < 100:
-            container.scrollLeft = max(0, offset.left - 100)
-        elif x > scrollable_width - self.width():
-            container.scrollLeft = offset.left - self.width() + 7
-        if y < 100:
-            container.scrollTop = max(0, offset.top - 100)
-        elif y > scrollable_height - self.height():
-            container.scrollTop = offset.top - self.height() + 7
-        return self
-    
     def set_css_editors(self):
         ltk.find("#cell-font-family").val(self.css("font-family") or constants.DEFAULT_FONT_FAMILY)
         ltk.find("#cell-font-size").val(round(window.parseFloat(self.css("font-size"))) or constants.DEFAULT_FONT_SIZE)
@@ -892,10 +622,11 @@ class Cell(ltk.Widget):
         ltk.find("#cell-font-weight").val({"400": "normal", "700": "bold"}[self.css("font-weight")] or constants.DEFAULT_FONT_WEIGHT)
         ltk.find("#cell-font-style").val(self.css("font-style") or constants.DEFAULT_FONT_STYLE)
 
-
     def clear(self):
-        self.inputs = []
+        self.inputs = set()
+        self.dependents = set()
         self.text("")
+
         self.css("font-family", constants.DEFAULT_FONT_FAMILY)
         self.css("font-size", constants.DEFAULT_FONT_SIZE)
         self.css("font-style", constants.DEFAULT_FONT_STYLE)
@@ -904,34 +635,37 @@ class Cell(ltk.Widget):
         self.css("vertical-align", constants.DEFAULT_VERTICAL_ALIGN)
         self.css("font-weight", constants.DEFAULT_FONT_WEIGHT)
         self.css("text-align", constants.DEFAULT_TEXT_ALIGN)
-        ltk.find(f"#preview-{self.key}").remove()
-        ltk.find(f"#completion-{self.key}").remove()
-        state.console.remove(f"ai-{self.key}")
-        del self.sheet.cells[self.key]
-        if self.key in previews:
-            del previews[self.key]
+
+        ltk.find(f"#preview-{self.model.key}").remove()
+        ltk.find(f"#completion-{self.model.key}").remove()
+        state.console.remove(f"ai-{self.model.key}")
+        self.model.clear()
+        if self.model.key in self.sheet.cells:
+            del self.sheet.cells[self.model.key]
+        if self.model.key in self.sheet.model.previews:
+            history.add(models.PreviewDeleted(key=self.model.key))
+        history.add(models.CellScriptChanged(key=self.model.key, script=""))
+        history.add(models.CellValueChanged(key=self.model.key, value=""))
+        history.add(models.CellStyleChanged(key=self.model.key, style={}))
 
     def draw_cell_arrows(self):
-        remove_arrows()
         self.draw_arrows()
         self.adjust_arrows()
     
     def raise_preview(self):
-        preview = ltk.find(f"#preview-{self.key}")
+        preview = ltk.find(f"#preview-{self.model.key}")
         preview.appendTo(preview.parent())
 
+    def remove_arrows(self):
+        selection.remove_arrows()
+
     def draw_arrows(self):
+        self.remove_arrows()
         if state.mobile():
             return
-        if self.preview:
-            window.addArrow(self.element, ltk.find(f"#preview-{self.key} .ltk-text"))
         if not self.inputs:
             return
-        cells = [
-            self.sheet.cells[input]
-            for input in self.inputs
-            if input in self.sheet.cells
-        ]
+        cells = [ self.sheet.get_cell(input) for input in self.inputs ]
         window.addArrow(create_marker(cells, "inputs-marker arrow"), self.element)
         self.addClass("arrow")
 
@@ -945,152 +679,6 @@ class Cell(ltk.Widget):
                 .css("top", window.parseFloat(arrow_line.css("top")) + scroll_top - 49) \
                 .css("left", window.parseFloat(arrow_line.css("left")) + scroll_left)
 
-    def add_preview(self, preview):
-        self.preview = preview
-        if not preview:
-            return
-
-        def get_preview_value():
-            return (
-                window.parseInt(preview.css("left")),
-                window.parseInt(preview.css("top")),
-                window.parseInt(preview.css("width")) + 10,
-                window.parseInt(preview.css("height")) + 2,
-                self.preview
-            )
-        
-        @saveit
-        def save_preview():
-            previews[self.key] = get_preview_value()
-            debug(f"[Sheet] Preview position for {self} saved: {previews[self.key]}")
-
-        def dragstop(*args):
-            previews[self.key] = get_preview_value()
-            ltk.schedule(save_preview, "save-preview", 3)
-
-        def resize(event, *args):
-            previews[self.key] = get_preview_value()
-            preview = ltk.find(event.target)
-            preview.find("img, iframe").css("width", "100%").css("height", f"calc(100% - {constants.PREVIEW_HEADER_HEIGHT})")
-            ltk.schedule(save_preview, "save-preview", 3)
-        
-        def move():
-            previews[self.key] = get_preview_value()
-            self.draw_cell_arrows()
-            
-        def click():
-            preview.appendTo(preview.parent())  # raise
-
-        left, top, width, height = self.offset().left + self.width() + 30, self.offset().top + 30, "fit-content", "fit-content"
-        if len(previews.get(self.key, [])) == 5:
-            left, top, width, height, preview = previews.get(self.key)
-
-        ltk.find(f".preview-{self.key}").remove()
-        if "# no-preview" in self.script:
-            return
-
-        preview = (
-            ltk.create("<div>")
-                .addClass("preview")
-                .addClass(f"preview-{self.key}")
-                .attr("id", f"preview-{self.key}")
-                .css("position", "absolute")
-                .css("left", left)
-                .css("top", top)
-                .css("width", width)
-                .css("height", height)
-                .on("click", proxy(lambda event: click()))
-                .on("mousemove", proxy(lambda event: move()))
-                .on("mouseleave", proxy(lambda event: remove_arrows()))
-                .on("resize", proxy(resize))
-                .on("dragstop", proxy(dragstop))
-                .draggable(ltk.to_js({ "containment": ".sheet" }))
-        )
-
-        def toggle(event):
-            minimize = preview.height() > constants.PREVIEW_HEADER_HEIGHT
-            height = constants.PREVIEW_HEADER_HEIGHT if minimize else "fit-content"
-            width = constants.PREVIEW_HEADER_WIDTH if minimize else "fit-content"
-            preview \
-                .attr("minimized", minimize) \
-                .height(height) \
-                .width(width) \
-                .find(".ui-resizable-handle") \
-                    .css("display", "none" if minimize else "block")
-            ltk.find(event.target).text("+" if minimize else "-")
-            ltk.schedule(save_preview, "save-preview", 3)
-
-        @saveit
-        def toggle_embed(event):
-            self.embed = "" if self.embed else "embed"
-            self.add_preview(self.preview)
-
-        try:
-            html = self.fix_preview_html(preview, self.preview)
-            url = f"/embed?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_CELL}={self.key}"
-            embed = ltk.Link(url, "embed") if self.embed else ltk.Div("embed")
-            ltk.find(".sheet-grid").append(
-                preview.append(
-                    ltk.HBox(
-                        ltk.Text(self.key),
-                        ltk.Checkbox(self.embed != "").on("change", ltk.proxy(toggle_embed)),
-                        ltk.Div(embed.addClass("embed")),
-                        ltk.Button("-" if preview.height() > constants.PREVIEW_HEADER_HEIGHT or preview.height() == 0 else "+", ltk.proxy(toggle)).addClass("toggle")
-                    ).addClass("preview-header"),
-                    ltk.Div(
-                        ltk.create(html)
-                    ).addClass("preview-content")
-                )
-            )
-        except Exception as e:
-            print("sheet", f"[Error] No preview for {self}: {e}")
-            pass
-            
-        self.make_resizable()
-        self.draw_arrows()
-        try:
-            for td in ltk.find_list(f"#preview-{self.key} .dataframe td"):
-                content = td.text()
-                td.empty().append(ltk.Div().text(content))
-            ltk.find(f"#preview-{self.key} .dataframe tr th:first-child").remove()
-        except Exception as e:
-            state.console.write("sheet", "[Error] Cannot add preview for", self, e)
-        if state.mobile():
-            ltk.find(".dataframe").closest(".preview").remove()
-
-
-    def fix_preview_html(self, preview, html):
-        try:
-            html = html.replace("script src=", "script crossorigin='anonymous' src=")
-            if not html.startswith("<"):
-                html = f"<div>{html}</div>"
-        except Exception as e:
-            raise e
-
-        def fix_images():
-            script = f"""
-                $("img").each(function () {{
-                    $(this).attr("crossorigin", "anonymous").attr("src", $(this).attr("src"))
-                }});
-            """
-            preview.find("iframe").contents().find("body").append(
-                ltk.create("<script>").html(script)
-            )
-
-        ltk.schedule(fix_images, f"fix-images-{self.key}", 1.0)
-        return html
-
-    def make_resizable(self):
-        preview = ltk.find(f"#preview-{self.key}")
-        height = preview.height()
-        preview.find("img, iframe").css("width", "100%").css("height", f"calc(100% - {constants.PREVIEW_HEADER_HEIGHT})")
-        preview.resizable(ltk.to_js({"handles": "se"}))
-        try:
-            display = "block" if height > constants.PREVIEW_HEADER_HEIGHT else "none"
-        except:
-            display = "block"
-        preview.find(".ui-resizable-handle").css("display", display)
-
     def is_int(self, value):
         try:
             int(value)
@@ -1098,42 +686,32 @@ class Cell(ltk.Widget):
         except:
             return False
 
-    @saveit
     def edited(self, script):
-        debug("edited", self.key, script)
         self.set(script)
 
     def evaluate(self):
-        debug("evaluate", self.key, self.script)
-        script = self.script
+        script = self.model.script
         is_formula = isinstance(script, str) and script and script[0] == "="
-        expression = api.edit_script(self.script[1:]) if is_formula else script
+        expression = api.edit_script(script[1:]) if is_formula else script
+        state.console.remove(self.model.key)
         if is_formula:
             try:
-                self.inputs = self.get_inputs(script)
-            except Exception as e:
-                state.console.write("sheet", f"[Error] Cannot get inputs for {self.key}", e)
-                self.inputs = set()
-        state.console.remove(self.key)
-        if is_formula:
-            try:
-                if not "# worker" in self.script and (state.pyodide or "# no-worker" in self.script):
+                if not "# worker" in self.model.script and (state.pyodide or "# no-worker" in self.model.script):
                     self.evaluate_locally(expression)
                 else:
                     raise Exception("only run in worker")
             except Exception as e:
                 if state.pyodide:
-                    state.console.write(self.key, f"[Error] {self.key}: {e}")
-                if "no-worker" in self.script:
-                    state.console.write(self.key, f"[Error] {self.key}: {e}")
+                    state.console.write(self.model.key, f"[Error] {self.model.key}: {e}")
+                if "no-worker" in self.model.script:
+                    state.console.write(self.model.key, f"[Error] {self.model.key}: {e}")
                     self.update(0, str(e))
                 else:
                     self.evaluate_in_worker(expression)
         else:
-            self.update(0, self.script, self.preview)
+            self.update(0, self.model.script)
         
     def evaluate_locally(self, expression):
-        debug("evaluate locally", self.key, expression)
         inputs = {}
         inputs["pysheets"] = api.PySheets(self.sheet, self.sheet.cache)
         inputs.update(self.sheet.cache)
@@ -1141,53 +719,39 @@ class Cell(ltk.Widget):
         exec(expression, inputs)
         duration = ltk.get_time() - start
         value = inputs["_"]
-        self.sheet.cache[self.key] = convert(value)
+        self.sheet.cache[self.model.key] = convert(value)
         self.update(duration, value)
     
     def show_loading(self):
         text = self.text()
-        if not text.endswith(constants.ICON_HOUR_GLASS):
-            self.text(f"{text}{constants.ICON_HOUR_GLASS}")
+        if not text.startswith(constants.ICON_HOUR_GLASS):
+            self.text(f"{constants.ICON_HOUR_GLASS} {text}")
 
     def evaluate_in_worker(self, expression):
         if self.running:
             return
-        self.sheet.counts[self.key] += 1
+        self.sheet.counts[self.model.key] += 1
         self.running = True
         self.needs_worker = True
         self.show_loading()
         inputs = dict(
             (key,value)
             for key, value in self.sheet.cache.items()
+            if key != self.model.key
         )
-        debug("evaluate in worker", self.key, expression, inputs)
         ltk.publish(
             "Application",
             "Worker",
             ltk.TOPIC_WORKER_RUN,
-            [self.key, expression, inputs]
+            [self.model.key, expression, inputs]
         )
 
-    def to_dict(self):
-        result = {}
-        if self.is_formula():
-            result[constants.DATA_KEY_VALUE_FORMULA] = self.script
-        else:
-            result[constants.DATA_KEY_VALUE_KIND] = self.text()
-        if self.preview:
-            result[constants.DATA_KEY_VALUE_PREVIEW] = self.preview
-        if self.embed:
-            result[constants.DATA_KEY_VALUE_EMBED] = self.embed
-        result.update(json.loads(window.getStyle(self.element.get(0))))
-        print("Save", self.is_formula(), self.key, result)
-        return result
-
     def __repr__(self):
-        return f"cell[{self.key}]"
+        return f"cell[{self.model.key}]"
 
 
 def hide_marker(event):
-    remove_arrows()
+    selection.remove_arrows()
 
 
 def create_marker(cells, clazz):
@@ -1214,22 +778,6 @@ def create_marker(cells, clazz):
         .appendTo(ltk.find(".sheet-grid"))
     )
 
-def remove_arrows(duration=0):
-    ltk.find(".arrow").removeClass("arrow")
-    arrows = ".leader-line, .inputs-marker"
-    if duration:
-        ltk.find(arrows).animate(
-            ltk.to_js(
-                {
-                    "opacity": 0,
-                }
-            ),
-            duration,
-            lambda: ltk.find(arrows).remove(),
-        )
-    else:
-        ltk.find(arrows).remove()
-
 
 def check_network():
     if ltk.find(".cell").length == 0:
@@ -1248,10 +796,8 @@ def take_screenshot(callback):
     if state.doc.screenshot:
         callback(state.doc.screenshot)
         return
-    profiler.start("Take screenshot")
     
     def done(screenshot):
-        profiler.stop()
         state.doc.screenshot = screenshot
         callback(screenshot)
 
@@ -1261,7 +807,7 @@ def take_screenshot(callback):
         done(get_plot_screenshot())
 
     try:
-        if len(sheet.cells) > 300:
+        if len(sheet.model.cells) > 300:
             done(get_plot_screenshot())
         else:
             options = ltk.to_js({
@@ -1283,152 +829,20 @@ def get_plot_screenshot():
     return src if isinstance(src, str) else "/screenshot.png"
 
 
-def setup_login():
-    ltk.find("#login-email").val(local_storage.getItem(constants.DATA_KEY_EMAIL))
-
-    def get_data():
-        return (
-            {
-                constants.DATA_KEY_EMAIL: ltk.find("#login-email").val(),
-                constants.DATA_KEY_PASSWORD: ltk.find("#login-password").val(),
-                constants.DATA_KEY_CODE: ltk.find("#login-code").val(),
-            },
-        )
-
-    def handle_login(data):
-        if data and not data.get(constants.DATA_KEY_STATUS) == "error":
-            state.login(ltk.find("#login-email").val(), data[constants.DATA_KEY_TOKEN])
-            ltk.find("#login-container").css("display", "none")
-            setup()
-        else:
-            error("Email and password do not match our records.")
-            ltk.find("#login-password-reset").css("display", "block").on("click", proxy(reset_password))
-
-
-    def confirm_registration(event):
-        ltk.find("#login-confirm").css("display", "none")
-        ltk.find(event.target).attr('disabled', True)
-        data = get_data()
-        if invalid_email(data[0][constants.DATA_KEY_EMAIL]):
-            error("The email looks invalid. Please enter a valid email.")
-        elif invalid_password(data[0][constants.DATA_KEY_PASSWORD]):
-            error(f"The password is too short. PySheets has a {constants.MIN_PASSWORD_LENGTH} character minimum.")
-        elif invalid_code(data[0][constants.DATA_KEY_CODE]):
-            error(f"This is not a valid 6-digit code. Check your email.")
-        else:
-            ltk.post("/confirm", data, proxy(handle_login))
-
-
-    def login(event):
-        data = get_data()
-        if invalid_email(data[0][constants.DATA_KEY_EMAIL]) or invalid_password(data[0][constants.DATA_KEY_PASSWORD]):
-            error("Please enter valid email/password.")
-        else:
-            ltk.post(f"/login", get_data(), proxy(handle_login))
-
-    def invalid_email(email):
-        return not re.match(r"^\S+@\S+\.\S+$", email)
-
-    def invalid_password(password):
-        return len(password) < constants.MIN_PASSWORD_LENGTH
-
-    def invalid_code(code):
-        return not re.match(r"^[1-9][1-9][1-9][1-9][1-9][1-9]$", code)
-
-    def error(message):
-        if not message:
-            ltk.find("#login-message").css("display", "none").text(message)
-        else:
-            ltk.find("#login-message").css("display", "block").text(message)
-
-    def enable_register(event):
-        ltk.find("#login-title").text("Register a PySheets Account")
-        ltk.find("#login-register-link").css("display", "none")
-        ltk.find("#login-signin-link").css("display", "block")
-        ltk.find("#login-login").css("display", "none")
-        ltk.find("#login-register").css("display", "block").on("click", proxy(register))
-
-    def enable_signin(event):
-        error("")
-        ltk.find("#login-title").text("Sign In to PySheets")
-        ltk.find("#login-signin-link").css("display", "none")
-        ltk.find("#login-register-link").css("display", "block")
-        ltk.find("#login-login").css("display", "block")
-        ltk.find("#login-register").css("display", "none")
-
-    def register(event):
-        def handle_register(data):
-            if not data or data.get(constants.DATA_KEY_STATUS) == "error":
-                error("Could not register with that email. Try signing in.")
-            else:
-                ltk.find("#login-code").css("display", "block")
-                ltk.find("#login-login").css("display", "none")
-                error("Please check your email and enter the confirmation code.")
-                ltk.find("#login-confirm").css("display", "block").on("click", proxy(confirm_registration))
-
-        ltk.find("#login-register").css("display", "none")
-        data = get_data()
-        if invalid_email(data[0][constants.DATA_KEY_EMAIL]):
-            error("The email looks invalid. PySheets needs a valid email.")
-        elif invalid_password(data[0][constants.DATA_KEY_PASSWORD]):
-            error(f"The password is too short. PySheets has a {constants.MIN_PASSWORD_LENGTH} character minimum.")
-        else:
-            ltk.post("/register", data, proxy(handle_register))
-
-    def reset_password_with_code(event):
-        error("checking details...")
-        data = get_data()
-        if invalid_email(data[0][constants.DATA_KEY_EMAIL]):
-            error("The email looks invalid. Please enter a valid email.")
-        elif invalid_password(data[0][constants.DATA_KEY_PASSWORD]):
-            error(f"The password is too short. PySheets has a {constants.MIN_PASSWORD_LENGTH} character minimum.")
-        elif invalid_code(data[0][constants.DATA_KEY_CODE]):
-            error(f"This is not a valid 6-digit code. Check your email.")
-        else:
-            ltk.post("/reset_code", data, proxy(handle_login))
-
-    def reset_password(event):
-        def handle_reset_password(event):
-            error("")
-            ltk.find("#login-code").css("display", "block")
-            ltk.find("#login-login").css("display", "none")
-            ltk.find("#login-password").val("")
-            ltk.find("#login-reset").css("display", "block")
-            ltk.find("#login-title").text("Change Password")
-
-        data = get_data()
-        if invalid_email(data[0][constants.DATA_KEY_EMAIL]):
-            error("The email looks invalid. Please enter a valid email.")
-        else:
-            error("Resetting password...")
-            ltk.find("#login-password-reset").css("display", "none")
-            ltk.post("/reset", get_data(), proxy(handle_reset_password))
-
-    ltk.find("#login-register-link").on("click", proxy(enable_register))
-    ltk.find("#login-signin-link").on("click", proxy(enable_signin))
-    ltk.find("#login-reset").on("click", proxy(reset_password_with_code))
-    ltk.find("#login-login").on("click", proxy(login))
-
-    if not local_storage.getItem(constants.DATA_KEY_EMAIL):
-        enable_register(None)
-
-
-@saveit
 def set_name(event):
-    window.document.title = state.doc.name
+    sheet.model.name = ltk.find("#title").val()
 
 
 ltk.find("#title").on("change", proxy(set_name))
 
 
-@saveit
 def update_cell(event=None):
     script = main_editor.get()
     cell = sheet.current
-    if cell and cell.script != script:
+    if cell and cell.model.script != script:
         cell.set(script)
         cell.evaluate()
-    sheet.find_ai_suggestions()
+    sheet.sync()
 
 
 main_editor = editor.Editor()
@@ -1452,16 +866,14 @@ def save_packages(event):
     sheet.save_file(lambda: reload_with_packages(packages))
 
 
-def create_sheet():
+def create_sheet(model):
     if not state.user.token:
-        return Spreadsheet()
+        return SpreadsheetView(Sheet())
 
-    @saveit
     def resize_editor(*args):
-        remove_arrows()
+        selection.remove_arrows()
         main_editor.refresh()
 
-    @saveit
     def run_in_main(event):
         show_button()
         ltk.find("#run-in-main").prop("checked", ltk.find(event.target).prop("checked"))
@@ -1470,118 +882,124 @@ def create_sheet():
         ltk.find("#reload-button").css("display", "block").addClass("small-button")
 
     def run_current(event=None):
-        remove_arrows()
+        selection.remove_arrows()
         sheet.current.evaluate()
 
-    sheet = Spreadsheet()
+    sheet = SpreadsheetView(model)
+
     packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
-    vsp = ltk.VerticalSplitPane(
-        ltk.VBox(
+
+    console = ltk.VBox(
+        ltk.HBox(
+            ltk.Input("")
+                .addClass("console-filter")
+                .attr("placeholder", "filter the console"),
+            ltk.Button("clear", proxy(lambda event: state.console.clear()))
+                .addClass("console-clear")
+                .attr("title", "Clear the console")
+        ),
+        ltk.Div(ltk.Table()).addClass("console"),
+    ).addClass("console-container internals").attr("name", "Console")
+
+    tabs = ltk.Tabs(
+        console,
+        ltk.VBox().addClass("timeline-container").attr("name", "Timeline"),
+    ).addClass("internals")
+
+    editor = ltk.VBox(
+        ltk.HBox(
+            ltk.Text().attr("id", "selection")
+                .text("f(x)")
+                .css("width", 70),
             ltk.HBox(
-                ltk.Text().attr("id", "selection")
-                    .text("f(x)")
-                    .css("width", 70),
-                ltk.HBox(
-                    ltk.Text("Packages:"),
-                    ltk.Input("")
-                        .attr("id", "packages")
-                        .css("width", 150)
-                        .on("keyup", proxy(show_button))
-                        .val(packages),
-                    ltk.Switch("Run in main:", False)
-                        .on("change", proxy(run_in_main))
-                        .attr("id", "run-in-main") if not state.force_pyodide else ltk.Span(""),
-                    ltk.Button("Reload", proxy(save_packages))
-                        .attr("id", "reload-button")
-                        .css("display", "none"),
-                    ltk.Button("run", proxy(run_current))
-                        .addClass("small-button")
-                        .attr("id", "run-button"),
-                    ltk.Button(constants.ICON_STAR, proxy(lambda event: insert_completion(sheet.current.key if sheet.current else "", "", "", { "total": 0 })))
-                        .addClass("small-button completion-button"),
-                ).addClass("packages-container"),
-            ),
-            main_editor,
-        )
-        .addClass("editor-container")
-        .on("resize", proxy(resize_editor)),
-        ltk.VBox(
-            ltk.HBox(
+                ltk.Text("Packages:"),
                 ltk.Input("")
-                    .addClass("console-filter")
-                    .attr("placeholder", "filter the console"),
-                ltk.Button("clear", proxy(lambda event: state.console.clear()))
-                    .addClass("console-clear")
-                    .attr("title", "Clear the console")
-            ),
-            ltk.Div(ltk.Table()).addClass("console"),
-        ).addClass("console-container"),
+                    .attr("id", "packages")
+                    .css("width", 150)
+                    .on("keyup", proxy(show_button))
+                    .val(packages),
+                ltk.Switch("Run in main:", False)
+                    .on("change", proxy(run_in_main))
+                    .attr("id", "run-in-main") if not state.force_pyodide else ltk.Span(""),
+                ltk.Button("Reload", proxy(save_packages))
+                    .attr("id", "reload-button")
+                    .css("display", "none"),
+                ltk.Button("run", proxy(run_current))
+                    .addClass("small-button toolbar-button")
+                    .attr("id", "run-button"),
+                ltk.Button(constants.ICON_STAR, proxy(lambda event: insert_completion(sheet.current.model.key if sheet.current else "", "", "", { "total": 0 })))
+                    .addClass("small-button toolbar-button"),
+            ).addClass("packages-container"),
+        ),
+        main_editor,
+    ).addClass("editor-container").on("resize", proxy(resize_editor))
+
+    left_panel = ltk.Div(
+        ltk.Div(
+            ltk.find(".sheet")
+        ).attr("id", "sheet-scrollable")
+    ).attr("id", "sheet-container")
+
+    right_panel = ltk.VerticalSplitPane(
+        editor,
+        tabs if state.pyodide else console,
         "editor-and-console",
     ).addClass("right-panel")
+
     if state.mobile():
         ltk.find("#main").prepend(
             ltk.VerticalSplitPane(
-                ltk.Div(
-                    ltk.Div(
-                        ltk.find(".sheet"),
-                    ).attr("id", "sheet-scrollable")
-                ).attr("id", "sheet-container"),
-                vsp.css("height", "30%"),
+                left_panel,
+                right_panel.css("height", "30%"),
                 "sheet-and-editor",
             ).css("height", "100%")
         )
     else:
-        ltk.find("#main").prepend(
+        ltk.find("#main").empty().prepend(
             ltk.HorizontalSplitPane(
-                ltk.Div(
-                    ltk.Div(
-                        ltk.find(".sheet"),
-                    ).attr("id", "sheet-scrollable")
-                ).attr("id", "sheet-container"),
-                vsp,
+                left_panel.css("width", "70%"),
+                right_panel.css("width", "30%"),
                 "sheet-and-editor",
             ).css("height", "calc(100vh - 51px)")
         )
-    ltk.find("#sheet").css("display", "block")
-    sheet.setup_selection()
-    window.console.orig_log("Add sheet", ltk.find("#sheet").length)
-    window.console.orig_log("Add sheet", ltk.find("#sheet").length)
     if not ltk.find("#A1").length:
         raise ValueError("Error: PySheets setup problem, cannot find cell A1")
-    ltk.find("#menu").empty().append(menu.create_menu(sheet).element)
-    ltk.find("#main").focus()
+    window.adjustSheetPosition()
+    ltk.schedule(create_top, "create top section", 0)
+    return sheet
 
-    @saveit
+
+def create_top():
+    sheet.setup_selection()
+    ltk.find("#menu").empty().append(menu.create_menu(sheet))
+    ltk.find("#main").focus()
+    create_attribute_editors()
+
+
+def create_attribute_editors():
     def set_font(index, option):
         sheet.multi_selection.css("font-family", option.text())
 
-    @saveit
     def set_font_size(index, option):
         sheet.multi_selection.css("font-size", f"{option.text()}px")
 
-    @saveit
     def set_font_weight(index, option):
         sheet.multi_selection.css("font-weight", option.text())
 
-    @saveit
     def set_font_style(index, option):
         sheet.multi_selection.css("font-style", option.text())
 
-    @saveit
     def set_color(event):
         sheet.multi_selection.css("color", ltk.find(event.target).val())
         event.preventDefault()
 
-    @saveit
     def set_background(event):
         sheet.multi_selection.css("background-color", ltk.find(event.target).val())
         event.preventDefault()
 
-    @saveit
     def set_vertical_align(index, option):
         sheet.multi_selection.css("vertical-align", option.text())
 
-    @saveit
     def set_text_align(index, option):
         sheet.multi_selection.css("text-align", option.text())
 
@@ -1609,9 +1027,8 @@ def create_sheet():
         ltk.Select(["left", "center", "right"], "right", set_text_align).attr(
             "id", "cell-text-align"
         ),
-    )
+    ).css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
     state.console.setup()
-    return sheet
 
 
 def logout(event=None):
@@ -1619,93 +1036,18 @@ def logout(event=None):
     menu.go_home()
 
 
-def joke():
-    ltk.get(
-        "https://icanhazdadjoke.com/",
-        lambda response: state.console.write(
-            "joke",
-            f"[Fun] {response['joke']} 😜",
-            action=ltk.Button(f"😜 Fun", proxy(lambda event: window.open("https://icanhazdadjoke.com/")))
-                .addClass("small-button")
-        )
-    )
-    ltk.schedule(lambda: state.console.remove("joke"), "joke", 15)
-
-def setup():
+def setup(model):
     global sheet
-    ltk.find("#main").animate(ltk.to_js({ "opacity": 1 }), 200)
     if state.doc.uid:
         state.clear()
-        sheet = create_sheet()
-        ltk.schedule(joke, "joke", 3)
-        ltk.window.addEventListener("visibilitychange", ltk.proxy(lambda event: sheet.save_file_with_screenshot()))
+        sheet = create_sheet(model)
     elif state.user.token:
-        list_sheets()
+        inventory.list_sheets()
     else:
         state.set_title("")
         ltk.find("#login-container").css("display", "block")
+    ltk.find("#main").animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
 
-
-def list_sheets():
-    state.clear()
-    ltk.find("#main").append(
-        ltk.Button("New Sheet", proxy(lambda event: None)).addClass("new-button temporary"),
-        ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
-        ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
-        ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
-        ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
-        ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
-    )
-    ltk.find(".temporary").css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), 2000)
-    ltk.get("/list", proxy(show_document_list))
-
-
-def show_document_list(documents):
-    state.clear()
-    if "error" in documents:
-        return logger.error(f"Error: Cannot list documents: {documents['error']}")
-    local_storage.setItem("cardCount", len(documents[constants.DATA_KEY_IDS]))
-
-    def create_card(uid, index, runtime, packages, *items):
-        def select_doc(event):
-            if event.keyCode == 13:
-                load_doc_with_packages(event, uid, packages)
-
-        return (
-            ltk.Card(*items)
-                .on("click", proxy(lambda event=None: load_doc_with_packages(event, uid, runtime, packages)))
-                .on("keydown", proxy(select_doc))
-                .attr("tabindex", 1000 + index)
-                .addClass("document-card")
-        )
-
-    sorted_documents = sorted(documents[constants.DATA_KEY_IDS], key=lambda doc: doc[1])
-    ltk.find("#main").append(
-        ltk.Container(
-            *[
-                create_card(
-                    uid,
-                    index,
-                    runtime,
-                    packages,
-                    ltk.VBox(
-                        ltk.Image(screenshot, "/screenshot.png"),
-                        ltk.Text(name),
-                    ),
-                )
-                for index, (uid, name, screenshot, runtime, packages) in enumerate(
-                    sorted_documents
-                )
-            ]
-        ).prepend(
-            ltk.Button("New Sheet", proxy(lambda event: menu.new_sheet())).addClass(
-                "new-button"
-            )
-        ).css("overflow", "auto").css("height", "100%")
-    )
-    ltk.find(".document-card").eq(0).focus()
-    ltk.find("#menu").empty()
-    state.show_message("Select a sheet below or create a new one...")
 
 
 def cleanup_completion(text):
@@ -1720,7 +1062,6 @@ def cleanup_completion(text):
 
 def handle_completion_request(completion):
     try:
-        debug("[AI] Received completion from OpenAI...", completion)
         import json
         key = completion["key"]
         text = completion["text"]
@@ -1728,27 +1069,24 @@ def handle_completion_request(completion):
         if not "CompletionBudgetException" in text:
             text = cleanup_completion(text)
             text = f"# The following code is entirely AI-generated. Please check it for errors.\n\n{text}"
-        debug("PySheets: handle completion", key, text)
 
         if ltk.find("#ai-text").length:
             ltk.find("#ai-text").text(text)
             ltk.find("#ai-insert").removeAttr("disabled")
             return
 
-        if sheet.cells[key].script == "":
-            debug(f"[AI] Completion canceled for {key}")
+        if sheet.model.cells[key].script == "":
             return
         completion_cache[key] = (text, completion.get("budget"))
         ltk.find(f"#completion-{key}").remove()
         text, budget = completion_cache[key]
-        debug(f"[AI] OpenAI completion received for {key}; Budget: {budget['total']}/100")
         add_completion_button(key, lambda: insert_completion(key, prompt, text, budget))
     except Exception as e:
         state.console.write("ai-complete", "[Error] Could not handle completion from OpenAI...", e)
+        state.print_stack(e)
 
 
 def request_completion(key, prompt):
-    debug(f"[AI] Sending a completion request for {key} to OpenAI...")
     ltk.publish(
         "Application",
         "Worker",
@@ -1779,7 +1117,6 @@ def insert_completion(key, prompt, text, budget):
         ltk.find("#ai-text").text("Loading...")
         ltk.find("#ai-generate").attr("disabled", "true"),
         edited_prompt = ltk.find("#ai-prompt").val()
-        debug("Generate")
         request_completion(key, edited_prompt)
         ltk.schedule(check_completion, "check-openai", 5)
 
@@ -1827,7 +1164,7 @@ def insert_completion(key, prompt, text, budget):
             ltk.Button("fill", proxy(lambda event: set_plot_kind("a fill between graph"))),
         ],
     }
-    cell: Cell = sheet.get(key)
+    cell = sheet.get_cell(key)
     if cell.text() == "DataFrame":
         data_kind = constants.COMPLETION_KINDS_CHART
     elif cell.text().startswith("https:"):
@@ -1872,56 +1209,58 @@ def insert_completion(key, prompt, text, budget):
 def add_completion_button(key, handler):
     def run(event):
         handler()
-        ltk.schedule(sheet.find_ai_suggestions, "find-ai-suggestions", 1)
+        ltk.schedule(sheet.sync, "find-ai-suggestions", 1)
         
     ltk.find(f"#completion-{key}").remove()
     ltk.find(".packages-container").append(
         ltk.Button(f"{constants.ICON_STAR} {key}", proxy(run))
-            .addClass("small-button completion-button")
+            .addClass("small-button toolbar-button")
             .attr("id", f"completion-{key}")
     )
     if key:
-        cell_contents = api.shorten(sheet.cells[key].text(), 12)
+        cell = sheet.get_cell(key)
+        cell_contents = api.shorten(cell.model.value, 12)
         message = f'[AI] AI suggestion available for [{key}: "{cell_contents}"]. {constants.ICON_STAR}'
         state.console.write(
             f"ai-{key}",
             message,
-            action=ltk.Button(f"{constants.ICON_STAR}{key}", proxy(run)).addClass("small-button completion-button")
+            action=ltk.Button(f"{constants.ICON_STAR}{key}", proxy(run)).addClass("small-button toolbar-button")
         )
-
-
-def load_doc_with_packages(event, uid, runtime, packages):
-    url = f"/?{constants.DATA_KEY_UID}={uid}&{constants.DATA_KEY_RUNTIME}={runtime}"
-    if packages:
-        url += f"&{constants.DATA_KEY_PACKAGES}={packages}"
-    ltk.window.location = url
-
-
-@saveit
-def resize_selection():
-    sheet.select(sheet.current)
 
 
 def sheet_resized():
     ltk.find(".selection").remove()
-    ltk.schedule(resize_selection, "resize-selection", 1)
+    sheet.multi_selection.draw()
+    sheet.select(sheet.current)
 
+
+def column_resizing(event):
+    label = ltk.find(event.target)
+    column = label.attr('col')
+    ltk.find(f".cell.col-{column}").css("width", round(label.width()))
+    sheet_resized()
 
 def column_resized(event):
-    column = ltk.find(event.target)
-    ltk.find(f".cell.col-{column.attr('col')}").css("width", column.width())
-    sheet_resized()
-    sheet.multi_selection.draw()
+    label = ltk.find(event.target)
+    column = label.attr('col')
+    history.add(models.ColumnChanged(int(column), round(label.width())))
 
+
+def row_resizing(event):
+    label = ltk.find(event.target)
+    row = label.attr('row')
+    ltk.find(f".cell.row-{row}").css("height", round(label.height()))
+    sheet_resized()
 
 def row_resized(event):
-    row = ltk.find(event.target)
-    ltk.find(f".cell.row-{row.attr('row')}").css("height", row.height())
-    sheet_resized()
-    sheet.multi_selection.draw()
+    label = ltk.find(event.target)
+    row = label.attr('row')
+    history.add(models.RowChanged(int(row), round(label.height())))
 
 
+window.columnResizing = ltk.proxy(column_resizing)
 window.columnResized = ltk.proxy(column_resized)
+window.rowResizing = ltk.proxy(row_resizing)
 window.rowResized = ltk.proxy(row_resized)
 
 worker = state.start_worker()
@@ -1930,10 +1269,10 @@ def handle_code_completion(completions):
     main_editor.handle_code_completion(completions)
 
 
-def main():
+def main(model):
     ltk.inject_css("pysheets.css")
-    setup_login()
-    ltk.schedule(setup, "setup")
+    login.setup()
+    setup(model)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_COMPLETION, handle_completion_request)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_CODE_COMPLETION, handle_code_completion)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_PRINT, print)
@@ -1953,7 +1292,6 @@ message = (
     f"Mode:{state.mode}-{minimized}."
 )
 state.console.write("pysheets", message)
-logger.info(message)
 
 version_app = "dev"
 state.console.write(
@@ -1980,20 +1318,20 @@ state.console.write(
 def insert_url(event):
     if main_editor.get() == "":
         sheet.current.set("https://chrislaffra.com/forbes_ai_50_2024.csv")
-        sheet.find_ai_suggestions()
+        sheet.sync()
         set_random_color()
     else:
         lambda: state.console.write(
             "insert-tip",
             f"[AI] To import a sheet, select an empty cell first. Then enter a URL. {constants.ICON_STAR}", 
-            action=ltk.Button(f"{constants.ICON_STAR} Try", insert_url).addClass("small-button completion-button")
+            action=ltk.Button(f"{constants.ICON_STAR} Try", insert_url).addClass("small-button toolbar-button")
         )
 
 ltk.schedule(
     lambda: sheet and not sheet.get_url_keys() and state.console.write(
         "insert-tip",
         f"[AI] To import a sheet, enter a URL into a cell. {constants.ICON_STAR}", 
-        action=ltk.Button(f"{constants.ICON_STAR} Try", insert_url).addClass("small-button completion-button")
+        action=ltk.Button(f"{constants.ICON_STAR} Try", insert_url).addClass("small-button toolbar-button")
     ),
     "give a tip",
     3.0
