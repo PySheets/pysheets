@@ -13,7 +13,7 @@ import pyodide # type: ignore
 import pyscript # type: ignore
 
 try:
-    from api import edit_script, PySheets, get_dict_table, to_js
+    from api import intercept_last_expression, PySheets, get_dict_table, to_js
     from lsp import complete_python
 except:
     pass # needed for bundling
@@ -160,7 +160,7 @@ Here are the column names for the dataframe:
 def complete(key, kind):
     if kind != "DataFrame":
         return
-    prompt = get_visualization_prompt(key, cache[key].columns.values)
+    prompt = get_visualization_prompt(key, results[key].columns.values)
     if prompt in completion_cache:
         return completion_cache[prompt]
     generate_completion(key, prompt)
@@ -212,6 +212,10 @@ def run_in_worker(key, script):
     _globals["pyscript"] = pyscript
     _globals["pysheets"] = sys.modules["pysheets"] = PySheets(None, cache)
     _locals = _globals
+    try:
+        script = intercept_last_expression(script)
+    except:
+        traceback.print_exc()
     exec(script, _globals, _locals)
     return _locals["_"]
 
@@ -230,21 +234,21 @@ def run(data):
             line = [line for line in lines if "<string>" in line][0]
             line_number = int(re.sub("[^0-9]", "", line))
             error = f"At line {line_number + 1}: {lines[-1]} - {tb}"
-        except:
+        except Exception as e:
             error = str(e)
         publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "value": None,
             "preview": "",
             "duration": time.time() - start,
-            "error": str(e),
+            "error": f"Worker run error: {type(error)}:{error}",
             "traceback": tb,
         }))
         return
 
     try:
         kind = result.__class__.__name__
-        cache[key] = result
+        cache[key] = results[key] = result
     except Exception as e:
         publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
@@ -252,7 +256,7 @@ def run(data):
             "value": None,
             "preview": "",
             "duration": time.time() - start,
-            "error": str(e),
+            "error": f"Worker result error: {type(error)}:{error}",
             "traceback": traceback.format_exc()
         }))
         return
@@ -269,14 +273,15 @@ def run(data):
             "error": None,
         }))
         complete(key, kind)
-    except:
+    except Exception as e:
         publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "value": None,
             "script": script,
             "preview": "",
             "duration": time.time() - start,
-            "error": traceback.format_exc(),
+            "error": f"Worker preview error: {type(e)}:{e}",
+            "traceback": traceback.format_exc()
         }))
 
 def handle_request(sender, topic, request):
@@ -286,7 +291,7 @@ def handle_request(sender, topic, request):
             generate_completion(data["key"], data["prompt"])
         elif topic == constants.TOPIC_WORKER_CODE_COMPLETE:
             text, line, ch = data
-            completions = complete_python(text, line, ch, cache)
+            completions = complete_python(text, line, ch, cache, results)
             publish(sender, receiver, constants.TOPIC_WORKER_CODE_COMPLETION, json.dumps(completions))
         elif topic == ltk.pubsub.TOPIC_WORKER_RUN:
             run(data)

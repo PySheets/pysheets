@@ -43,11 +43,6 @@ def handle_edits(handler, response):
 
 
 def sync_edits(handler=None):
-    for chunk in range(0, len(edits), 100):
-        send_edits(handler, edits[chunk:chunk+10])
-
-
-def send_edits(handler, edits):
     ltk.post(
         f"/edits?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_START}={window.start}&{constants.DATA_KEY_TIMESTAMP}={state.doc.last_edit}",
         {

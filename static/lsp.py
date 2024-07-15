@@ -118,7 +118,7 @@ class CodeCompletor():
                 )
         ltk.find(".completions").find(".choice").eq(0).addClass("selected")
 
-DEBUG_COMPLETION = False
+DEBUG_COMPLETION = True
 
 def fuzzy_parse(text):
     import ast
@@ -149,7 +149,7 @@ def fuzzy_parse(text):
 
 
 
-def complete_python(text, line, ch, cache):
+def complete_python(text, line, ch, cache, results):
     import ast
     lines = text[1:].split("\n")[:line + 1]
     lines[-1] = lines[-1][:ch + 1]
@@ -165,6 +165,7 @@ def complete_python(text, line, ch, cache):
         def __init__(self):
             self.context = {}
             self.context.update(cache)
+            self.context.update(results)
             self.token = ""
 
         def inside(self, node):
@@ -189,8 +190,22 @@ def complete_python(text, line, ch, cache):
                 except:
                     pass
 
+            def get_parameters(name):
+                import inspect
+                function = getattr(obj, name)
+                try:
+                    signature = inspect.signature(function)
+                except:
+                    return []
+                parameters = []
+                for param in signature.parameters.values():
+                    param_name = param.name
+                    param_type = param.annotation if param.annotation != inspect.Parameter.empty else None
+                    parameters.append(f"{param_name}:{param_type or 'Any'}")
+                return ", ".join(parameters)
+
             attributes = [
-                f"{name}()" if is_callable(name) else name
+                f"{name}({get_parameters(name)})" if is_callable(name) else name
                 for name in dir(obj)
             ]
             if DEBUG_COMPLETION:

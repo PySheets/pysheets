@@ -207,6 +207,8 @@ def scroll(cell):
 
 def scroll_now(cell):
     container = ltk.find("#sheet-container")
+    if not container.length:
+        return
     grid = ltk.find(".sheet-grid")
     margin_left = ltk.window.parseInt(grid.css("margin-left"))
     margin_top = ltk.window.parseInt(grid.css("margin-top"))

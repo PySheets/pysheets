@@ -15,20 +15,7 @@ class TestCellValue(unittest.TestCase):
         for n in range(105):
             history.add(CellValueChanged(f"A{n}", "before", "after"))
         self.assertEqual(len(history.edits), 105)
-        
-    def test_send(self):
-        send_edits = unittest.mock.Mock()
-        history.send_edits = send_edits
-        history.edits = []
-        edit1 = CellValueChanged(f"A1", "before", "after")
-        edit2 = CellValueChanged(f"A2", "before", "after")
-        edit3 = CellValueChanged(f"A3", "before", "after")
-        history.add(edit1)
-        history.add(edit2)
-        history.add(edit3)
-        history.sync_edits()
-        send_edits.assert_called_with(None, [edit1, edit2, edit3])
-        
+
     def test_receive(self):
         handle_edits = unittest.mock.Mock()
         edit1 = CellValueChanged(f"A1", "before", "after")

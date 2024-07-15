@@ -94,7 +94,7 @@ def go():
     uid = request.args.get(constants.DATA_KEY_UID, "")
     package_names = request.args.get(constants.DATA_KEY_PACKAGES, "").split()
     pyodide = package_names or request.args.get(constants.DATA_KEY_RUNTIME) == "pyodide"
-    loading = "⏳ Loading..." if pyodide else ""
+    loading = "Loading..."
     files = FILES + FILES_LTK
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
     interpreter = '' if pyodide else 'interpreter = "1.23.0"'
@@ -105,6 +105,7 @@ def go():
     packages = f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else ""
     previews = []
     path = PATH
+    token = "none" if storage.version == "Sqlite" else ""
     if uid:
         sheet = storage.get_sheet(token, uid)
         name = sheet.name
@@ -133,8 +134,8 @@ def new_file():
     return jsonify({constants.DATA_KEY_UID: storage.new(token)})
 
 
-@app.route("/delete")
-def delete_file(token):
+@app.route("/delete", methods=["DELETE"])
+def delete_file():
     token = request.cookies.get(constants.DATA_KEY_TOKEN)
     uid = request.args.get(constants.DATA_KEY_UID)
     storage.delete(token, uid)

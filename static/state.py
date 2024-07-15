@@ -24,7 +24,7 @@ class Document():
 class User():
     def __init__(self):
         self.email = local_storage.getItem(constants.DATA_KEY_EMAIL) or ""
-        self.token = local_storage.getItem(constants.DATA_KEY_TOKEN) or ""
+        self.token = local_storage.getItem(constants.DATA_KEY_TOKEN) or window.token or ""
         window.document.cookie = f"{constants.DATA_KEY_TOKEN}={self.token};"
         self.photo = ""
         self.name = ""

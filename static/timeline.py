@@ -112,7 +112,29 @@ class Profiler():
 
     def __init__(self):
         self.epoch = time.time()
-        sys.setprofile(self.profile)
+        ltk.schedule(self.add_toggle, "add profiler toggle")
+        self.enable_profile()
+
+    def enabled(self):
+        return ltk.window.localStorage.getItem("timeline-enabled") == "true"
+        
+    def enable(self, enabled):
+        ltk.window.localStorage.setItem("timeline-enabled", enabled)
+    
+    def add_toggle(self):
+        ltk.find(".timeline-container").append(
+            ltk.Switch("enabled", self.enabled())
+                .addClass("timeline-switch")
+                .on("change", ltk.proxy(lambda event: self.toggle(ltk.find(event.target))))
+        )
+
+    def toggle(self, checkbox):
+        self.enable(checkbox.prop("checked"))
+        self.enable_profile()
+        print("toggle", self.enabled(), self.enabled())
+    
+    def enable_profile(self):
+        sys.setprofile(self.profile if self.enabled() else None)
 
     def profile(self, frame, event, arg=None):
         now = round(time.time() - self.epoch, 3)
@@ -136,5 +158,5 @@ class Profiler():
         return self.profile
 
 
-if False and not 'unittest' in sys.modules and hasattr(sys, "setprofile"):
+if not 'unittest' in sys.modules and hasattr(sys, "setprofile"):
     Profiler()

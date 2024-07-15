@@ -8,12 +8,27 @@ import time
 window = pyscript.window
 
 
-def edit_script(script): # TODO: use ast to parse script
+def get_last_expression_lineno(script):
+    import ast
+    tree = ast.parse(script)
+    last = tree.body[-1]
+    lineno = -1
+    if isinstance(last, ast.Expr):
+        lineno = last.lineno
+    elif isinstance(last, ast.Assign):
+        lineno = last.lineno
+    return lineno
+
+
+def intercept_last_expression(script):
+    if not script:
+        return ""
     lines = script.strip().split("\n")
-    if lines[-1].startswith("import ") or lines[-1].startswith("from "):
-        lines.append("_=None")
+    lineno = min(len(lines), get_last_expression_lineno(script))
+    if lineno == -1:
+        lines.append("_ = None")
     else:
-        lines[-1] = f"_={lines[-1]}"
+        lines[lineno - 1] = f"_ = {lines[lineno - 1]}"
     return "\n".join(lines)
 
 
@@ -120,10 +135,10 @@ class PySheets():
     def cell(self, key):
         return self._spreadsheet.get(key) if self._spreadsheet else window.jQuery(f"#{key}")
 
-    def set_cell(self, column, row, value):
-        cell = self.cell(self.get_key(column, row))
-        cell.set(f"={repr(value)}")
-        cell.evaluate()
+    def set_cell(self, key, value):
+        cell = self.cell(key)
+        cell.text(f"{repr(value)}")
+        cell.attr("worker-set", f"{repr(value)}")
     
     def get_key(self, column, row):
         return window.getKeyFromColumnRow(column, row)

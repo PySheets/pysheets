@@ -192,7 +192,10 @@ class Sheet(Model):
 
     def get_cell(self, key):
         if not key in self.cells:
-            self.cells[key] = Cell(key=key)
+            cell = Cell(key=key)
+            self.cells[key] = cell
+            self.row_count = max(self.row_count, cell.row)
+            self.column_count = max(self.column_count, cell.column)
         return self.cells[key]
 
     def get_preview(self, key, **args):

@@ -20,39 +20,32 @@ def discord(event):
 
 
 def create_menu(sheet):
+    file_menu = ltk.Menu("File",
+        ltk.MenuItem("➕", "New", "", lambda item: new_sheet()),
+        ltk.MenuItem("📂", "Open", "Cmd+O", lambda item: go_go()),
+        ltk.MenuItem("🗑", "Delete", "", lambda item: delete_doc()),
+    )
+    view_menu = ltk.Menu("View",
+        ltk.MenuItem("◱", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),
+    )
+    user_menu = ltk.Menu("User",
+        ltk.MenuItem("👋", "Sign out", "", ltk.proxy(state.logout)),
+        ltk.MenuItem("💀", "Forget me", "", ltk.proxy(state.forget_me)),
+    )
+    help_menu = ltk.Menu("Help",
+        ltk.MenuItem("🅿️", "About", "", ltk.proxy(landing)),
+        ltk.MenuItem("👏", "Feedback", "", ltk.proxy(feedback)),
+        ltk.MenuItem("💬", "Discord", "", ltk.proxy(discord)),
+    )
     return ltk.MenuBar(
-        ltk.Menu("File",
-             ltk.MenuItem("➕", "New", "", lambda item: new_sheet()),
-             ltk.MenuItem("📂", "Open", "Cmd+O", lambda item: go_go()),
-             ltk.MenuItem("📂", "Import", "", lambda item: import_sheet()),
-             ltk.MenuItem("🎁", "Share", "", lambda item: share_sheet()),
-             ltk.MenuItem("🗑", "Delete", "", lambda item: delete_doc()),
-             ltk.MenuItem("R", "Restore", "", lambda item: sheet.restore()),
-        ),
-        ltk.Menu("View",
-             ltk.MenuItem("◱", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),
-        ),
-        ltk.Menu("User",
-            ltk.MenuItem("👋", "Sign out", "", ltk.proxy(state.logout)),
-            ltk.MenuItem("💀", "Forget me", "", ltk.proxy(state.forget_me)),
-        ),
-        ltk.Menu("Help",
-            ltk.MenuItem("🅿️", "About", "", ltk.proxy(landing)),
-            ltk.MenuItem("👏", "Feedback", "", ltk.proxy(feedback)),
-            ltk.MenuItem("💬", "Discord", "", ltk.proxy(discord)),
-        )
+        [file_menu, view_menu, user_menu, help_menu]
+        if state.user.token != "none" else
+        [file_menu, view_menu, help_menu]
     ).css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
 
 
-DELETE_PROMPT = """
-This will permanently delete the current sheet.
-You and anyone it has been shared with will lose access.
-We cannot recover the contents.
-"""
-
-
 def delete_doc():
-    if window.confirm(DELETE_PROMPT):
+    if window.confirm("This will permanently delete the current sheet."):
         url = f"/delete?{constants.DATA_KEY_UID}={state.doc.uid}"
         ltk.delete(url, lambda data: go_go())
 

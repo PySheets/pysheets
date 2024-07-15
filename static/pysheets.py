@@ -158,29 +158,8 @@ class SpreadsheetView():
     def handle_worker_result(self, result):
         key = result["key"]
         preview.add(self, key, result["preview"])
-        cell = self.get_cell(key)
-        cell.running = False
-        if result["error"]:
-            error = result["error"]
-            duration = result["duration"]
-            tb = result["traceback"]
-            parts = error.split("'")
-            if len(parts) == 3 and parts[0] == "name " and parts[2] == " is not defined":
-                key = parts[1]
-                if key in cell.inputs:
-                    # The worker job ran out of sequence, ignore this error for now
-                    return
-            cell.update(duration, error)
-            state.console.write(key, f"[Error] {key}: {error} {tb}")
-            return
-        if not cell.model.script:
-            return
-        value = result["value"]
-        if isinstance(value, str):
-            value = value[1:-1] if value.startswith("'") and value.endswith("'") else value
-        cell.update(result["duration"], value)
-        cell.find_inputs(cell.model.script)
-        cell.notify()
+        cell: CellView = self.get_cell(key)
+        cell.handle_worker_result(result)
 
     def post_load(self):
         ltk.find("#main").focus().on("keydown", proxy(lambda event: self.navigate(event)))
@@ -198,6 +177,7 @@ class SpreadsheetView():
         ltk.find(".sheet").css("cursor", "default")
         self.show_loading()
         preview.load(self)
+        ltk.schedule(self.run_ai, "run ai", 3)
     
     def run_ai(self):
         ltk.schedule(self.find_frames, "find frames", 1)
@@ -219,8 +199,7 @@ class SpreadsheetView():
                             _ = self.get_cell(edit.key)
                         edit.apply(sheet.model)
                 except Exception as e:
-                    print("ERROR EVAL", e, group[constants.DATA_KEY_EDITS])
-                    state.print_stack(e)
+                    pass # print("ERROR EVAL")
         history.sync_edits(handle_edits)
 
     def find_frames(self):
@@ -277,8 +256,7 @@ pysheets.sheet("{cell_model.key}:{other_key}")
         ]
 
     def save_current_position(self):
-        # history.add(models.SelectionChanged(key=self.current.model.key))
-        pass
+        history.add(models.SelectionChanged(key=self.current.model.key))
 
     def find_urls(self):
         for key in self.get_url_keys():
@@ -488,10 +466,14 @@ class CellView(ltk.Widget):
             self.set(self.model.script, evaluate=False)
         self.on("mouseenter", ltk.proxy(lambda event: self.enter()))
         self.find_inputs(self.model.script)
-        self.setup_listener()
-        
-    def setup_listener(self):
         self.model.listen(self.model_changed)
+        self.element.on("DOMSubtreeModified", ltk.proxy(lambda event: self.ui_changed()))
+
+    def ui_changed(self):
+        new_value = str(self.element.attr("worker-set"))
+        if not new_value in ["None", "<undefined>"]:
+            self.set(new_value)
+            self.element.removeAttr("worker-set")
 
     def model_changed(self, model, info):
         if info["name"] == "script":
@@ -500,6 +482,7 @@ class CellView(ltk.Widget):
             self.text(model.value)
         if info["name"] == "style":
             self.css(model.style)
+        ltk.schedule(self.sheet.run_ai, "run ai", 3)
         
     def enter(self):
         self.draw_cell_arrows()
@@ -529,9 +512,13 @@ class CellView(ltk.Widget):
             if count:
                 speed = '🐌' if duration > 1.0 else '🚀'
                 if isinstance(value, str) and not "Error" in value:
+                    if count > 1:
+                        message = f"Ran in worker {count} times, last run took {duration:.3f}s"
+                    else:
+                        message = f"Ran once in worker, which took {duration:.3f}s"
                     state.console.write(
                         self.model.key,
-                        f"[DAG] {self.model.key}: Ran in worker {count} time{'s' if count > 1 else ''}, last run took {duration:.3f}s {speed}"
+                        f"[DAG] {self.model.key}: {message} {speed}"
                     )
         self.text(str(value))
         if self.model.value != value and self.model.script != value:
@@ -688,35 +675,40 @@ class CellView(ltk.Widget):
 
     def edited(self, script):
         self.set(script)
+        
+    def get_inputs(self):
+        return {
+            key: self.sheet.cache.get(key)
+            for key in self.inputs
+        }
+
+    def should_run_locally(self):
+        return "# no-worker" in self.model.script
+        
+    def is_formula(self):
+        return isinstance(self.model.script, str) and self.model.script and self.model.script[0] == "="
 
     def evaluate(self):
         script = self.model.script
-        is_formula = isinstance(script, str) and script and script[0] == "="
-        expression = api.edit_script(script[1:]) if is_formula else script
+        expression = script[1:] if self.is_formula() else script
         state.console.remove(self.model.key)
-        if is_formula:
-            try:
-                if not "# worker" in self.model.script and (state.pyodide or "# no-worker" in self.model.script):
-                    self.evaluate_locally(expression)
-                else:
-                    raise Exception("only run in worker")
-            except Exception as e:
-                if state.pyodide:
-                    state.console.write(self.model.key, f"[Error] {self.model.key}: {e}")
-                if "no-worker" in self.model.script:
-                    state.console.write(self.model.key, f"[Error] {self.model.key}: {e}")
-                    self.update(0, str(e))
-                else:
-                    self.evaluate_in_worker(expression)
+        if self.is_formula():
+            inputs = self.get_inputs()
+            if self.should_run_locally():
+                self.evaluate_locally(expression, inputs)
+            else:
+                self.evaluate_in_worker(expression, inputs)
         else:
             self.update(0, self.model.script)
         
-    def evaluate_locally(self, expression):
-        inputs = {}
+    def evaluate_locally(self, script, inputs):
         inputs["pysheets"] = api.PySheets(self.sheet, self.sheet.cache)
-        inputs.update(self.sheet.cache)
         start = ltk.get_time()
-        exec(expression, inputs)
+        try:
+            exec(api.intercept_last_expression(script), inputs)
+        except Exception as e:
+            state.console.write(self.model.key, f"[Error] {self.model.key}: {e}")
+            return
         duration = ltk.get_time() - start
         value = inputs["_"]
         self.sheet.cache[self.model.key] = convert(value)
@@ -726,25 +718,51 @@ class CellView(ltk.Widget):
         text = self.text()
         if not text.startswith(constants.ICON_HOUR_GLASS):
             self.text(f"{constants.ICON_HOUR_GLASS} {text}")
+        
+    def inputs_missing(self):
+        for key in self.inputs:
+            cell = self.sheet.get_cell(key)
+            if cell.is_formula() and not self.sheet.counts[key]:
+                return True
 
-    def evaluate_in_worker(self, expression):
-        if self.running:
+    def evaluate_in_worker(self, expression, inputs):
+        if self.running or self.inputs_missing():
             return
         self.sheet.counts[self.model.key] += 1
         self.running = True
         self.needs_worker = True
         self.show_loading()
-        inputs = dict(
-            (key,value)
-            for key, value in self.sheet.cache.items()
-            if key != self.model.key
-        )
         ltk.publish(
             "Application",
             "Worker",
             ltk.TOPIC_WORKER_RUN,
             [self.model.key, expression, inputs]
         )
+        # result will arrive in handle_worker_result
+
+    def handle_worker_result(self, result):
+        self.running = False
+        if result["error"]:
+            error = result["error"]
+            duration = result["duration"]
+            tb = result["traceback"]
+            parts = error.split("'")
+            if len(parts) == 3 and parts[0] == "name " and parts[2] == " is not defined":
+                key = parts[1]
+                if key in self.inputs:
+                    # The worker job ran out of sequence, ignore this error for now
+                    return
+            self.update(duration, error)
+            state.console.write(self.model.key, f"[Error] {self.model.key}: {error} {tb}")
+            return
+        if not self.model.script:
+            return
+        value = result["value"]
+        if isinstance(value, str):
+            value = value[1:-1] if value.startswith("'") and value.endswith("'") else value
+        self.update(result["duration"], value)
+        self.find_inputs(self.model.script)
+        self.notify()
 
     def __repr__(self):
         return f"cell[{self.model.key}]"
@@ -829,11 +847,24 @@ def get_plot_screenshot():
     return src if isinstance(src, str) else "/screenshot.png"
 
 
+def clear_name(event):
+    if ltk.find("#title").val() == "Untitled Sheet":
+        ltk.find("#title").val("")
+
+
+def reset_name(event):
+    if ltk.find("#title").val() == "":
+        ltk.find("#title").val("Untitled Sheet")
+
+
 def set_name(event):
     sheet.model.name = ltk.find("#title").val()
 
 
-ltk.find("#title").on("change", proxy(set_name))
+ltk.find("#title") \
+    .on("focus", proxy(clear_name)) \
+    .on("blur", proxy(reset_name)) \
+    .on("change", proxy(set_name))
 
 
 def update_cell(event=None):
@@ -1220,12 +1251,13 @@ def add_completion_button(key, handler):
     if key:
         cell = sheet.get_cell(key)
         cell_contents = api.shorten(cell.model.value, 12)
-        message = f'[AI] AI suggestion available for [{key}: "{cell_contents}"]. {constants.ICON_STAR}'
-        state.console.write(
-            f"ai-{key}",
-            message,
-            action=ltk.Button(f"{constants.ICON_STAR}{key}", proxy(run)).addClass("small-button toolbar-button")
-        )
+        if cell_contents:
+            message = f'[AI] AI suggestion available for [{key}: "{cell_contents}"]. {constants.ICON_STAR}'
+            state.console.write(
+                f"ai-{key}",
+                message,
+                action=ltk.Button(f"{constants.ICON_STAR}{key}", proxy(run)).addClass("small-button toolbar-button")
+            )
 
 
 def sheet_resized():
