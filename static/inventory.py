@@ -1,10 +1,12 @@
 import constants
 import ltk
 import state
+import storage
 import menu
 
 
 def list_sheets():
+    print("list_sheets")
     state.clear()
     ltk.find("#main").append(
         ltk.Button("New Sheet", ltk.proxy(lambda event: None)).addClass("new-button temporary"),
@@ -15,14 +17,13 @@ def list_sheets():
         ltk.Card(ltk.Div().css("width", 204).css("height", 188)).addClass("document-card temporary"),
     )
     ltk.find(".temporary").css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), 2000)
-    ltk.get("/list", ltk.proxy(show_document_list))
+    storage.list_sheets(show_sheet_list)
+    ltk.find("#main").animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
 
 
-def show_document_list(documents):
+def show_sheet_list(sheets):
     state.clear()
     ltk.find("#main").empty()
-    if "error" in documents:
-        return print(f"Error: Cannot list documents: {documents['error']}")
 
     def create_card(uid, index, runtime, packages, *items):
         def select_doc(event):
@@ -37,27 +38,20 @@ def show_document_list(documents):
                 .addClass("document-card")
         )
 
-    sorted_documents = sorted(documents[constants.DATA_KEY_IDS], key=lambda doc: doc[1])
-    
-    for index, (uid, name, screenshot, runtime, packages) in enumerate(sorted_documents):
-        ltk.window.console.orig_log(index, uid, name)
-
     ltk.find("#main").append(
         ltk.Container(
             *[
                 create_card(
-                    uid,
+                    sheet.uid,
                     index,
-                    runtime,
-                    packages,
+                    "micropython",
+                    "",
                     ltk.VBox(
-                        ltk.Image(screenshot, "/screenshot.png"),
-                        ltk.Text(name),
+                        ltk.Image(sheet.screenshot),
+                        ltk.Text(sheet.name),
                     ),
                 )
-                for index, (uid, name, screenshot, runtime, packages) in enumerate(
-                    sorted_documents
-                )
+                for index, sheet in enumerate(sheets)
             ]
         ).prepend(
             ltk.Button("New Sheet", ltk.proxy(lambda event: menu.new_sheet())).addClass(
@@ -71,7 +65,7 @@ def show_document_list(documents):
 
 
 def load_doc_with_packages(event, uid, runtime, packages):
-    url = f"/?{constants.DATA_KEY_UID}={uid}&{constants.DATA_KEY_RUNTIME}={runtime}"
+    url = f"/?{constants.SHEET_ID}={uid}&{constants.PYTHON_RUNTIME}={runtime}"
     if packages:
-        url += f"&{constants.DATA_KEY_PACKAGES}={packages}"
+        url += f"&{constants.PYTHON_PACKAGES}={packages}"
     ltk.window.location = url

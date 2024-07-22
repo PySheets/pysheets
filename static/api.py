@@ -1,30 +1,103 @@
 import base64
+import functools
 import io
 import json
 import ltk
 import pyscript # type: ignore
+import re
 import time
 
+
 window = pyscript.window
+cache = functools.cache if hasattr(functools, "cache") else lambda func: func
+
+@cache
+def get_col_row_from_key(key):
+    row = 0
+    col = 0
+    for c in key:
+        if c.isdigit():
+            row = row * 10 + int(c)
+        else:
+            col = col * 26 + ord(c) - ord("A") + 1
+    return col, row
+
+
+@cache
+def get_column_name(col):
+    parts = []
+    while col > 0:
+        col, remainder = divmod(col - 1, 26)
+        parts.insert(0, chr(remainder + ord("A")))
+    return "".join(parts)
+
+
+@cache
+def get_key_from_col_row(col, row):
+    return f"{get_column_name(col)}{row}"
+
+
+cell_reference = re.compile("[A-Z]+[0-9]+")
+cell_range_reference = re.compile("[A-Z]+[0-9]+ *: *[A-Z]+[0-9]+")
+
+def find_inputs(script):
+    import ast
+    class InputFinder(ast.NodeVisitor):
+        inputs = set()
+
+        def __init__(self, script):
+            try:
+                self.visit(ast.parse(script))
+            except:
+                import traceback
+                traceback.print_exc()
+
+        def add_input(self, s):
+            if self.is_cell_reference(s):
+                self.inputs.add(s)
+
+        def is_cell_reference(self, s):
+            return isinstance(s, str) and re.match(cell_reference, s)
+
+        def is_cell_range_reference(self, s):
+            return isinstance(s, str) and re.match(cell_range_reference, s)
+
+        def visit_Name(self, node):
+            if isinstance(node.ctx, ast.Load):
+                self.add_input(node.id)
+            return node
+
+        def visit_Constant(self, node):
+            if self.is_cell_range_reference(node.value):
+                start, end = node.value.split(":")
+                start = start.strip()
+                end = end.strip()
+                start_col, start_row = get_col_row_from_key(start)
+                end_col, end_row = get_col_row_from_key(end)
+                for col in range(start_col, end_col + 1):
+                    for row in range(start_row, end_row + 1):
+                        self.add_input(get_key_from_col_row(col, row))
+            return node
+
+        def generic_visit(self, node):
+            super().generic_visit(node)
+
+    return list(InputFinder(script).inputs)
 
 
 def get_last_expression_lineno(script):
     import ast
     tree = ast.parse(script)
     last = tree.body[-1]
-    lineno = -1
-    if isinstance(last, ast.Expr):
-        lineno = last.lineno
-    elif isinstance(last, ast.Assign):
-        lineno = last.lineno
-    return lineno
-
+    lineno = last.lineno if isinstance(last, (ast.Expr, ast.Assign)) else -1
+    return lineno, script
 
 def intercept_last_expression(script):
     if not script:
         return ""
+    last_lineno, script = get_last_expression_lineno(script)
     lines = script.strip().split("\n")
-    lineno = min(len(lines), get_last_expression_lineno(script))
+    lineno = min(len(lines), last_lineno)
     if lineno == -1:
         lines.append("_ = None")
     else:
@@ -36,22 +109,6 @@ def to_js(python_object):
     if python_object.__class__.__name__ == "jsobj":
         return python_object
     return window.to_js(json.dumps(python_object))
-
-def get_col_row(key):
-    column = ''
-    row = ''
-    for char in key:
-        if char.isdigit():
-            row += char
-        else:
-            column += char
-
-    # Convert column letters to a column index (1-based)
-    column_index = 0
-    for i, c in enumerate(reversed(column)):
-        column_index += (ord(c) - ord('A') + 1) * (26 ** i)
-
-    return column_index, int(row)
 
 
 def index_to_col(index):
@@ -95,7 +152,7 @@ def load_with_trampoline(url):
     if url and url[0] != "/":
         url = f"/load?u={window.encodeURIComponent(url)}"
 
-    return base64.b64decode(get(window.addToken(url)))
+    return base64.b64decode(get(url))
    
 
 try:
@@ -116,8 +173,8 @@ class PySheets():
         import pandas as pd
 
         start, end = selection.split(":")
-        start_col, start_row = get_col_row(start)
-        end_col, end_row = get_col_row(end)
+        start_col, start_row = get_col_row_from_key(start)
+        end_col, end_row = get_col_row_from_key(end)
 
         data = {}
         for col in range(start_col, end_col + 1):
@@ -145,7 +202,7 @@ class PySheets():
 
     def load(self, url, handler=None):
         if handler:
-            ltk.get(window.addToken(url), lambda data: handler(data))
+            ltk.get(url, lambda data: handler(data))
         else:
             return urlopen(url)
 

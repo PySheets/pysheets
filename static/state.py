@@ -11,81 +11,15 @@ local_storage = window.localStorage
 worker_version = constants.WORKER_LOADING
 worker_dots = ""
 force_pyodide = True
-
-class Document():
-    uid = ltk.get_url_parameter(constants.DATA_KEY_UID)
-    name = ""
-    timestamp = 0
-    dirty = False
-    screenshot = ""
-    last_edit = window.time()
-
-
-class User():
-    def __init__(self):
-        self.email = local_storage.getItem(constants.DATA_KEY_EMAIL) or ""
-        self.token = local_storage.getItem(constants.DATA_KEY_TOKEN) or window.token or ""
-        window.document.cookie = f"{constants.DATA_KEY_TOKEN}={self.token};"
-        self.photo = ""
-        self.name = ""
-
-    def login(self, email, token, name="", photo=""):
-        self.email = email
-        self.token = token
-        self.name = name
-        self.photo = photo
-
-    def clear(self):
-        self.email = ""
-        self.photo = ""
-        self.name = ""
-        self.token = ""
-
-    def __repr__(self):
-        return f"User[{self.email},{self.name},{self.photo},{self.token}]"
-
-
-doc = Document()
-user = User()
+uid = ltk.get_url_parameter(constants.SHEET_ID)
+sheet = None
 minimized = __name__ != "state"
 mode = constants.MODE_PRODUCTION if minimized else constants.MODE_DEVELOPMENT
-
-
-def login(email, token):
-    local_storage.setItem(constants.DATA_KEY_EMAIL, email)
-    local_storage.setItem(constants.DATA_KEY_TOKEN, token)
-    user.login(email, token)
-
-            
-def create_user_image(email, timestamp):
-    if not email or ltk.find(f'.person[{constants.DATA_KEY_EMAIL}="{email}"]').length != 0:
-        return
-    first_letter = email[0].upper()
-    color = constants.IMAGE_COLORS[ord(first_letter) % len(constants.IMAGE_COLORS)]
-    ltk.find(".user-image-container").prepend(
-        (ltk.Text(first_letter)
-            .attr(constants.DATA_KEY_EMAIL, email)
-            .attr(constants.DATA_KEY_TIMESTAMP, timestamp)
-            .attr("title", f"{email} - {timestamp}")
-            .css("background", color)
-            .addClass("person"))
-    )
-
-
-def logout(event=None):
-    local_storage.removeItem(constants.DATA_KEY_EMAIL)
-    local_storage.removeItem(constants.DATA_KEY_TOKEN)
-    user.clear()
-    window.location = "/"
 
 
 def set_title(title):
     show_message(title)
     window.document.title = f"{title} {'- ' if title else ''}PySheets"
-    email = local_storage.getItem(constants.DATA_KEY_EMAIL)
-    ltk.find(".user-image-container").prepend(
-        create_user_image(email, 0)
-    )
 
 
 def show_message(message):
@@ -93,69 +27,15 @@ def show_message(message):
 
 
 def clear():
-    global doc
     set_title("")
     ltk.find(".dataframe-preview").remove()
     ltk.find(".arrow").removeClass("arrow")
     ltk.find(".leader-line").remove()
     ltk.find(".inputs-marker").remove()
-    doc = Document()
 
 
 def mobile():
     return ltk.find("body").width() < 800
-
-
-def forget_result(result):
-    if "removed" in result:
-        logout()
-    window.location = "/"
-
-
-def really_forget_me():
-    window.localStorage.clear()
-    console.write("main", "User activated really_forget_me")
-    ltk.get(f"/forget", ltk.proxy(forget_result))
-
-    
-def forget_me(event):
-    button = ltk.Button("Continue", lambda event: None) \
-        .css("padding", 10) \
-        .css("color", "white") \
-        .css("background", "gray") \
-        .attr("disabled", True)
-    dialog = ltk.VBox(
-        ltk.Heading1("⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️")
-            .css("color", "red"),
-        ltk.Text(f"This action results in permanent changes for {user.email}:"),
-        ltk.UnorderedList(
-            ltk.ListItem(f"All sheets owned by {user.email} be deleted and can never be recovered, not even by PySheets admins."),
-            ltk.ListItem(f"Login details for {user.email} will be removed from PySheet's storage. You will have to register again."),
-        ),
-        ltk.Text(f"Some logging information related to {user.email} will be kept for PySheet's continued operation. However, all sheet data will be removed."),
-        ltk.Break(),
-        ltk.Label("I understand this is a permanent operation.",
-            ltk.Checkbox(False)
-                .on(
-                    "change", 
-                    ltk.proxy(lambda *args: button
-                        .attr("disabled", button.attr("disabled") != "disabled")
-                        .css("background", "grey" if button.attr("disabled") == "disabled" else "red")
-                    )
-                )
-        ).css("font-size", 18),
-        ltk.Break(),
-        ltk.HBox(
-            ltk.Button("Cancel", lambda event: dialog.remove())
-                .css("padding", 10)
-                .css("color", "white")
-                .css("background", "green")
-                .css("margin-right", "30px"),
-            button
-                .on("click", ltk.proxy(lambda event: (dialog.remove(), really_forget_me())))
-        )
-    ).dialog().addClass("permanent-forget")
-    dialog.parent().css("width", 400)
 
 
 class ConsoleLogger(ltk.Logger):
@@ -204,7 +84,10 @@ class Console():
             self.render()
         elif key in self.messages:
             del self.messages[key]
-            self.render()
+            self.render() 
+
+    def contains(self, key):
+        return key in self.messages
 
     def write(self, key, *args, action=None):
         try:
@@ -332,17 +215,17 @@ def show_worker_status():
         worker_dots += "."
         if len(worker_dots) == 6:
             worker_dots = "." 
-        console.write("worker-status", f"[Worker] Starting PyOdide {constants.ICON_HOUR_GLASS} {worker_dots}")
-        ltk.schedule(show_worker_status, "worker-status", 1)
+        console.write("worker-status", f"[Worker] Starting PyOdide {constants.ICON_HOUR_GLASS} {round(ltk.get_time())}s {worker_dots}")
+        ltk.schedule(show_worker_status, "worker-status", 0.95)
     else:
-        console.write("worker-status", f"[Worker] Worker is running PyOdide; Python v{worker_version} ✅")
+        console.write("worker-status", f"[Worker] Running PyOdide; Python v{worker_version}; Worker startup took {ltk.get_time():.3f}s.")
 
 
 def start_worker():
-    if not doc.uid:
+    if not uid:
         return
     show_worker_status()
-    url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
+    url_packages = ltk.get_url_parameter(constants.PYTHON_PACKAGES)
     packages = url_packages.split(" ") if url_packages else []
     start_worker_with_packages(packages)
 
@@ -362,7 +245,7 @@ def start_worker_with_packages(packages):
             "static/lsp.py": "./lsp.py",
         }
     }
-    worker = XWorker(f"./worker{window.version_app}.py", config=ltk.to_js(config), type="pyodide")
+    worker = XWorker(f"./worker.py", config=ltk.to_js(config), type="pyodide")
     ltk.register_worker("pyodide-worker", worker)
     ltk.schedule(lambda: check_worker(packages), "check-worker", 10)
     return worker
@@ -373,7 +256,7 @@ def check_worker(packages):
         def fix_packages(event):
             protocol = window.document.location.protocol
             host = window.document.location.host
-            window.location = f"{protocol}//{host}/?U=${doc.uid}"
+            window.location = f"{protocol}//{host}/?U=${sheet.uid}"
         packages_note = "Note that only full-Python wheels are supported by PyScript." if packages else ""
         console.write(
             "worker-failed",

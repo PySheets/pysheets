@@ -3,6 +3,8 @@ import history
 import ltk
 import json
 import models
+import state
+
 
 class MultiSelection():
 
@@ -121,34 +123,46 @@ class MultiSelection():
     def paste(self, event):
         current = self.sheet.current
 
-        def paste_done(keys):
+        def paste_done(keys, text):
             start = ltk.get_time()
-            for key, new_script, new_style in keys:
-                model = self.sheet.model.cells.get(key)
-                if not model:
-                    model = self.sheet.model.cells[key] = models.Cell(key)
-                old_script = model.script
-                old_style = model.style
-                model.script = model.value = new_script
-                cell = self.sheet.get_cell(key)
-                if old_script != new_script:
-                    history.add(models.CellScriptChanged(key, old_script, new_script))
-                if old_style != new_style:
-                    history.add(models.CellStyleChanged(key, cell.model.style, json.loads(new_style)))
-            self.sheet.select(self.sheet.current)
-            print("Paste took", ltk.get_time() - start)
+            def find_cells(keys):
+                state.console.write("paste", f"[Paste] Loading {len(keys)} pasted cells")
+                for key, new_script, new_style in keys[:constants.MAX_EDITS_PER_SYNC]:
+                    model = self.sheet.model.cells.get(key)
+                    if not model:
+                        model = self.sheet.model.cells[key] = models.Cell(key)
+                    old_script = model.script
+                    old_style = model.style
+                    model.script = model.value = new_script
+                    cell = self.sheet.get_cell(key)
+                    if old_script != new_script:
+                        history.add(models.CellScriptChanged(key, old_script, new_script))
+                    if old_style != new_style:
+                        history.add(models.CellStyleChanged(key, cell.model.style, json.loads(new_style)))
+                keys = keys[constants.MAX_EDITS_PER_SYNC:]
+                if keys:
+                    ltk.schedule(lambda: find_cells(keys), "handle more keys")
+                else:
+                    state.console.write("paste", f"[Paste] Pasting {len(text):,} bytes took {ltk.get_time() - start:.3f}s")
+                self.sheet.select(self.sheet.current)
+
+            find_cells(list(keys))
 
         def process_clipboard(text):
+            state.console.write("paste", f"[Paste] Pasting {len(text):,} bytes from the clipboard...")
             def paste_text():
-                ltk.window.pasteText(text, current.model.column, current.model.row, ltk.proxy(paste_done))
+                ltk.window.pasteText(text, current.model.column, current.model.row, ltk.proxy(lambda keys: paste_done(keys, text)))
             def paste_html():
-                ltk.window.pasteHTML(text, current.model.column, current.model.row, ltk.proxy(paste_done))
+                ltk.window.pasteHTML(text, current.model.column, current.model.row, ltk.proxy(lambda keys: paste_done(keys, text)))
             if event.shiftKey:
                 paste_text()
             else:
                 paste_html()
 
-        ltk.window.getClipboard(ltk.proxy(process_clipboard), not event.shiftKey)
+        state.console.write("paste", f"[Paste] Pasting from the clipboard...")
+        def get_clipboard():
+            ltk.window.getClipboard(ltk.proxy(process_clipboard), not event.shiftKey)
+        ltk.schedule(get_clipboard, "getting clipboard")
 
     def cut(self, event):
         self.copy(event)
@@ -158,7 +172,6 @@ class MultiSelection():
         for key in self.cells:
             if key in self.sheet.model.cells:
                 self.sheet.get_cell(key).clear()
-        self.sheet.select(self.sheet.current)
         self.draw()
 
     def start(self, cell):
@@ -203,7 +216,7 @@ def remove_arrows():
     ltk.find(".leader-line, .inputs-marker").remove()
 
 def scroll(cell):
-    ltk.schedule(lambda: scroll_now(cell), "scroll later", 0.3)
+    ltk.schedule(lambda: scroll_now(cell), "scroll later")
 
 def scroll_now(cell):
     container = ltk.find("#sheet-container")
@@ -225,7 +238,7 @@ def scroll_now(cell):
     grid.animate(
         ltk.to_js(style), 
         {
-            "duration": constants.ANIMATION_DURATION_MEDIUM,
-            "step": ltk.proxy(lambda *args: ltk.window.adjustSheetPosition()),
+            "duration": constants.ANIMATION_DURATION_FAST,
+            "step": ltk.proxy(lambda *args: ltk.schedule(lambda: ltk.window.adjustSheetPosition(), "adjust sheet position")),
         }
     )

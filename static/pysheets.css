@@ -92,7 +92,6 @@ html, body {
     border-spacing: 0px;
     table-layout: fixed;
     z-index: 10;
-    cursor: wait;
 }
 
 .sheet th,td,div {
@@ -320,6 +319,8 @@ h3 {
     border: 0 solid gray;
     border-bottom-width: 1px;
     font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .preview {
@@ -442,10 +443,6 @@ h3 {
     min-width: 0;
 }
 
-#ai-budget {
-    margin-right: 10px;
-}
-
 .header {
     z-index: 2000;
 }
@@ -525,115 +522,7 @@ input {
     background: white;
 }
 
-.user-image:hover {
-    display: none;
-    border: 3px solid rgb(219, 134, 73);
-}
-
 .cell-attributes-container {
-    display: none;
-}
-
-.user-image-container {
-    display: flex;
-    flex-direction: row;
-    height: 24px;
-}
-
-.person {
-    margin-left: 8px;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 16px;
-    font-weight: bold;
-    text-align: center;
-    border-radius: 14px;
-    width: 21px;
-    height: 21px;
-    color: white;
-}
-
-.disclaimer {
-    width: 600px;
-    text-align:justify;
-}
-
-.login-form {
-    width: 400px;
-}
-
-#login-container {
-    display: none;
-    font-family: Arial;
-    position: absolute;
-    display: block;
-    top: 50px;
-    width: 100%;
-    z-index: 10;
-}
-
-#login-container input.text {
-    padding: 16px;
-    width: 300px;
-    border: 1px solid gray;
-    border-radius: 4px;
-    background-color: white;
-    margin-bottom: 16px;
-}
-
-#login-container input.text:hover {
-    background-color: rgb(245, 245, 245);
-}
-
-#login-container button {
-    padding: 16px 14px;
-    width: 120px;
-    border: 3px solid gray;
-    border-radius: 4px;
-    color: white;
-}
-
-#login-container button:hover {
-    border-color: orange;
-}
-
-#login-container #login-login {
-    background-color: var(--ltk-success);
-    width: 334px;
-}
-
-#login-container #login-reset {
-    background-color: var(--ltk-primary);
-    width: 334px;
-    display: none;
-}
-
-#login-container #login-confirm {
-    background-color: var(--ltk-primary);
-    width: 334px;
-    display: none;
-}
-
-#login-container #login-register {
-    background-color: var(--ltk-primary);
-    width: 334px;
-    display: none;
-}
-
-#login-container #login-code {
-    display: none;
-}
-
-#login-container #login-message {
-    color: red;
-}
-
-#login-container #login-register-link, #login-signin-link, #login-password-reset {
-    color: var(--ltk-primary);
-    text-decoration: underline;
-    cursor: pointer;
-}
-
-#login-container #login-password-reset {
     display: none;
 }
 
@@ -707,39 +596,6 @@ img.loading {
 .new-button:hover {
     background-color: #d7ecfc;
     border-color: #86caff;
-}
-
-.share-label {
-    width: 300px;
-}
-
-.share-email {
-    margin: 8px 0 24px 0;
-    width: 98%;
-}
-
-.share-button {
-    float: right;
-    width: 80px;
-    padding: 12px;
-    background-color: #185abc;
-    color: white;
-}
-
-.cancel-button {
-    float: right;
-    width: 80px;
-    padding: 12px;
-    margin-right: 12px;
-}
-
-.share-popup {
-    border-radius: 4px;
-    padding: 4px;
-    margin: 4px;
-    background-color: white;
-    font-size: 14px;
-    font-family: Aria;
 }
 
 .document-card {
@@ -829,11 +685,6 @@ td:hover .debug-info {
     flex-wrap: wrap;
 }
 
-#run-in-main {
-    margin-left: 12px;
-    margin-right: 12px;
-}
-
 .timeline-container {
     display: contents;
     width: 100%;
@@ -917,7 +768,7 @@ td:hover .debug-info {
 }
 
 #reload-button {
-    background-color: var(--ltk-success);
+    background-color: rgb(105, 194, 105);
     margin-top: 4px;
     min-width: 45px;
     margin-right: 12px;
@@ -958,6 +809,7 @@ td:hover .debug-info {
     background-color: white;
     width: 100%;
     margin-bottom: 4px;
+    border: 1px solid lightgray;
 }
 
 .console-clear {
@@ -1078,4 +930,25 @@ input[type="checkbox"] {
     input[type="checkbox"] {
       transition: none;
     }
+  }
+
+  .load-error {
+    position: absolute;
+    left: 10px;
+    top: 190px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 20px;
+    background-color: lightyellow;
+    border: 1px solid gray;
+    color: red;
+    z-index: 1000000;
+    box-shadow: 0 0 1px rgba(255, 255, 255, .5);
+  }
+
+  .ltk-vertical-split-pane > .ltk-vertical-split-pane-middle {
+    background-color: rgb(238, 238, 238);
+    height: 4px;
+  }
+  .ltk-vertical-split-pane > .ltk-vertical-split-pane-middle:hover {
+    background-color: #AAF;
   }

@@ -40,6 +40,8 @@ class CodeCompletor():
 
     def insert(self, string):
         string = magic_completions.get(string, string)
+        if "(" in string:
+            string = string.split("(")[0] + "()"
         cursor = self.editor.getCursor()
         token = self.editor.getTokenAt(cursor)
         length = 0 if token.string == "." else len(token.string)
@@ -58,6 +60,11 @@ class CodeCompletor():
             self.editor.execCommand("goCharLeft")
 
     def pick(self, event):
+        self.insert(ltk.find(event.target).text())
+        ltk.find(".completions").remove()
+        event.preventDefault()
+
+    def pick_selected(self, event):
         self.insert(ltk.find(".completions .selected").text())
         ltk.find(".completions").remove()
         event.preventDefault()
@@ -77,7 +84,7 @@ class CodeCompletor():
         if ltk.find(".completions").length == 0:
             return
         elif key == "Enter" or key == "Tab":
-            self.pick(event)
+            self.pick_selected(event)
         elif key == "Escape":
             ltk.find(".completions").remove()
             self.editor.focus()
@@ -99,10 +106,11 @@ class CodeCompletor():
 
     def handle_code_completion(self, completions):
         self.completions = completions
-        ltk.find(".completions").remove()
+        print("handle completion:", len(completions))
         token = self.getToken()
         if not completions or token.string in [" ", ":", ";"]:
             return
+        ltk.find(".completions").remove()
         ltk.find(".CodeMirror-code").append(
             ltk.create("<div>")
                 .addClass("completions")
@@ -118,7 +126,7 @@ class CodeCompletor():
                 )
         ltk.find(".completions").find(".choice").eq(0).addClass("selected")
 
-DEBUG_COMPLETION = True
+DEBUG_COMPLETION = False
 
 def fuzzy_parse(text):
     import ast
@@ -284,11 +292,6 @@ def complete_python(text, line, ch, cache, results):
             if self.inside(node):
                 self.add_attributes(self.context.keys(), node.id)
                 self.token = ast.unparse(node)
-
-        def generic_visit(self, node):
-            if DEBUG_COMPLETION:
-                print(" - generic", ast.dump(node))
-            ast.NodeVisitor.generic_visit(self, node)
 
     if DEBUG_COMPLETION:
         print("Visit:")

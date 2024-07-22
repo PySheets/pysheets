@@ -87,10 +87,8 @@ Both the assignee and reviewer now see the changes in their Pull Request viewlet
 Folders:
 
  - `static/`: Contains all the UI resources. 
- - `storage/`: Used by the server to store and load documents, uses `firestore` at the moment. 
  - `tests/`: Unit tests. See `build.sh` that runs them.
- - `node_modules/`: Used for SourceGraph completions (not used).
-- `templates/`: Used to hold Jinja templates, used by `main.py`. Contains `index.html`.
+ - `templates/`: Used to hold Jinja templates, used by `main.py`. Contains `index.html`.
 
 Files:
  - `build.sh`, `deploy.sh`: Used to deploy to DigitalOcean.

@@ -13,7 +13,11 @@ class PreviewView(ltk.Div):
         self.sheet = sheet
         self.model = preview
         previews[self.model.key] = self 
-        offset = ltk.find(f"#{self.model.key}").offset()
+        try:
+            offset = ltk.find(f"#{self.model.key}").offset()
+            left, top = offset.left, offset.top
+        except:
+            left, top = 100, 100
         dx = 80 if len(previews) % 2 == 0 else 40
         ltk.find(f".preview-{self.model.key}").remove()
         ltk.find(".sheet-grid").append(self
@@ -21,8 +25,8 @@ class PreviewView(ltk.Div):
             .addClass(f"preview-{self.model.key}")
             .attr("id", f"preview-{self.model.key}")
             .css("position", "absolute")
-            .css("left", self.model.left or offset.left + self.width() + dx)
-            .css("top", self.model.top or offset.top)
+            .css("left", self.model.left or left + self.width() + dx)
+            .css("top", self.model.top or top)
             .css("width", self.model.width or "fit-content")
             .css("height", self.model.height or "fit-content")
             .on("click", ltk.proxy(lambda event: self.click()))
@@ -30,7 +34,7 @@ class PreviewView(ltk.Div):
             .on("mouseleave", ltk.proxy(lambda event: selection.remove_arrows()))
             .on("resizestop", ltk.proxy(lambda event, ui: self.resize(event)))
             .on("dragstop", ltk.proxy(lambda event, ui: self.dragstop(event)))
-            .draggable(ltk.to_js({ "containment": ".sheet" }))
+            .draggable(ltk.to_js({ "containment": ".sheet", "handle": ".preview-header" }))
         )
         self.model.listen(self.model_changed)
         self.set_html(self.model.html)
@@ -40,11 +44,14 @@ class PreviewView(ltk.Div):
         self.css(name, getattr(self.model, name))
 
     def dragstop(self, *args):
-        history.add(models.PreviewPositionChanged(self.model.key, self.css("left"), self.css("top")))
+        history.add(
+            models.PreviewPositionChanged(self.model.key, self.model.left, self.model.top, self.css("left"), self.css("top"))
+                .apply(self.sheet.model)
+        )
 
     def resize(self, event, *args):
         ltk.find(event.target).find("img, iframe").css("width", "100%").css("height", f"calc(100% - {constants.PREVIEW_HEADER_HEIGHT})")
-        history.add(models.PreviewDimensionChanged(self.model.key, self.css("width"), self.css("height")))
+        history.add(models.PreviewDimensionChanged(self.model.key, self.css("width"), self.css("height")).apply(self.sheet.model))
     
     def move(self):
         self.draw_arrows()
@@ -64,24 +71,16 @@ class PreviewView(ltk.Div):
                 .css("display", "none" if minimize else "block")
         ltk.find(event.target).text("+" if minimize else "-")
 
-    def toggle_embed(self, event):
-        self.model.embed = "" if self.model.embed else "embed"
-        history.add(models.CellEmbedChanged(self.model.key, self.model.embed))
-
     def draw_arrows(self):
         self.sheet.get_cell(self.model.key).draw_arrows()
         ltk.window.addArrow(ltk.find(f"#{self.model.key}"), self.element.find(".preview-key"))
 
     def set_html(self, html):
         html = self.fix_html(html)
-        url = f"/embed?{constants.DATA_KEY_UID}={state.doc.uid}&{constants.DATA_KEY_CELL}={self.model.key}"
-        embed = ltk.Link(url, "embed") if self.model.embed else ltk.Div("embed")
         toggle_size_label = "-" if self.height() > constants.PREVIEW_HEADER_HEIGHT or self.height() == 0 else "+"
         self.empty().append(
             ltk.HBox(
                 ltk.Text(self.model.key).addClass("preview-key"),
-                ltk.Checkbox(self.model.embed).on("change", ltk.proxy(lambda event: self.toggle_embed(event))),
-                ltk.Div(embed.addClass("embed")),
                 ltk.Button(toggle_size_label, ltk.proxy(lambda event: self.toggle_size(event))).addClass("toggle")
             ).addClass("preview-header"),
             ltk.Div(
@@ -122,7 +121,7 @@ class PreviewView(ltk.Div):
 
 def load(sheet):
     for key, preview in list(sheet.model.previews.items()):
-        PreviewView(sheet, sheet.model.get_preview(**preview))
+        PreviewView(sheet, preview)
 
 
 def add(sheet, key, html):

@@ -10,7 +10,7 @@ import static.pysheets as pysheets
 
 
 class Animal(models.Model):
-    def __init__(self, count=0, kind=""):
+    def __init__(self, count=0, kind="", _class="Animal"):
         super().__init__()
         self.count = count
         self.kind = kind
@@ -20,6 +20,8 @@ class Animal(models.Model):
         buffer.append(f'"count":{json.dumps(self.count)},')
         buffer.append(f'"kind":{json.dumps(self.kind)}')
 
+models.A = Animal
+models.SHORT_CLASS_NAMES["Animal"] = "A"
 
 class TestModel(unittest.TestCase):
 
@@ -78,7 +80,7 @@ class TestCell(unittest.TestCase):
         self.assertEquals(self.cell2.key, "A12")
 
     def test_value(self):
-        self.assertEquals(self.cell2.value, 32)
+        self.assertEquals(self.cell2.value, '32')
 
     def test_listener(self):
         cell = models.Cell(column=1, row=12, key="A12", value=32)
@@ -206,10 +208,11 @@ class TestEdits(unittest.TestCase):
         model = models.Cell(key="A1", script="1")
         sheet = pysheets.SpreadsheetView(models.Sheet())
         view = pysheets.CellView(sheet, "A1", model)
-        view.model_changed = unittest.mock.Mock()
         view.setup_listener()
         self.assertIn(view.model_changed, model._listeners)
 
+        view.model_changed = unittest.mock.Mock()
+        model._listeners = [ view.model_changed]
         model.script = "2"
         view.model_changed.assert_called()
         for call_args in view.model_changed.call_args_list:

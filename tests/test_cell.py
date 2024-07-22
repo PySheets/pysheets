@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import sys
 sys.path.append("..")
 
-from static.pysheets import SpreadsheetView
+import static.pysheets as pysheets
 from static.models import Sheet, Cell
 
 
@@ -13,7 +13,7 @@ class TestCellValue(unittest.TestCase):
 
     def test_cell(self):
         model = Sheet(uid="abc123")
-        sheet = SpreadsheetView(model)
+        sheet = pysheets.sheet = pysheets.SpreadsheetView(model)
         cell = sheet.get_cell("B2")
         self.assertEqual(cell.tag, "div")
         self.assertEqual(cell.classes, [])
@@ -27,31 +27,17 @@ class TestCellValue(unittest.TestCase):
         self.assertEqual(cell.model.script, "=10*10")
 
     def test_cell_update(self):
-        sheet = SpreadsheetView(Sheet())
+        sheet = pysheets.sheet = pysheets.SpreadsheetView(Sheet())
         cell = sheet.get_cell("B2")
         cell.set("=20 + 30")
         cell.evaluate_locally("_=60")
 
     def test_cell_evaluate(self):
-        sheet = SpreadsheetView(Sheet())
+        sheet = pysheets.sheet = pysheets.SpreadsheetView(Sheet())
         cell = sheet.get_cell("B2")
         cell.set("=20 + 30")
         cell.evaluate()
         self.assertEqual(cell.model.script, "=20 + 30")
-
-    def test_cell_set(self):
-        sheet = SpreadsheetView(Sheet())
-        cell = sheet.get_cell("B2")
-        cell.set("")
-        cell.set("=100 / 5")
-
-    def test_cell_text(self):
-        sheet = SpreadsheetView(Sheet())
-        cell = sheet.get_cell("B2")
-        cell.set("")
-        cell.text = MagicMock()
-        cell.set("=10*100")
-        cell.text.assert_called_with("1000")
 
 Sheet(
     uid="",

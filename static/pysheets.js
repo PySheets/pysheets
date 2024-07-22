@@ -2,15 +2,6 @@
 
     window.start = new Date().getTime();
 
-    window.getToken = () => {
-        return window.localStorage.getItem('t')
-    }
-
-    window.addToken = (url) => {
-        const sep = url.indexOf("?") == -1 ? "?" : "&";
-        return `${url}${sep}t=${getToken()}`
-    }
-
     window.time = () => {
         return new Date().getTime() / 1000.0;
     }
@@ -29,7 +20,7 @@
 
     window.get = (url) => {
         const request = new XMLHttpRequest();
-        request.open("GET", addToken(url), false);
+        request.open("GET", url, false);
         request.send(null);
         if (request.status === 200) {
             return window.get_response_body(request);
@@ -39,7 +30,7 @@
 
     window.post = (url, data) => {
         const request = new XMLHttpRequest();
-        request.open("POST", addToken(url), false);
+        request.open("POST", url, false);
         request.send(data);
         if (request.status === 200) {
             return window.get_response_body(request);
@@ -107,7 +98,6 @@
             makeRowResizable(
                 $("<div>")
                     .addClass(`row-label row-${row}`)
-                    .attr("id", `row-${row}`)
                     .attr("row", row)
                     .text(row)
                     .appendTo(rowHeader)
@@ -117,7 +107,7 @@
         // fill the entire bottom section
         const cell_elements = [];
         for (var row=existingRowCount + 1; row < newRowCount; row++) {
-            cell_elements.push(`<div id="row-${row-1}" class="cell-row">`);
+            cell_elements.push(`<div id="row-${row}" class="cell-row">`);
             for (var column=1; column <= newColumnCount; column++) {
                 const key = window.getKeyFromColumnRow(column, row);
                 cell_elements.push(
@@ -199,9 +189,6 @@
         });
     }
 
-    makeSheetResizable();
-    makeSheetScrollable();
-
     window.addArrow = (from, to, label) => {
         if ($("#main").css("opacity") !== "1") return;
         try {
@@ -236,6 +223,7 @@
     }
 
     window.check_loaded = () => {
+        $('.load-error').remove();
         if ($('#sheet-container').length === 0) {
             const params = new URLSearchParams(document.location.search);
             const uid = params.get("U");
@@ -244,7 +232,7 @@
             const url = `${protocol}//${host}/?U=${uid}`;
             if (uid && url !== document.location.href) {
                 const nopackages = url;
-                const runInMain = `${url}&r=pyodide`;
+                const runPyOdide = `${url}&r=pyodide`;
                 $("body").append(
                     $("<div>").append(
                         $("<div>")
@@ -254,21 +242,16 @@
                             .css("margin", 8)
                             .append(
                                 $(`<li>Edit the URL to remove the packages that are not pure Python wheels. <a href="${url}">Try this</a>.</li>`),
-                                $(`<li>Edit the URL to run all Python in the main thread. <a href="${runInMain}">Try this</a>.</li>`),
-                                $(`<li>Edit the URL to run all Python in the worker'. <a href="${nopackages}">Try this</a>.</li>`),
+                                $(`<li>Edit the URL to run main thread with PyOdide. <a href="${runPyOdide}">Try this</a>.</li>`),
                                 $(`<li>Reload the current page. <a href="${url}">Try this</a>.</li>`),
-                                $(`<li>Check the Chrome Devtools Console (or its equivalent).</li>`),
-                                $(`<li>Go to the previous document in your browser history.</li>`)
+                                $(`<li>Check the Chrome Devtools Console (or its equivalent) for errors.</li>`),
                             )
                     )
-                    .css("position", "absolute")
-                    .css("left", "10px")
-                    .css("top", "190px")
-                    .css("color", "red")
-                    .css("z-index", 1000000)
+                    .addClass("load-error")
                 )
+                setTimeout(window.check_loaded, 3000);
             }
-        }
+        } 
     }
     setTimeout(window.check_loaded, 10000);
 
@@ -452,6 +435,25 @@
             }
         }
         return JSON.stringify(result);
-    }
+    };
+
+    window.setup_db = (onerror, onsuccess) => {
+        const open = window.indexedDB.open('pysheets_1', 1);
+        console.orig_log("setup_db");
+        open.onerror = (event) => {
+            console.orig_log("setup_db error", event);
+            onerror(event);
+        };
+        open.onsuccess = () => {
+            console.orig_log("setup_db success");
+            onsuccess(open.result);
+        };
+        open.onupgradeneeded = () => {
+            console.orig_log("setup_db upgrade");
+            if (!open.result.objectStoreNames.contains('sheets')) {
+                open.result.createObjectStore('sheets', { keyPath: 'uid' })
+            }
+        };
+    };
 
 })();

@@ -15,7 +15,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.35.0/codemirror.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/python/python.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css" >
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
 
     <script defer src="leader-line.min.js"></script>
     <script defer src="html2canvas.min.js"></script>
@@ -23,17 +23,9 @@
     <script>
         window.version_pyscript = '2024.5.2';
         window.version_interpreter = '{{version_interpreter}}';
-        window.version_app = '';
-        window.version_storage = '{{version_storage}}';
-        window.name = '{{name|safe}}';
-        window.token = '{{token}}';
         window.runtime = '{{runtime}}';
-        window.selected = '{{selected}}';
-        window.path = '{{path}}';
         window.editor_width = parseFloat('{{editor_width}}');
-        window.previews = {{previews|safe}};
         window.timestamp = parseFloat('{{timestamp|safe}}');
-        window.packages = '{{package_list|safe}}';
     </script>
     <link defer rel="stylesheet" href="pysheets.css">
 
@@ -49,16 +41,13 @@
     </{{runtime}}-config>
     <script type="{{runtime}}">
         import pysheets
-        import models
-        false = False
-        pysheets.main(models.Sheet({{"**" if encoded_sheet else ""}}{{encoded_sheet|safe}}))
+        pysheets.main()
     </script>
     <style>
         {{css}}
     </style>
 </head>
 <body>
-    <img referrerpolicy="no-referrer-when-downgrade" src="https://chrislaffra.com/piwik/matomo.php?idsite=2&amp;rec=1" style="border:0;position:absolute" alt="" />
     <div class="header">
         <div class="logo-container">
             <img class="logo" src="favicon.ico">
@@ -72,61 +61,9 @@
         <div class="column user-image-container">
         </div>
     </div>
-    <div id="login-container" style="display: none;">
-        <center>
-        <br><br>
-        <h1 id="login-title">Sign In to PySheets:</h1>
-        <form class="login-form">
-            <input type="text" class="text" placeholder="Email" name="username" autocomplete="username" id="login-email" value="{{email}}" required>
-            <input type="password" class="text" placeholder="Password" name="login-password" id="login-password"
-                autocomplete="new-password" required>
-            <input type="text" class="text" placeholder="The 6-Digit Code that we emailed to you" name="login-code" id="login-code"
-                autocomplete="new-password" required>
-        </form>
-        <div>
-            <span id="login-message"></span>
-            <span id="login-password-reset">Reset password</span>
-        </div>
-        <br>
-        <button type="submit" id="login-login">Sign in</button>
-        <button type="submit" id="login-reset">Change Password</button>
-        <button type="submit" id="login-register">Register Account</button>
-        <button type="submit" id="login-confirm">Confirm Registration</button>
-        <br><br>
-        <!-- button type="submit" id="login-forgot">Forgot&nbsp;Password</button-->
-        <span id="login-register-link">Create a new account</span>
-        <span id="login-signin-link">Sign in with an existing account</span>
-
-        <br><br> <br><br> <br><br> <br><br><br><br> <br><br>
-        <hr>
-
-        <div class="disclaimer">
-        <h2 style="color: red">⚠️ PySheets is in Public Beta Mode ⚠️</h2>
-        THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-        INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
-        PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-        HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
-        OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
-        SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-        <br><br>
-        As long as PySheets is in early development, you should not use it to
-        store personal, sensitive, or private data. The tool is under active
-        development. The UI and data schema may change at any point in time. You may
-        lose all the data in your sheets. Only use PySheets for experiments or to evaluate
-        the technology. 
-        <br><br>
-        This application is copyrighted by Ahead In The Cloud Computing B.V.
-        <br><br>
-        For more information, contact <a href="mailto:chris@chrislaffra.com">chris@chrislaffra.com</a>.
-        </div>
-
-        </center>
-    </div>
     <div id="main" class="main" tabindex="0">
     {{sheet_html|safe}}
     </div>
-
-
 </body>
 
 </html>

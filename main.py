@@ -2,25 +2,20 @@ from flask import Flask
 from flask import jsonify
 from flask import render_template
 from flask import request
-from flask import send_file
 
+import ai
 import base64
 import json
 import logging
-import ai
-import storage
+import requests
 import time
 import traceback
-import requests
 
-from templates import html
 import static.constants as constants
 import static.models as models
 
 
 app = Flask(__name__)
-storage.set_logger(app.logger)
-app.logger.setLevel(logging.INFO)
 
 
 @app.after_request
@@ -38,8 +33,8 @@ def handle_error(error):
     app.logger.error(error)
     traceback.print_exc()
     response = { 
-        constants.DATA_KEY_ERROR: f"{error.__class__.__name__}: {error}",
-        constants.DATA_KEY_STATUS: "error",
+        "error": f"{error.__class__.__name__}: {error}",
+        "status": "error",
     }
     return response
 
@@ -51,8 +46,6 @@ def handle_error(error):
 
 
 RUNTIME_PYODIDE = "py"
-import os
-PATH = os.path.join(os.path.dirname(__file__), "static")
 RUNTIME_MICROPYTHON = "mpy"
 FILES = """
     "static/constants.py" = "constants.py"
@@ -65,10 +58,11 @@ FILES = """
     "static/lsp.py" = "lsp.py"
     "static/preview.py" = "preview.py"
     "static/inventory.py" = "inventory.py"
-    "static/login.py" = "login.py"
     "static/models.py" = "models.py"
     "static/selection.py" = "selection.py"
+    "static/storage.py" = "storage.py"
     "static/history.py" = "history.py"
+    "static/html_maker.py" = "html_maker.py"
 """
 FILES_LTK = """
     "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/jquery.py" = "ltk/jquery.py"
@@ -83,64 +77,28 @@ FILES_LTK = """
 
 @app.route("/")
 def root():
-    if request.args:
-        return go()
-    return render_template("landing.html")
-
-
-@app.route("/go")
-def go():
-    token = request.cookies.get(constants.DATA_KEY_TOKEN)
-    uid = request.args.get(constants.DATA_KEY_UID, "")
-    package_names = request.args.get(constants.DATA_KEY_PACKAGES, "").split()
-    pyodide = package_names or request.args.get(constants.DATA_KEY_RUNTIME) == "pyodide"
+    package_names = request.args.get(constants.PYTHON_PACKAGES, "").split()
+    pyodide = request.args.get(constants.PYTHON_RUNTIME) == "pyodide"
     loading = "Loading..."
     files = FILES + FILES_LTK
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
     interpreter = '' if pyodide else 'interpreter = "1.23.0"'
     version_interpreter = 'latest' if pyodide else '1.23.0'
-    version_storage = storage.version
-    auto = 'experimental_create_proxy = "auto"' if pyodide else ''
     vm = "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}"
     packages = f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else ""
-    previews = []
-    path = PATH
-    token = "none" if storage.version == "Sqlite" else ""
-    if uid:
-        sheet = storage.get_sheet(token, uid)
-        name = sheet.name
-        timestamp = sheet.updated_timestamp
-        selected = sheet.selected
-        package_list = request.args.get(constants.DATA_KEY_PACKAGES, "")
-        editor_width = request.args.get(constants.DATA_KEY_EDITOR_WIDTH, "350")
-        sheet_html = html.make_html(sheet)
-        css = html.make_css(sheet)
-        encoded_sheet = models.encode(sheet)
-    else:
-        package_list = editor_width = name = selected = timestamp = sheet = ""
-        cells = []
+    package_list = request.args.get(constants.PYTHON_PACKAGES, "")
+    editor_width = 350
     return render_template("index.html", **locals())
 
 
-@app.route("/list")
-def list_files():
-    files = storage.list_files(request.cookies.get(constants.DATA_KEY_TOKEN))
-    return jsonify({ constants.DATA_KEY_IDS: files })
+@app.route("/ltk/ltk.css")
+def get_ltk_css():
+    return ssl_get("https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.css")
 
-
-@app.route("/new")
-def new_file():
-    token = request.cookies.get(constants.DATA_KEY_TOKEN)
-    return jsonify({constants.DATA_KEY_UID: storage.new(token)})
-
-
-@app.route("/delete", methods=["DELETE"])
-def delete_file():
-    token = request.cookies.get(constants.DATA_KEY_TOKEN)
-    uid = request.args.get(constants.DATA_KEY_UID)
-    storage.delete(token, uid)
-    return jsonify({constants.DATA_KEY_STATUS: "OK"})
-
+@app.route("/ltk/ltk.js")
+def get_ltk_js():
+    
+    return ssl_get("https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.js")
 
 def get_form_data():
     form = request.form.to_dict()
@@ -153,138 +111,12 @@ def get_form_data():
         data = data[0]
     return data
 
-@app.route("/login", methods=["POST"])
-def login():
-    data = get_form_data()
-    token = storage.login(data[constants.DATA_KEY_EMAIL], data[constants.DATA_KEY_PASSWORD])
-    return {
-        constants.DATA_KEY_TOKEN: token,
-        constants.DATA_KEY_STATUS: "OK" if token else "error",
-    }
-
-
-@app.route("/register", methods=["POST"])
-def register():
-    data = get_form_data()
-    return { constants.DATA_KEY_STATUS: storage.register(data[constants.DATA_KEY_EMAIL], data[constants.DATA_KEY_PASSWORD]) }
-
-
-@app.route("/reset", methods=["POST"])
-def reset():
-    data = get_form_data()
-    return { constants.DATA_KEY_STATUS: storage.reset_password(data[constants.DATA_KEY_EMAIL]) }
-
-
-@app.route("/reset_code", methods=["POST"])
-def reset_code():
-    data = get_form_data()
-    token = storage.reset_password_with_code(data[constants.DATA_KEY_EMAIL], data[constants.DATA_KEY_PASSWORD], data[constants.DATA_KEY_CODE])
-    return {
-        constants.DATA_KEY_TOKEN: token,
-        constants.DATA_KEY_STATUS: "OK" if token else "error",
-    }
-
-
-@app.route("/confirm", methods=["POST"])
-def confirm():
-    data = get_form_data()
-    token = storage.confirm(data[constants.DATA_KEY_EMAIL], data[constants.DATA_KEY_PASSWORD], data[constants.DATA_KEY_CODE])
-    return {
-        constants.DATA_KEY_TOKEN: token,
-        constants.DATA_KEY_STATUS: "OK" if token else "error",
-    }
-
-
-@app.route("/share", methods=["GET"])
-def share():
-    uid = request.args.get(constants.DATA_KEY_UID)
-    email = request.args.get(constants.DATA_KEY_EMAIL)
-    token = request.cookies.get(constants.DATA_KEY_TOKEN)
-    storage.share(token, uid, email)
-    return jsonify({ constants.DATA_KEY_STATUS: "OK" })
-
 
 @app.route("/complete", methods=["POST"])
 def complete():
     data = get_form_data()
-    token = request.cookies.get(constants.DATA_KEY_TOKEN)
-    prompt = data[constants.DATA_KEY_PROMPT]
-    return ai.complete(prompt, token)
-
-
-@app.route("/users", methods=["GET"])
-def users():
-    return storage.get_users(request.cookies.get(constants.DATA_KEY_TOKEN))
-
-
-@app.route("/edits", methods=["GET", "POST"])
-def edits():
-    token = request.cookies.get(constants.DATA_KEY_TOKEN)
-    start = float(request.args.get(constants.DATA_KEY_START, 0))
-    timestamp = float(request.args.get(constants.DATA_KEY_TIMESTAMP))
-    uid = request.args.get(constants.DATA_KEY_UID)
-
-    # save edits
-    edits = get_form_data()
-    storage.save_edits(token, uid, start, edits)
-    sheet = storage.get_sheet(token, uid)
-    for edit_dict in eval(edits[constants.DATA_KEY_EDITS]):
-        models.convert(edit_dict).apply(sheet)
-    sheet.updated_timestamp = timestamp
-    storage.save(token, uid, sheet)
-
-    # get new edits
-    return {
-        constants.DATA_KEY_EDITS: storage.get_edits(token, uid, start, timestamp)
-    }
-
-
-@app.route("/emails", methods=["GET"])
-def emails():
-    response = {
-        "emails": storage.get_all_emails(request.cookies.get(constants.DATA_KEY_TOKEN))
-    }
-    return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
-
-
-@app.route("/embed", methods=["GET"])
-def embed():
-    key = request.args.get(constants.DATA_KEY_CELL)
-    uid = request.args.get(constants.DATA_KEY_UID)
-    sheet = storage.get_sheet_with_uid(uid)
-    if key in sheet.cells:
-        cell = sheet.cells[key]
-        if cell.embed:
-            return cell.preview
-    return f'<html>[Chart is missing]</html>'
-
-
-@app.route("/forget", methods=["GET"])
-def forget():
-    return { 
-        "status": "OK",
-        "removed": storage.forget(request.args[constants.DATA_KEY_TOKEN]),
-    }
-
-
-@app.route("/logs", methods=["GET"])
-def logs():
-    response = storage.get_logs(
-        request.cookies.get(constants.DATA_KEY_TOKEN),
-        request.args.get(constants.DATA_KEY_UID),
-        request.args.get(constants.DATA_KEY_TIMESTAMP),
-    )
-    return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
-
-
-@app.route("/log", methods=["POST"])
-def log():
-    data = get_form_data()
-    doc_uid = data[constants.DATA_KEY_UID]
-    token = request.cookies.get(constants.DATA_KEY_TOKEN)
-    for time, message in data[constants.DATA_KEY_ENTRIES]:
-        storage.log(token, doc_uid, time, message)
-    return f'{{ "{constants.DATA_KEY_RESULT}":  "OK" }}'
+    prompt = data[constants.PROMPT]
+    return ai.complete(prompt)
 
 
 def ssl_get(url, headers=None):
@@ -314,33 +146,30 @@ load_cache = {}
 
 @app.route("/load", methods=["GET", "POST"])
 def load():
-    app.logger.info("Load, url=%s token=%s", request.args.get(constants.DATA_KEY_URL), request.cookies.get(constants.DATA_KEY_TOKEN))
-    if storage.get_email(request.cookies.get(constants.DATA_KEY_TOKEN)):
-        url = request.args.get(constants.DATA_KEY_URL)
-        if url in load_cache:
-            when, response = load_cache[url]
-            if time.time() - when < 60:
-                app.logger.info("/load: network cache hit: %s", url)
-                return response
-        headers = {
-            "Authorization": request.headers.get("Authorization")
-        }
-        if request.method == "GET":
-            response = ssl_get(url, headers=headers)
-        elif request.method == "POST":
-            data = get_form_data()
-            response = ssl_post(url, data, headers=headers)
-        else:
-            raise ValueError(f"Bad method {request.method}")
-        try:
-            response = base64.b64encode(response) # send base64 encoded bytes
-        except:
-            pass
-        load_cache[url] = time.time(), response
-        app.logger.info("/load: network cache miss: %s, %s bytes", url, len(response))
-        return response # send regular string
-
-    raise ValueError("Not logged in")
+    app.logger.info("Load, url=%s", request.args.get(constants.URL))
+    url = request.args.get(constants.URL)
+    if url in load_cache:
+        when, response = load_cache[url]
+        if time.time() - when < 60:
+            app.logger.info("/load: network cache hit: %s", url)
+            return response
+    headers = {
+        "Authorization": request.headers.get("Authorization")
+    }
+    if request.method == "GET":
+        response = ssl_get(url, headers=headers)
+    elif request.method == "POST":
+        data = get_form_data()
+        response = ssl_post(url, data, headers=headers)
+    else:
+        raise ValueError(f"Bad method {request.method}")
+    try:
+        response = base64.b64encode(response) # send base64 encoded bytes
+    except:
+        pass
+    load_cache[url] = time.time(), response
+    app.logger.info("/load: network cache miss: %s, %s bytes", url, len(response))
+    return response # send regular string
 
 
 @app.route("/<path:path>")

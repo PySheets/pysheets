@@ -1,4 +1,4 @@
-from static import models
+import models
 
 
 def make_css(sheet: models.Sheet):
@@ -17,11 +17,9 @@ def make_column_label(col: int, sheet: models.Sheet):
 
 def make_column_header(sheet: models.Sheet):
     return "".join((
-        [ 
-            '<div id="column-header" class="column-header">',
-            *[ make_column_label(col, sheet) for col in range(1, sheet.column_count + 1) ],
-            '</div>'
-        ]
+        [ '<div id="column-header" class="column-header">' ] +
+        [ make_column_label(col, sheet) for col in range(1, sheet.column_count + 1) ] +
+        [ '</div>' ]
     ))
 
 
@@ -44,28 +42,25 @@ def make_row_label(row: int, sheet: models.Sheet):
 
 def make_row_header(sheet: models.Sheet):
     return "".join(
-        [
-            f'\n<div id="row-header" class="row-header">',
-                *[ make_row_label(row, sheet) for row in range(1, sheet.row_count + 1) ],
-            '</div>\n',
-        ]
+        [ f'\n<div id="row-header" class="row-header">'] +
+        [ make_row_label(row, sheet) for row in range(1, sheet.row_count + 1) ] +
+        [ '</div>\n']
     )
 
 
 def make_row(row: int, sheet: models.Sheet):
     return "\n".join(
-        [
-            f'\n<div id="row-{row}" class="cell-row">',
-                *[ make_cell(col, row, sheet) for col in range(1, sheet.column_count + 1) ],
-            '</div>\n',
-        ]
+        [ f'\n<div id="row-{row}" class="cell-row">' ] +
+        [ make_cell(col, row, sheet) for col in range(1, sheet.column_count + 1) ] +
+        [ '</div>\n' ]
     )
 
 
 def make_html(sheet: models.Sheet):
+    assert isinstance(sheet, models.Sheet), f"Expected a Sheet object, not {type(sheet)}"
     return "".join(
         [
-            "<div class='sheet' id='sheet' style='cursor:wait; font-family:Arial; font-size: 14px;'>",
+            "<div class='sheet' id='sheet' font-family:Arial; font-size: 14px;'>",
                 make_column_header(sheet),
                 make_row_header(sheet),
                 "<div class='sheet-grid' id='sheet-grid'>",
