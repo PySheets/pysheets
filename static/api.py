@@ -37,8 +37,17 @@ def get_key_from_col_row(col, row):
     return f"{get_column_name(col)}{row}"
 
 
-cell_reference = re.compile("[A-Z]+[0-9]+")
-cell_range_reference = re.compile("[A-Z]+[0-9]+ *: *[A-Z]+[0-9]+")
+cell_reference = re.compile("^[A-Z]+[0-9]+$")
+cell_range_reference = re.compile("^[A-Z]+[0-9]+ *: *[A-Z]+[0-9]+$")
+
+
+def is_cell_reference(s):
+    return isinstance(s, str) and re.match(cell_reference, s)
+
+
+def is_cell_range_reference(s):
+    return isinstance(s, str) and re.match(cell_range_reference, s)
+
 
 def find_inputs(script):
     import ast
@@ -53,14 +62,8 @@ def find_inputs(script):
                 traceback.print_exc()
 
         def add_input(self, s):
-            if self.is_cell_reference(s):
+            if is_cell_reference(s):
                 self.inputs.add(s)
-
-        def is_cell_reference(self, s):
-            return isinstance(s, str) and re.match(cell_reference, s)
-
-        def is_cell_range_reference(self, s):
-            return isinstance(s, str) and re.match(cell_range_reference, s)
 
         def visit_Name(self, node):
             if isinstance(node.ctx, ast.Load):
@@ -68,7 +71,7 @@ def find_inputs(script):
             return node
 
         def visit_Constant(self, node):
-            if self.is_cell_range_reference(node.value):
+            if is_cell_range_reference(node.value):
                 start, end = node.value.split(":")
                 start = start.strip()
                 end = end.strip()
@@ -85,23 +88,17 @@ def find_inputs(script):
     return list(InputFinder(script).inputs)
 
 
-def get_last_expression_lineno(script):
-    import ast
-    tree = ast.parse(script)
-    last = tree.body[-1]
-    lineno = last.lineno if isinstance(last, (ast.Expr, ast.Assign)) else -1
-    return lineno, script
-
 def intercept_last_expression(script):
+    import ast
     if not script:
         return ""
-    last_lineno, script = get_last_expression_lineno(script)
-    lines = script.strip().split("\n")
-    lineno = min(len(lines), last_lineno)
-    if lineno == -1:
-        lines.append("_ = None")
+    tree = ast.parse(script)
+    last = tree.body[-1]
+    lines = script.split("\n")
+    if isinstance(last, (ast.Expr, ast.Assign)):
+        lines[last.lineno - 1] = f"_ = {lines[last.lineno - 1]}"
     else:
-        lines[lineno - 1] = f"_ = {lines[lineno - 1]}"
+        lines.append("_ = None")
     return "\n".join(lines)
 
 
@@ -150,7 +147,7 @@ def load_with_trampoline(url):
         return value
 
     if url and url[0] != "/":
-        url = f"/load?u={window.encodeURIComponent(url)}"
+        url = f"/load?url={window.encodeURIComponent(url)}"
 
     return base64.b64decode(get(url))
    
@@ -210,12 +207,15 @@ class PySheets():
         import pandas as pd
         try:
             data = urlopen(url)
+        except Exception as e:
+            raise ValueError(f"Cannot load url: {e}")
+        try:
             return pd.read_excel(data, engine='openpyxl')
         except:
             try:
                 return pd.read_csv(data)
             except Exception as e:
-                return f"Cannot load {url}: {type(e)}: {e}"
+                raise ValueError(f"Unsupported formet. Can only load data in Excel or CSV format: {e}")
 
 
 def get_dict_table(result):

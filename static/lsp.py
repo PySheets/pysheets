@@ -106,7 +106,6 @@ class CodeCompletor():
 
     def handle_code_completion(self, completions):
         self.completions = completions
-        print("handle completion:", len(completions))
         token = self.getToken()
         if not completions or token.string in [" ", ":", ";"]:
             return

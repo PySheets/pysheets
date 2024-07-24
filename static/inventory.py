@@ -44,7 +44,7 @@ def show_sheet_list(sheets):
                 create_card(
                     sheet.uid,
                     index,
-                    "micropython",
+                    "mpy",
                     "",
                     ltk.VBox(
                         ltk.Image(sheet.screenshot),

@@ -271,6 +271,17 @@
         return window.editor;
     }
 
+    window.editorMarkLine = (lineno) => {
+        if (window.editorMarker) {
+            window.editorMarker.clear()
+        }
+        window.editorMarker = window.editor.getDoc().markText(
+            { line: lineno, ch: 0},
+            { line: lineno, ch: 200},
+            { className: "editor-error" }
+        );
+    }
+
     window.fixFont = (font) => {
         const fonts = { Arial: "Arial", Courier: "Courier", Roboto: "Roboto" };
         try { return fonts[font]; } catch { return "Arial" }
@@ -437,23 +448,6 @@
         return JSON.stringify(result);
     };
 
-    window.setup_db = (onerror, onsuccess) => {
-        const open = window.indexedDB.open('pysheets_1', 1);
-        console.orig_log("setup_db");
-        open.onerror = (event) => {
-            console.orig_log("setup_db error", event);
-            onerror(event);
-        };
-        open.onsuccess = () => {
-            console.orig_log("setup_db success");
-            onsuccess(open.result);
-        };
-        open.onupgradeneeded = () => {
-            console.orig_log("setup_db upgrade");
-            if (!open.result.objectStoreNames.contains('sheets')) {
-                open.result.createObjectStore('sheets', { keyPath: 'uid' })
-            }
-        };
-    };
+    window.isUndefined = (value) => value === undefined;
 
 })();

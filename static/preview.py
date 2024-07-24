@@ -125,7 +125,17 @@ def load(sheet):
 
 
 def add(sheet, key, html):
+    if not html or html == "None":
+        return
     if not key in previews:
         PreviewView(sheet, sheet.model.get_preview(key, html=html))
+        old_html = ""
+    else:
+        old_html = previews[key].model.html
     previews[key].set_html(html)
-    history.add(models.PreviewValueChanged(key, html))
+    if old_html != html:
+        history.add(models.PreviewValueChanged(key, html))
+
+def remove(key):
+    if key in previews:
+        del previews[key]

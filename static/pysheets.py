@@ -1,4 +1,5 @@
 import ltk
+import ltk.pubsub
 import api
 import collections
 import constants
@@ -72,14 +73,17 @@ class SpreadsheetView():
             self.reselect()
         elif field_name == "name":
             new_name = sheet.name
-            window.document.title = new_name
-            ltk.find("#title").val(new_name)
-            history.add(models.NameChanged("", new_name).apply(self.model))
+            if window.document.title != new_name:
+                window.document.title = new_name
+                ltk.find("#title").val(new_name)
+                history.add(models.NameChanged("", new_name).apply(self.model))
         sheet_resized()
 
     def get_cell(self, key):
+        assert api.is_cell_reference(key), f"Bad key, got '{key}', expected something like 'A2'"
         if key not in self.cell_views:
-            self.cell_views[key] = CellView(self, key, self.model.get_cell(key))
+            cell_model = self.model.get_cell(key)
+            self.cell_views[key] = CellView(self, key, cell_model)
         return self.cell_views[key]
 
     def clear(self):
@@ -160,6 +164,10 @@ class SpreadsheetView():
         preview.add(self, key, result["preview"])
         cell: CellView = self.get_cell(key)
         cell.handle_worker_result(result)
+        if result["prompt"]:
+            add_completion_button(key, lambda: insert_prompt(result["prompt"]))
+        self.reselect()
+        
 
     def post_load(self):
         create_top()
@@ -168,7 +176,7 @@ class SpreadsheetView():
         url_packages = ltk.get_url_parameter(constants.PYTHON_PACKAGES)
         window.document.title = self.model.name
         state.set_title(self.model.name)
-        current = "A1"
+        current = self.model.selected or "A1"
         ltk.schedule(lambda: self.select(self.get_cell(current)), "select-later", 0.1)
         ltk.find(".main-editor-container").width(window.editor_width)
         ltk.find(".sheet").css("cursor", "default")
@@ -178,6 +186,7 @@ class SpreadsheetView():
         ltk.find("#main").animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
         window.makeSheetResizable()
         window.makeSheetScrollable()
+        timeline.setup()
     
     def run_ai(self):
         ltk.schedule(self.find_pandas_data_frames, "find frames", 1)
@@ -215,17 +224,16 @@ class SpreadsheetView():
                     other_key = models.get_key_from_col_row(col, row)
                     visited.add(other_key)
             prompt = f"""
-Convert the spreadsheet cells in range "{cell_model.key}:{other_key}" into a Pandas dataframe.
-To load a Dataframe from cells, use "pysheets.sheet(range)".
+Convert the spreadsheet cells in range "{cell_model.key}:{other_key}" into a 
+Pandas dataframe by calling "pysheets.sheet(range)".
 Make the last expression refer to the dataframe.
-The pysheets module is already imported.
-Generate Python code.
+Do not import the pysheets module.
 """
             text = f"""
 # Create a Pandas DataFrame from values found in the current sheet
 pysheets.sheet("{cell_model.key}:{other_key}")
 """
-            add_completion_button(cell_model.key, lambda: insert_completion(cell_model.key, prompt, text))
+            add_completion_button(cell_model.key, lambda: insert_prompt(prompt))
 
         cell = sheet.get_cell("A1")
         width = get_width(cell.model)
@@ -246,12 +254,11 @@ pysheets.sheet("{cell_model.key}:{other_key}")
     def find_urls(self):
         for key in self.get_url_keys():
             prompt = f"""
-Load the data URL already stored in variable {key} into a Pandas Dataframe.
-To load a Dataframe from a url, use "pysheets.load_sheet(url)".
+Load the data URL already stored in variable {key} into a 
+Pandas dataframe by calling "pysheets.load_sheet(url)".
 Make the last expression refer to the dataframe.
-Generate Python code.
 """
-            request_completion(key, prompt.strip())
+            # TODO: add button
 
     def setup_selection(self):
         
@@ -339,6 +346,7 @@ Generate Python code.
     
     def copy_selection_to_main_editor(self):
         main_editor.set(self.selection.val())
+        ltk.find("#ai-prompt").val(self.current.model.prompt)
 
     def navigate_main(self, event):
         if not self.current or event.key == "Meta":
@@ -410,18 +418,24 @@ Generate Python code.
         self.selection.css("caret-color", "transparent")
         
     def reselect(self):
-        ltk.schedule(lambda: self.select(self.current, force=True), "reselect")
+        cell = self.current
+        ltk.schedule(lambda: self.select(cell, force=True), "reselect")
 
     def show_loading(self):
         for key, cell in self.model.cells.items():
             if cell.script.startswith("="):
                 self.get_cell(key).show_loading()
 
+    def show_error_in_editor(self, error, lineno):
+        window.editorMarkLine(lineno)
+
     def worker_ready(self, data):
         for key, cell in self.model.cells.items():
             if cell.script.startswith("="):
                 self.get_cell(key).worker_ready()
         self.sync()
+        if main_editor.get() == "Loading...":
+            complete_prompt()
 
     def save_screenshot(self):
         take_screenshot(lambda data_url: history.add(models.ScreenshotChanged(url=data_url or self.model.screenshot).apply(self.model)))
@@ -497,7 +511,6 @@ class CellView(ltk.Widget):
         if self.model.script:
             count = self.sheet.counts[self.model.key]
             if count:
-                speed = '🐌' if duration > 1.0 else '🚀'
                 if isinstance(value, str) and not "Error" in value:
                     if count > 1:
                         message = f"Ran in worker {count} times, last run took {duration:.3f}s"
@@ -505,7 +518,7 @@ class CellView(ltk.Widget):
                         message = f"Ran once in worker, taking {duration:.3f}s"
                     state.console.write(
                         self.model.key,
-                        f"[DAG] {self.model.key}: {message} {speed}"
+                        f"[DAG] {self.model.key}: {message}"
                     )
         self.text(str(value))
         if self.model.value != value and self.model.script != value:
@@ -534,6 +547,7 @@ class CellView(ltk.Widget):
         self.remove_arrows()
         ltk.schedule(lambda: self.sheet.save_current_position(), "save selection", 3)
         main_editor.set(self.model.script)
+        ltk.find("#ai-prompt").val(self.model.prompt)
         ltk.find("#selection").text(f"Cell: {self.model.key}")
         ltk.find("#cell-attributes-container").css("display", "block")
         self.set_css_editors()
@@ -550,8 +564,6 @@ class CellView(ltk.Widget):
         ltk.find("#cell-font-style").val(self.css("font-style") or constants.DEFAULT_FONT_STYLE)
 
     def clear(self):
-        self.text("")
-
         self.css("font-family", constants.DEFAULT_FONT_FAMILY)
         self.css("font-size", constants.DEFAULT_FONT_SIZE)
         self.css("font-style", constants.DEFAULT_FONT_STYLE)
@@ -562,16 +574,25 @@ class CellView(ltk.Widget):
         self.css("text-align", constants.DEFAULT_TEXT_ALIGN)
 
         ltk.find(f"#preview-{self.model.key}").remove()
-        ltk.find(f"#completion-{self.model.key}").remove()
-        state.console.remove(f"ai-{self.model.key}")
-        self.model.clear(self.sheet.model)
-        if self.model.key in self.sheet.cells:
-            del self.sheet.cells[self.model.key]
+        preview.remove(self.model.key)
         if self.model.key in self.sheet.model.previews:
             history.add(models.PreviewDeleted(key=self.model.key))
+
+        ltk.find(f"#completion-{self.model.key}").remove()
+        state.console.remove(f"ai-{self.model.key}")
+
+        self.text("")
+        self.model.clear(self.sheet.model)
+        self.inputs.clear()
+        if self.model.key in self.sheet.cells:
+            del self.sheet.cells[self.model.key]
+        self.sheet.cache[self.model.key] = 0
+
         history.add(models.CellScriptChanged(key=self.model.key, script=""))
         history.add(models.CellValueChanged(key=self.model.key, value=""))
         history.add(models.CellStyleChanged(key=self.model.key, style={}))
+        self.notify()
+
         self.sheet.reselect()
 
     def draw_cell_arrows(self):
@@ -617,7 +638,7 @@ class CellView(ltk.Widget):
         
     def get_inputs(self):
         return {
-            key: self.sheet.cache.get(key)
+            key: self.sheet.cache.get(key, 0)
             for key in self.inputs
         }
 
@@ -679,6 +700,7 @@ class CellView(ltk.Widget):
                 return True
 
     def set_inputs(self, inputs):
+        self.running = False
         self.inputs = inputs
         for key in self.get_inputs():
             cell = self.sheet.get_cell(key)
@@ -701,9 +723,13 @@ class CellView(ltk.Widget):
 
     def handle_worker_result(self, result):
         self.running = False
+        if self.model.script == "":
+            self.update(0, "")
+            return
         if result["error"]:
             error = result["error"]
             duration = result["duration"]
+            lineno = result["lineno"]
             tb = result["traceback"]
             parts = error.split("'")
             if len(parts) == 3 and parts[0] == "name " and parts[2] == " is not defined":
@@ -712,9 +738,8 @@ class CellView(ltk.Widget):
                     # The worker job ran out of sequence, ignore this error for now
                     return
             self.update(duration, error)
-            state.console.write(self.model.key, f"[Error] {self.model.key}: {error} {tb}")
-            return
-        if not self.model.script:
+            self.sheet.show_error_in_editor(error, lineno)
+            state.console.write(self.model.key, f"[Error] {self.model.key}, line {lineno}: {error} {tb}")
             return
         value = result["value"]
         if isinstance(value, str):
@@ -815,10 +840,12 @@ ltk.find("#title") \
 def update_cell(event=None):
     script = main_editor.get()
     cell = sheet.current
+    cell.model.prompt = ltk.find("#ai-prompt").val()
     if cell and cell.model.script != script:
         cell.set(script)
         cell.evaluate()
     sheet.sync()
+    set_random_color()
 
 
 main_editor = editor.Editor()
@@ -841,8 +868,47 @@ def save_packages(event):
     reload_with_packages(packages)
 
 
+def clear_prompt():
+    ltk.find("#ai-prompt").val("")
+
+
+def add_prompt(extra_text):
+    prompt = ltk.find("#ai-prompt").val()
+    newline = '\n' if prompt else ''
+    ltk.find("#ai-prompt").val(f"{prompt}{newline}{extra_text}")
+
+def run_current(event=None):
+    selection.remove_arrows()
+    sheet.current.evaluate()
+
+def complete_prompt(event=None):
+    if not ltk.find("#ai-prompt").val():
+        ltk.window.alert("Please enter a prompt and then press 'generate code' again.")
+    elif not main_editor.get() and "AI-generated" in main_editor.get():
+        ltk.window.alert("Please select an empty cell and press 'generate code' again.")
+    else:
+        ltk.find("#ai-prompt").prop("disabled", "true"),
+        ltk.find("#ai-generate").attr("disabled", "true"),
+        main_editor.set("Loading...")
+        prompt = ltk.find("#ai-prompt").val()
+        request_completion(sheet.current.model.key, prompt)
+        ltk.schedule(check_completion, "check-openai", 5)
+
+def load_from_web(event=None):
+    insert_prompt("""
+Load a sheet from the following URL:
+"https://chrislaffra.com/forbes_ai_50_2024.csv".
+To load the sheet call "pysheets.load_sheet(url)".
+Return the result as the last expression in the code.
+    """.strip())
+
+
 def create_sheet_view(model):
     global sheet
+    def resize_ai(*args):
+        selection.remove_arrows()
+        main_editor.refresh()
+
     def resize_editor(*args):
         selection.remove_arrows()
         main_editor.refresh()
@@ -850,19 +916,15 @@ def create_sheet_view(model):
     def show_reload_button(event=None):
         ltk.find("#reload-button").css("display", "block").addClass("small-button")
 
-    def run_current(event=None):
-        selection.remove_arrows()
-        sheet.current.evaluate()
-
+    ltk.schedule(main_editor.refresh, "refresh editor", 3)
     sheet = SpreadsheetView(model)
 
     packages = ltk.get_url_parameter(constants.PYTHON_PACKAGES)
-
     console = ltk.VBox(
         ltk.HBox(
             ltk.Input("")
                 .addClass("console-filter")
-                .attr("placeholder", "filter the console"),
+                .attr("placeholder", "Filter the console..."),
             ltk.Button("clear", proxy(lambda event: state.console.clear()))
                 .addClass("console-clear")
                 .attr("title", "Clear the console")
@@ -874,6 +936,40 @@ def create_sheet_view(model):
         console,
         ltk.VBox().addClass("timeline-container").attr("name", "Timeline"),
     ).addClass("internals")
+
+    def set_plot_kind(index, option):
+        add_prompt(f"When you create the plot, make it {list(chart_options.values())[index]}.")
+
+    chart_options = {
+        "bar": "a bar graph",
+        "barh": "a horizontal bar graph",
+        "line": "a line plot",
+        "pie": "a pie chart",
+        "stem": "a stem plot",
+        "stairs": "a stairs graph",
+        "scatter": "a scatter plot",
+        "stack": "a stack plot",
+        "fill": "a fill between graph",
+    }
+    chart_type = ltk.Select([ltk.Option(kind) for kind in chart_options], 0, ltk.proxy(set_plot_kind))
+
+    ai = ltk.VBox(
+        ltk.HBox(
+            ltk.Text().text("LLM Prompt")
+                .css("margin-right", 8),
+            ltk.Button("generate code", proxy(complete_prompt))
+                .addClass("small-button")
+                .attr("id", "generate-button"),
+            ltk.Button("load from web", proxy(load_from_web))
+                .addClass("small-button")
+                .attr("id", "load-from-web-button"),
+            ltk.HBox().addClass("ai-button-container"),
+            ltk.Text().text("Chart type:"),
+            chart_type,
+        ).addClass("ai-header"),
+        ltk.TextArea(
+        ).attr("id", "ai-prompt").addClass("ai-prompt").attr("placeholder", "Enter your prompt here..."),
+    ).addClass("ai-container").on("resize", proxy(resize_ai))
 
     editor = ltk.VBox(
         ltk.HBox(
@@ -890,11 +986,9 @@ def create_sheet_view(model):
                 ltk.Button("Reload", proxy(save_packages))
                     .attr("id", "reload-button")
                     .css("display", "none"),
-                ltk.Button("run", proxy(run_current))
+                ltk.Button("run script", proxy(run_current))
                     .addClass("small-button toolbar-button")
                     .attr("id", "run-button"),
-                ltk.Button(constants.ICON_STAR, proxy(lambda event: insert_completion(sheet.current.model.key if sheet.current else "", "", "")))
-                    .addClass("small-button toolbar-button"),
             ).addClass("packages-container"),
         ),
         main_editor,
@@ -908,17 +1002,22 @@ def create_sheet_view(model):
         ).attr("id", "sheet-scrollable")
     ).attr("id", "sheet-container")
 
-    right_panel = ltk.VerticalSplitPane(
+    editor_and_tabs = ltk.VerticalSplitPane(
         editor,
         tabs if state.pyodide else console,
         "editor-and-console",
+    )
+    right_panel = ltk.VerticalSplitPane(
+        ai,
+        editor_and_tabs,
+        "ai-and-editor",
     ).addClass("right-panel")
 
     if state.mobile():
         ltk.find("#main").prepend(
             ltk.VerticalSplitPane(
                 left_panel,
-                right_panel.css("height", "30%"),
+                right_panel.addClass("right-panel"),
                 "sheet-and-editor",
             ).css("height", "100%")
         )
@@ -932,6 +1031,7 @@ def create_sheet_view(model):
         )
     if not ltk.find("#A1").length:
         raise ValueError("Error: PySheets setup problem, cannot find cell A1")
+    ltk.schedule(editor_and_tabs.layout, "layout editor")
     window.adjustSheetPosition()
     sheet.post_load()
 
@@ -1003,19 +1103,7 @@ def logout(event=None):
     menu.go_home()
 
 
-def db_error(error):
-    ltk.find("#main").empty().append(
-        ltk.Div(
-            ltk.Div(
-                f"Error: {error}",
-                "Cannot open IndexedDB",
-            ).css("margin", "20px 0px")
-        ).css("text-align", "center")
-    )
-
-
-def setup(db):
-    storage.setup(db)
+def setup():
     def load_sheet(model):
         create_sheet_view(model)
         state.sheet = model
@@ -1024,7 +1112,6 @@ def setup(db):
         storage.load(state.uid, load_sheet)
     else:
         inventory.list_sheets()
-
 
 
 def cleanup_completion(text):
@@ -1037,31 +1124,6 @@ def cleanup_completion(text):
     return text
 
 
-def handle_completion_request(completion):
-    try:
-        import json
-        key = completion["key"]
-        text = completion["text"]
-        prompt = completion["prompt"]
-        text = cleanup_completion(text)
-        text = f"# The following code is entirely AI-generated. Please check it for errors.\n\n{text}"
-
-        if ltk.find("#ai-text").length:
-            ltk.find("#ai-text").text(text)
-            ltk.find("#ai-insert").removeAttr("disabled")
-            return
-
-        if sheet.model.cells[key].script == "":
-            return
-        completion_cache[key] = text
-        ltk.find(f"#completion-{key}").remove()
-        text = completion_cache[key]
-        add_completion_button(key, lambda: insert_completion(key, prompt, text))
-    except Exception as e:
-        state.console.write("ai-complete", "[Error] Could not handle completion from OpenAI...", e)
-        state.print_stack(e)
-
-
 def request_completion(key, prompt):
     ltk.publish(
         "Application",
@@ -1072,7 +1134,34 @@ def request_completion(key, prompt):
             "prompt": prompt,
         },
     )
+    # the answer will arrive in handler_completion_request
         
+
+def handle_completion_request(completion):
+    try:
+        import json
+        key = completion["key"]
+        text = completion["text"]
+        prompt = completion["prompt"]
+        text = cleanup_completion(text)
+        text = f"# This code was generated by an AI. Please check it for errors.\n\n{text.strip()}"
+
+        if ltk.find("#ai-text").length:
+            ltk.find("#ai-text").text(text)
+            ltk.find("#ai-insert").removeAttr("disabled")
+            return
+
+        completion_cache[key] = text
+        main_editor.set(f"=\n{text}")
+        update_cell()
+        run_current()
+    except Exception as e:
+        state.console.write("ai-complete", "[Error] Could not handle completion from OpenAI...", e)
+        state.print_stack(e)
+    finally:
+        ltk.find("#ai-prompt").prop("disabled", ""),
+        ltk.find("#ai-generate").attr("disabled", ""),
+
 
 def set_random_color():
     color = f"hsla({(360 * random.random())}, 70%,  72%, 0.8)"
@@ -1091,107 +1180,25 @@ def check_completion():
         ltk.find("#ai-text").text("It looks like OpenAI is overloaded. Please try again.")
 
 
-def insert_completion(key, prompt, text):
-    def generate(event):
-        ltk.find("#ai-text").text("Loading...")
-        ltk.find("#ai-generate").attr("disabled", "true"),
-        edited_prompt = ltk.find("#ai-prompt").val()
-        request_completion(key, edited_prompt)
-        ltk.schedule(check_completion, "check-openai", 5)
-
-    def insert(event):
-        text = ltk.find("#ai-text").text()
-        if main_editor.get() == "":
-            edited_prompt = ltk.find("#ai-prompt").val()
-            text = f'=\n\nprompt = """\n{edited_prompt}\n"""\n\n{text}'
-            main_editor.set(text).focus()
-            update_cell()
-            ltk.find("#completion-dialog").remove()
-            set_random_color()
-        else:
-            ltk.find("#ai-message").text(
-                "Please select an empty cell and try again."
-            ).css("color", "red")
-    
-    def set_plot_kind(kind):
-        add_prompt(f"When you create the plot, make it {kind}.")
-
-    def add_prompt(extra_text):
-        prompt = ltk.find("#ai-prompt").val()
-        ltk.find("#ai-prompt").val(f"{prompt}\n\n{extra_text}")
-        prompt_changed()
-
-    def prompt_changed():
-        ltk.find("#ai-generate").removeAttr("disabled")
-        ltk.find("#ai-insert").attr("disabled", "true"),
-        ltk.find("#ai-text").text("Click the Generate button to get a new completion...")
-
-    cell = sheet.get_cell(key)
-    extra_prompt_buttons = [
-        ltk.Button("bar", proxy(lambda event: set_plot_kind("a bar graph"))),
-        ltk.Button("barh", proxy(lambda event: set_plot_kind("a horizontal bar graph"))),
-        ltk.Button("line", proxy(lambda event: set_plot_kind("a line plot"))),
-        ltk.Button("pie", proxy(lambda event: set_plot_kind("a pie chart"))),
-        ltk.Button("stem", proxy(lambda event: set_plot_kind("a stem plot"))),
-        ltk.Button("stairs", proxy(lambda event: set_plot_kind("a stairs graph"))),
-        ltk.Button("scatter", proxy(lambda event: set_plot_kind("a scatter plot"))),
-        ltk.Button("stack", proxy(lambda event: set_plot_kind("a stack plot"))),
-        ltk.Button("fill", proxy(lambda event: set_plot_kind("a fill between graph"))),
-    ] if cell.text() == "DataFrame" else []
-
-    ltk.find("#completion-dialog").remove()
-    ltk.VBox(
-        ltk.HBox(
-            ltk.Text("The prompts given to the AI:"),
-            extra_prompt_buttons,
-        ),
-        ltk.TextArea(prompt or "Generate Python code.")
-            .attr("id", "ai-prompt")
-            .on("keyup", proxy(lambda event: prompt_changed()))
-            .css("height", 300),
-        ltk.HBox(
-            ltk.Button("Generate", proxy(generate))
-                .attr("disabled", "true")
-                .attr("id", "ai-generate"),
-            ltk.Text("The latest AI generated completion:"),
-        ),
-        ltk.Preformatted()
-            .attr("id", "ai-text")
-            .text(text)
-            .css("height", 300),
-        ltk.HBox(
-            ltk.Button("Insert into the Sheet", proxy(insert))
-                .attr("id", "ai-insert"),
-            ltk.Text("(you can always edit the code later)")
-                .attr("id", "ai-message"),
-        ),
-    ).attr("id", "completion-dialog").dialog(ltk.to_js({
-        "width": 700,
-        "title": "PySheets ⭐ AI-Driven Code Generation",
-    }))
+def insert_prompt(prompt):
+    clear_prompt()
+    add_prompt(prompt.strip())
+    complete_prompt()
 
 
 def add_completion_button(key, handler):
+    if ltk.find(f"#completion-{key}").length:
+        return
+
     def run(event):
         handler()
         ltk.schedule(sheet.sync, "find-ai-suggestions", 1)
         
-    ltk.find(f"#completion-{key}").remove()
-    ltk.find(".packages-container").append(
+    ltk.find(".ai-button-container").append(
         ltk.Button(f"{constants.ICON_STAR} {key}", proxy(run))
             .addClass("small-button toolbar-button")
             .attr("id", f"completion-{key}")
     )
-    if key:
-        cell = sheet.get_cell(key)
-        cell_contents = api.shorten(cell.model.value, 12)
-        if cell_contents:
-            message = f'[AI] AI suggestion available for [{key}: "{cell_contents}"]. {constants.ICON_STAR}'
-            state.console.write(
-                f"ai-{key}",
-                message,
-                action=ltk.Button(f"{constants.ICON_STAR}{key}", proxy(run)).addClass("small-button toolbar-button")
-            )
 
 
 def sheet_resized():
@@ -1242,7 +1249,7 @@ def handle_inputs(data):
 
 
 def main():
-    window.setup_db(ltk.proxy(db_error), ltk.proxy(lambda db: setup(db)))
+    storage.setup(setup)
     ltk.inject_css("pysheets.css")
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_COMPLETION, handle_completion_request)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_CODE_COMPLETION, handle_code_completion)

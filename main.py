@@ -6,13 +6,12 @@ from flask import request
 import ai
 import base64
 import json
-import logging
+import os
 import requests
 import time
 import traceback
 
 import static.constants as constants
-import static.models as models
 
 
 app = Flask(__name__)
@@ -44,7 +43,7 @@ def handle_error(error):
     app.logger.error("404: %s", request.path)
     return "Nothing here"
 
-
+PATH = os.path.join(os.path.dirname(__file__), "static")
 RUNTIME_PYODIDE = "py"
 RUNTIME_MICROPYTHON = "mpy"
 FILES = """
@@ -78,7 +77,7 @@ FILES_LTK = """
 @app.route("/")
 def root():
     package_names = request.args.get(constants.PYTHON_PACKAGES, "").split()
-    pyodide = request.args.get(constants.PYTHON_RUNTIME) == "pyodide"
+    pyodide = request.args.get(constants.PYTHON_RUNTIME) == "py"
     loading = "Loading..."
     files = FILES + FILES_LTK
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
@@ -88,6 +87,7 @@ def root():
     packages = f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else ""
     package_list = request.args.get(constants.PYTHON_PACKAGES, "")
     editor_width = 350
+    path = PATH
     return render_template("index.html", **locals())
 
 

@@ -52,6 +52,7 @@ class MultiSelection():
 
     def set_dimensions(self):
         pos1, pos2 = self.cell1.position(), self.cell2.position()
+        assert self.cell1.model.column, f"Column should be >= 1, not {self.cell1.model.column} for {self.cell1}"
         self.dimensions = [
             self.cell1.model.column if pos1.left < pos2.left else self.cell2.model.column,
             self.cell2.model.column if pos1.left < pos2.left else self.cell1.model.column,
@@ -134,6 +135,7 @@ class MultiSelection():
                     old_script = model.script
                     old_style = model.style
                     model.script = model.value = new_script
+                    model.style = json.loads(new_style)
                     cell = self.sheet.get_cell(key)
                     if old_script != new_script:
                         history.add(models.CellScriptChanged(key, old_script, new_script))
@@ -147,6 +149,7 @@ class MultiSelection():
                 self.sheet.select(self.sheet.current)
 
             find_cells(list(keys))
+            self.sheet.reselect()
 
         def process_clipboard(text):
             state.console.write("paste", f"[Paste] Pasting {len(text):,} bytes from the clipboard...")

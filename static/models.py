@@ -11,7 +11,8 @@ cache = functools.cache if hasattr(functools, "cache") else lambda func: func
 def encode(model):
     buffer = []
     model.encode(buffer)
-    return "\n".join(buffer)
+    s = "".join(buffer).replace("\n", "\\n").replace("\t", "\\t")
+    return s
 
 
 def decode(json_string, env={}):
@@ -76,7 +77,9 @@ def get_column_name(col):
 
 @cache
 def get_key_from_col_row(col, row):
-    return f"{get_column_name(col)}{row}"
+    column_name = get_column_name(col)
+    assert column_name, f"Bad col/row, got ({col}, {row})"
+    return f"{column_name}{row}"
 
 
 class SerializableDict(dict):
@@ -127,13 +130,12 @@ class Model(SerializableDict):
             self.notify(listener, info)
 
 
-
-
 class Sheet(Model):
     def __init__(self, uid="", name="Untitled Sheet",
                  columns=None, rows=None, cells=None, previews=None,
                  selected="A1", screenshot="/screenshot.png",
-                 created_timestamp=0, updated_timestamp=0, column_count=26, row_count=50,
+                 created_timestamp=0, updated_timestamp=0, 
+                 column_count=constants.DEFAULT_COLUMN_COUNT, row_count=constants.DEFAULT_ROW_COUNT,
                  _class="Sheet", _="Sheet"):
         super().__init__()
         self.uid = uid
@@ -158,8 +160,8 @@ class Sheet(Model):
     def encode_fields(self, buffer: list):
         self.encode_cells(buffer)
         self.encode_previews(buffer)
-        self.row_count = max(constants.DEFAULT_ROW_COUNT, *[cell.row for cell in self.cells.values()])
-        self.column_count = max(constants.DEFAULT_COLUMN_COUNT, *[cell.column for cell in self.cells.values()])
+        self.row_count = max([constants.DEFAULT_ROW_COUNT] + [cell.row for cell in self.cells.values()])
+        self.column_count = max([constants.DEFAULT_COLUMN_COUNT] + [cell.column for cell in self.cells.values()])
         buffer.append(f'"created_timestamp":{json.dumps(self.created_timestamp)},')
         buffer.append(f'"updated_timestamp":{json.dumps(self.updated_timestamp)},')
         buffer.append(f'"rows":{json.dumps(self.rows)},')
@@ -202,6 +204,10 @@ class Sheet(Model):
         return previews
 
     def get_cell_keys(self, from_col, to_col, from_row, to_row):
+        assert from_col, f"from_col should be >=1 not {from_col}"
+        assert to_col, f"from_col should be >=1 not {to_col}"
+        assert from_row, f"from_col should be >=1 not {from_row}"
+        assert to_row, f"from_col should be >=1 not {to_row}"
         keys = []
         for col in range(from_col, to_col + 1):
             for row in range(from_row, to_row + 1):
@@ -225,6 +231,14 @@ class Sheet(Model):
         return isinstance(other, Sheet) and other.uid == self.uid
 
 
+class Tile(Model):
+    def __init__(self, column, row, cells):
+        super().__init__()
+        self.column = column
+        self.row = row
+        self.cells = cells
+
+
 class Preview(Model):
     def __init__(self, key, html="", embed=False, left=0, top=0, width=0, height=0):
         super().__init__()
@@ -237,7 +251,7 @@ class Preview(Model):
         self.height = height
 
     def encode_fields(self, buffer: list):
-        html = f"Loading {len(self.html):,} bytes..." if len(self.html) > 20000 else self.html
+        html = f"Loading {len(self.html):,} bytes..." if len(self.html) > constants.LARGE_PREVIEW_SIZE else self.html
         buffer.append(f'"html":{json.dumps(html)},')
         buffer.append(f'"embed":{json.dumps(self.embed)},')
         buffer.append(f'"left":{json.dumps(self.left)},')
@@ -248,24 +262,26 @@ class Preview(Model):
 
 
 class Cell(Model):
-    def __init__(self, key="", column=0, row=0, value="", script="", style=None, embed=None, _class="Cell", _="Cell"):
+    def __init__(self, key="", column=0, row=0, value="", script="", s="", style=None, embed=None, _class="Cell", _="Cell", k="", prompt=""):
         super().__init__()
-        self.key = key
+        self.key = key or k
         if not row or not column:
             column, row = get_col_row_from_key(key)
         self.column = column
         self.row = row
         self.value = value
-        self.script = script or value
+        self.script = script or s or value
+        self.prompt = prompt
         self.style = {} if style is None else style
-
 
     def encode_fields(self, buffer: list):
         if self.value not in ["", self.script]:
             buffer.append(f'"value":"{escape(self.value)}",')
-        buffer.append(f'"script":"{escape(self.script)}",')
+        if self.prompt:
+            buffer.append(f'"prompt":"{escape(self.prompt)}",')
+        buffer.append(f'"key":"{self.key}",')
         self.encode_style(buffer)
-        buffer.append(f'"key":"{escape(self.key)}"')
+        buffer.append(f'"s":"{escape(self.script)}"')
 
     def encode_style(self, buffer: list):
         styles = []

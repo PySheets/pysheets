@@ -131,7 +131,6 @@ class Profiler():
     def toggle(self, checkbox):
         self.enable(checkbox.prop("checked"))
         self.enable_profile()
-        print("toggle", self.enabled(), self.enabled())
     
     def enable_profile(self):
         sys.setprofile(self.profile if self.enabled() else None)
@@ -158,5 +157,6 @@ class Profiler():
         return self.profile
 
 
-if not 'unittest' in sys.modules and hasattr(sys, "setprofile"):
-    Profiler()
+def setup():
+    if not 'unittest' in sys.modules and hasattr(sys, "setprofile"):
+        Profiler()

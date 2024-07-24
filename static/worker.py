@@ -77,10 +77,8 @@ def setup():
     if js.document is pyscript.document:
         return
     js.document = pyscript.document  # patch for matplotlib inside workers
-    orig_print = builtins.print
     def worker_print(*args, file=None, end=""):
         publish(sender, receiver, constants.TOPIC_WORKER_PRINT, f"[Worker] {' '.join(str(arg) for arg in args)}")
-        orig_print(*args)
     builtins.print = worker_print
 
 completion_cache = {}
@@ -157,14 +155,6 @@ Here are the column names for the dataframe:
 {columns}
     """.strip()
 
-def complete(key, kind):
-    if kind != "DataFrame":
-        return
-    prompt = get_visualization_prompt(key, results[key].columns.values)
-    if prompt in completion_cache:
-        return completion_cache[prompt]
-    generate_completion(key, prompt)
-
 
 def generate_completion(key, prompt):
     data = { constants.PROMPT: prompt }
@@ -230,16 +220,18 @@ def run(data):
         try:
             lines = tb.strip().split("\n")
             line = [line for line in lines if "<string>" in line][0]
-            line_number = int(re.sub("[^0-9]", "", line))
-            error = f"At line {line_number + 1}: {lines[-1]} - {tb}"
+            lineno = int(re.sub("[^0-9]", "", line))
+            error = f"At line {lineno + 1}: {lines[-1]} - {tb}"
         except Exception as e:
             error = str(e)
+            lineno = 1
         publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "value": None,
             "preview": "",
             "duration": time.time() - start,
-            "error": f"Worker run error: {type(error)}:{error}",
+            "lineno": lineno,
+            "error": error,
             "traceback": tb,
         }))
         return
@@ -260,6 +252,8 @@ def run(data):
         }))
         return
 
+    prompt = get_visualization_prompt(key, results[key].columns.values) if kind == "DataFrame" else ""
+
     try:
         preview = create_preview(result)
         base_kind = kind in ["int","str","float"]
@@ -269,9 +263,9 @@ def run(data):
             "script": script,
             "value": preview if base_kind else kind,
             "preview": "" if base_kind else preview,
-            "error": None,
+            "prompt": prompt,
+            "error": preview if kind == "str" and preview.startswith("ERROR:") else None,
         }))
-        complete(key, kind)
     except Exception as e:
         import traceback
         publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({

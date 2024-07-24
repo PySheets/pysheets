@@ -6,7 +6,7 @@ html, body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 14px;
+    font-size: 12px;
     font-family: Arial;
     background: #fef1e6;
     border: 0 solid #AAA;
@@ -138,7 +138,7 @@ html, body {
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 92px;
+    width: 72px;
     color: black;
     font-family: Arial;
     border: 0 solid #e1e1e1;
@@ -163,7 +163,7 @@ html, body {
     background: #efefef;
     z-index: 2100;
     width: 60px;
-    height: 24px;
+    height: 16px;
     margin: 0 0 0 0;
     color: black;
     font-family: Helvetica;
@@ -181,8 +181,8 @@ html, body {
     font-family: Arial;
     background-color: white;
     padding: 2px;
-    width: 92px;
-    height: 24px;
+    width: 72px;
+    height: 16px;
     border: 1px solid #e1e1e1;
     border-width: 0 0 1px 1px;
     border-right-color: transparent;
@@ -318,7 +318,7 @@ h3 {
     min-width: 50px;
     border: 0 solid gray;
     border-bottom-width: 1px;
-    font-size: 14px;
+    font-size: 12px;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -372,8 +372,8 @@ h3 {
 }
 
 .preview-header .ltk-checkbox {
-    height: 14px;
-    width: 14px;
+    height: 12px;
+    width: 12px;
     margin-top: 5px;
 }
 
@@ -451,9 +451,47 @@ h3 {
     width: calc(100vw - 24px)
 }
 
+.ai-header {
+    margin-top: 5px;
+    height: 32px;
+}
+
+.ai-header .ltk-button {
+    min-width: 34px;
+    margin-right: 5px;
+    height: 24px;
+}
+
+.ai-container {
+    height: 30%;
+    min-height: 120px;
+    overflow: hidden;
+    background-color: #f7f7f7;
+}
+
+.ai-container .ltk-text {
+    height: 32px;
+    margin-top: 2px;
+}
+
+.ai-container .ltk-select {
+    height: 26px;
+    margin-top: 1px;
+}
+
+.ai-container .ltk-textarea {
+    height: 100%;
+    padding: 8px;
+}
+
+.ai-button-container {
+    height: 32px;
+    overflow: hidden;
+}
+
 .editor-container {
     height: 50%;
-    min-height: 100px;
+    min-height: 50%;
     overflow: hidden;
     background-color: #f7f7f7;
 }
@@ -637,7 +675,7 @@ img.loading {
 .document-button {
     width: 100px;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 14px;
+    font-size: 12px;
     margin: auto;
     padding: 12px 0;
     color: white;
@@ -683,6 +721,7 @@ td:hover .debug-info {
 .packages-container {
     align-content: center;
     flex-wrap: wrap;
+    margin-bottom: 2px;
 }
 
 .timeline-container {
@@ -733,9 +772,9 @@ td:hover .debug-info {
     overflow: hidden;
     border-radius: 2px;
     border: 1px solid gray;
-    min-width: 92px;
+    min-width: 72px;
     background-color: #f2f2f2;
-    margin: 14px 0 0 14px;
+    margin: 12px 0 0 12px;
     box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
 }
 
@@ -774,8 +813,15 @@ td:hover .debug-info {
     margin-right: 12px;
 }
 
-#run-button {
-    font-size: 15px;
+#run-button, #generate-button {
+    font-size: 12px;
+    background-color: #1f77b4;
+    color: white;
+}
+
+#run-button:hover, #generate-button:hover {
+    background-color: #b7ddf8;
+    color: rgb(58, 58, 58);
 }
 
 .toolbar-button {
@@ -833,7 +879,9 @@ td:hover .debug-info {
 
 .right-panel {
     width: 700px;
+    height: 100%;
     z-index: 5000;
+    background-color: #f9f9ff;
 }
 
 .console {
@@ -951,4 +999,13 @@ input[type="checkbox"] {
   }
   .ltk-vertical-split-pane > .ltk-vertical-split-pane-middle:hover {
     background-color: #AAF;
+  }
+
+  .editor-error {
+    border: 1px solid red;
+  }
+
+  .ltk-button {
+    border-radius: 4px;
+    text-wrap: nowrap;
   }
