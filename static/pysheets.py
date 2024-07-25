@@ -99,66 +99,6 @@ class SpreadsheetView():
         from_cell.store_edit()
         to_cell.attr("style", from_cell.attr("style"))
 
-    def show_column_menu(self, event):
-        label = ltk.find(event.target)
-        selected_column = int(label.attr("col")) - 1
-
-        def insert_column(event):
-            for cell in sorted(self.cells.values(), key=lambda cell: -cell.model.column):
-                if cell.model.column >= selected_column:
-                    next_key = models.get_key_from_col_row(cell.model.column + 1, cell.model.row)
-                    self.copy(cell, self.get_cell(next_key, cell.model.column + 1, cell.model.row))
-                if cell.model.column == selected_column:
-                    cell.clear()
-                if cell.model.column > 1:
-                    previous_key = models.get_key_from_col_row(cell.model.column - 1, cell.model.row)
-                    if not previous_key in self.cells:
-                        cell.clear()
-
-        def delete_column(event):
-            for cell in sorted(self.cells.values(), key=lambda cell: cell.model.column):
-                next_key = models.get_key_from_col_row(cell.model.column + 1, cell.model.row)
-                if cell.model.column >= selected_column:
-                    if not next_key in self.cells:
-                        cell.clear()
-                    self.copy(self.get_cell(next_key, cell.model.column + 1, cell.model.row), cell)
-
-        ltk.MenuPopup(
-            ltk.MenuItem("+", f"insert column", None, proxy(insert_column)),
-            ltk.MenuItem("-", f"delete column {models.get_column_name(selected_column)}", None, proxy(delete_column)),
-        ).show(label)
-        event.preventDefault()
-
-    def show_row_menu(self, event):
-        label = ltk.find(event.target)
-        selected_row = int(label.attr("row")) - 1
-
-        def insert_row(event):
-            for cell in sorted(self.cells.values(), key=lambda cell: -cell.model.row):
-                if cell.model.row >= selected_row:
-                    next_key = models.get_key_from_col_row(cell.model.column, cell.model.row + 1)
-                    self.copy(cell, self.get_cell(next_key, cell.model.column + 1, cell.model.row))
-                if cell.model.row == selected_row:
-                    cell.clear()
-                if cell.model.row > 1:
-                    previous_key = models.get_key_from_col_row(cell.model.column, cell.model.row - 1)
-                    if not previous_key in self.cells:
-                        cell.clear()
-
-        def delete_row(event):
-            for cell in sorted(self.cells.values(), key=lambda cell: cell.model.row):
-                next_key = models.get_key_from_col_row(cell.model.column, cell.model.row + 1)
-                if cell.model.row >= selected_row:
-                    if not next_key in self.cells:
-                        cell.clear()
-                    self.copy(self.get_cell(next_key, cell.model.column + 1, cell.model.row), cell)
-
-        ltk.MenuPopup(
-            ltk.MenuItem("+", f"insert row", None, proxy(insert_row)),
-            ltk.MenuItem("-", f"delete row {selected_row + 1} ", None, proxy(delete_row)),
-        ).show(label)
-        event.preventDefault()
-
     def handle_worker_result(self, result):
         key = result["key"]
         preview.add(self, key, result["preview"])
@@ -168,13 +108,10 @@ class SpreadsheetView():
             add_completion_button(key, lambda: insert_prompt(result["prompt"]))
         self.reselect()
         
-
     def post_load(self):
         create_top()
         ltk.find("#main").focus().on("keydown", proxy(lambda event: self.navigate(event)))
         ltk.find(".hidden").removeClass("hidden")
-        url_packages = ltk.get_url_parameter(constants.PYTHON_PACKAGES)
-        window.document.title = self.model.name
         state.set_title(self.model.name)
         current = self.model.selected or "A1"
         ltk.schedule(lambda: self.select(self.get_cell(current)), "select-later", 0.1)
@@ -184,6 +121,7 @@ class SpreadsheetView():
         preview.load(self)
         ltk.schedule(self.run_ai, "run ai", 3)
         ltk.find("#main").animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
+        window.document.title = self.model.name
         window.makeSheetResizable()
         window.makeSheetScrollable()
         timeline.setup()
@@ -194,7 +132,6 @@ class SpreadsheetView():
 
     def sync(self):
         pass # ltk.schedule(self.save_screenshot, "check edits", 5)
-
 
     def find_pandas_data_frames(self):
         visited = set()
@@ -305,22 +242,10 @@ Make the last expression refer to the dataframe.
             event.preventDefault()
             ltk.find(event.target).trigger("click")
 
-        def show_menu(event):
-            return
-            div = ltk.find(event.target).closest(".cell")
-            key = div.attr("id")
-            col = int(div.attr("col"))
-            row = int(div.attr("row"))
-            cell = self.get_cell(key, col, row)
-            if not cell:
-                return
-            event.preventDefault()
-
         ltk.find("#sheet") \
             .on("mousedown", proxy(mousedown)) \
             .on("mousemove", proxy(mousemove)) \
             .on("mouseup", proxy(mouseup)) \
-            .on("contextmenu", proxy(show_menu))
 
     def navigate(self, event):
         target = ltk.find(event.target)
@@ -426,9 +351,6 @@ Make the last expression refer to the dataframe.
             if cell.script.startswith("="):
                 self.get_cell(key).show_loading()
 
-    def show_error_in_editor(self, error, lineno):
-        window.editorMarkLine(lineno)
-
     def worker_ready(self, data):
         for key, cell in self.model.cells.items():
             if cell.script.startswith("="):
@@ -448,8 +370,10 @@ k = {
 "key":"D13"
 }
 
-class CellView(ltk.Widget):
+class CycleError(Exception): pass
 
+
+class CellView(ltk.Widget):
     def __init__(self, sheet: SpreadsheetView, key: str, model: models.Cell, td=None):
         self.sheet= sheet
         self.model = model
@@ -487,9 +411,10 @@ class CellView(ltk.Widget):
         ltk.schedule(self.sheet.run_ai, "run ai", 3)
         
     def enter(self):
+        selection.remove_arrows(0)
         self.draw_cell_arrows()
         self.raise_preview()
-    
+        
     def set(self, script, evaluate=True):
         if self.model.script != script:
             history.add(models.CellScriptChanged(self.model.key, self.model.script, script).apply(sheet.model))
@@ -556,8 +481,13 @@ class CellView(ltk.Widget):
     def set_css_editors(self):
         ltk.find("#cell-font-family").val(self.css("font-family") or constants.DEFAULT_FONT_FAMILY)
         ltk.find("#cell-font-size").val(round(window.parseFloat(self.css("font-size"))) or constants.DEFAULT_FONT_SIZE)
-        ltk.find("#cell-font-color").val(rgb_to_hex(self.css("color")) or constants.DEFAULT_COLOR)
-        ltk.find("#cell-fill").val(rgb_to_hex(self.css("background-color")) or constants.DEFAULT_FILL)
+
+        color = rgb_to_hex(self.css("color")) or constants.DEFAULT_COLOR
+        ltk.find("#cell-color").val(color).css("background", color)
+
+        background = rgb_to_hex(self.css("background-color")) or constants.DEFAULT_FILL
+        ltk.find("#cell-fill").val(background).css("background", background)
+
         ltk.find("#cell-vertical-align").val(self.css("vertical-align") or constants.DEFAULT_VERTICAL_ALIGN)
         ltk.find("#cell-text-align").val(self.css("text-align").replace("start", "left") or constants.DEFAULT_TEXT_ALIGN)
         ltk.find("#cell-font-weight").val({"400": "normal", "700": "bold"}[self.css("font-weight")] or constants.DEFAULT_FONT_WEIGHT)
@@ -596,7 +526,7 @@ class CellView(ltk.Widget):
         self.sheet.reselect()
 
     def draw_cell_arrows(self):
-        self.draw_arrows()
+        self.draw_arrows([])
         self.adjust_arrows()
     
     def raise_preview(self):
@@ -606,14 +536,23 @@ class CellView(ltk.Widget):
     def remove_arrows(self):
         selection.remove_arrows()
 
-    def draw_arrows(self):
+    def report_cycle(self, seen):
+        seen.append(self.model.key)
+        cycle = " ⬅ ".join(seen)
+        state.console.write(self.model.key, f"[ERROR] {self.model.key}: Dependency cycle detected: {cycle}")
+
+    def draw_arrows(self, seen):
+        if self.model.key in seen:
+            self.report_cycle(seen)
+            return
+        seen.append(self.model.key)
         self.remove_arrows()
         if state.mobile():
             return
         if not self.inputs:
             return
         cells = [ self.sheet.get_cell(input) for input in self.inputs ]
-        window.addArrow(create_marker(cells, "inputs-marker arrow"), self.element)
+        window.addArrow(create_marker(cells, "inputs-marker arrow", seen), self.element)
         self.addClass("arrow")
 
     def adjust_arrows(self):
@@ -636,7 +575,7 @@ class CellView(ltk.Widget):
     def edited(self, script):
         self.set(script)
         
-    def get_inputs(self):
+    def get_input_cells(self):
         return {
             key: self.sheet.cache.get(key, 0)
             for key in self.inputs
@@ -654,7 +593,7 @@ class CellView(ltk.Widget):
         state.console.remove(self.model.key)
         if self.is_formula():
             if self.should_run_locally():
-                self.evaluate_locally(expression, self.get_inputs())
+                self.evaluate_locally(expression, self.get_input_cells())
             else:
                 self.resolve_inputs()
         else:
@@ -674,6 +613,8 @@ class CellView(ltk.Widget):
         self.update(duration, value)
     
     def show_loading(self):
+        if state.worker_version != constants.WORKER_LOADING:
+            return
         text = self.text()
         if not text.startswith(constants.ICON_HOUR_GLASS):
             self.text(f"{constants.ICON_HOUR_GLASS} {text}")
@@ -702,11 +643,14 @@ class CellView(ltk.Widget):
     def set_inputs(self, inputs):
         self.running = False
         self.inputs = inputs
-        for key in self.get_inputs():
+        for key in self.get_input_cells():
             cell = self.sheet.get_cell(key)
             cell.dependents.add(self.model.key)
 
     def handle_inputs(self, inputs):
+        self.running = False
+        if self.model.key in inputs:
+            self.report_cycle(inputs)
         self.set_inputs(inputs)
         if self.inputs_missing():
             return
@@ -717,7 +661,7 @@ class CellView(ltk.Widget):
             "Application",
             "Worker",
             ltk.TOPIC_WORKER_RUN,
-            [self.model.key, self.model.script[1:], self.get_inputs()]
+            [self.model.key, self.model.script[1:], self.get_input_cells()]
         )
         # result will arrive in handle_worker_result
 
@@ -738,8 +682,10 @@ class CellView(ltk.Widget):
                     # The worker job ran out of sequence, ignore this error for now
                     return
             self.update(duration, error)
-            self.sheet.show_error_in_editor(error, lineno)
-            state.console.write(self.model.key, f"[Error] {self.model.key}, line {lineno}: {error} {tb}")
+            if self.sheet.current.model.key == self.model.key:
+                main_editor.mark_line(lineno)
+            last_tb_lines = "\n".join(tb.split("\n")[-2:])
+            state.console.write(self.model.key, f"[Error] {self.model.key}: Line {lineno}: {last_tb_lines}")
             return
         value = result["value"]
         if isinstance(value, str):
@@ -755,11 +701,11 @@ def hide_marker(event):
     selection.remove_arrows()
 
 
-def create_marker(cells, clazz):
+def create_marker(cells, clazz, seen):
     if not cells:
         return
     if len(cells) == 1:
-        cells[0].draw_arrows()
+        cells[0].draw_arrows(seen)
         return cells[0]
     top, left, bottom, right = 10000, 10000, 0, 0
     for cell in cells:
@@ -845,7 +791,6 @@ def update_cell(event=None):
         cell.set(script)
         cell.evaluate()
     sheet.sync()
-    set_random_color()
 
 
 main_editor = editor.Editor()
@@ -1057,11 +1002,15 @@ def create_attribute_editors():
         sheet.multi_selection.css("font-style", option.text())
 
     def set_color(event):
-        sheet.multi_selection.css("color", ltk.find(event.target).val())
+        color = ltk.find(event.target).val()
+        sheet.multi_selection.css("color", color)
+        ltk.find(event.target).css("background-color", color)
         event.preventDefault()
 
     def set_background(event):
-        sheet.multi_selection.css("background-color", ltk.find(event.target).val())
+        color = ltk.find(event.target).val()
+        sheet.multi_selection.css("background-color", color)
+        ltk.find(event.target).css("background-color", color)
         event.preventDefault()
 
     def set_vertical_align(index, option):
@@ -1069,13 +1018,39 @@ def create_attribute_editors():
 
     def set_text_align(index, option):
         sheet.multi_selection.css("text-align", option.text())
+                   
+    def activate_fill_colorpicker(event):
+        container = ltk.find(event.target)
+        container.parent().find(".cell-fill-colorpicker").click()
+                   
+    def activate_color_colorpicker(event):
+        container = ltk.find(event.target)
+        container.parent().find(".cell-color-colorpicker").click()
 
     ltk.find("#cell-attributes-container").empty().append(
-        ltk.ColorPicker()
-        .on("input", proxy(set_background))
-        .val("#ffffff")
-        .attr("id", "cell-fill"),
-        ltk.ColorPicker().on("input", proxy(set_color)).attr("id", "cell-font-color"),
+
+        ltk.Span(
+            ltk.ColorPicker()
+                .on("input", proxy(set_background))
+                .val("#ffffff")
+                .attr("id", "cell-fill")
+                .addClass("cell-fill-colorpicker"),
+            ltk.jQuery('<img src="/icons/format-color-fill.png">')
+                .on("click", proxy(activate_fill_colorpicker))
+                .addClass("cell-fill-icon"),
+        ).addClass("cell-fill-container"),
+
+        ltk.Span(
+            ltk.ColorPicker()
+                .on("input", proxy(set_color))
+                .val("#ffffff")
+                .attr("id", "cell-color")
+                .addClass("cell-color-colorpicker"),
+            ltk.jQuery('<img src="/icons/format-color-text.png">')
+                .on("click", proxy(activate_color_colorpicker))
+                .addClass("cell-color-icon"),
+        ).addClass("cell-color-container"),
+
         ltk.Select(constants.FONT_NAMES, "Arial", set_font).attr(
             "id", "cell-font-family"
         ),
@@ -1134,7 +1109,7 @@ def request_completion(key, prompt):
             "prompt": prompt,
         },
     )
-    # the answer will arrive in handler_completion_request
+    # the answer will arrive in handle_completion_request
         
 
 def handle_completion_request(completion):
@@ -1153,6 +1128,7 @@ def handle_completion_request(completion):
 
         completion_cache[key] = text
         main_editor.set(f"=\n{text}")
+        set_random_color()
         update_cell()
         run_current()
     except Exception as e:
@@ -1249,7 +1225,6 @@ def handle_inputs(data):
 
 
 def main():
-    storage.setup(setup)
     ltk.inject_css("pysheets.css")
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_COMPLETION, handle_completion_request)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_CODE_COMPLETION, handle_code_completion)
@@ -1257,6 +1232,7 @@ def main():
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_INPUTS, handle_inputs)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_INFO, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_ERROR, print)
+    storage.setup(setup)
 
 
 vm_version = sys.version.split()[0].replace(";", "")

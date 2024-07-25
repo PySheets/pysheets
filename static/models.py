@@ -296,6 +296,8 @@ class Cell(Model):
     def clear(self, sheet):
         if self.script:
             self.script = ""
+        if self.prompt:
+            self.prompt = ""
         if self.value:
             self.value = ""
         if self.style:

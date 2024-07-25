@@ -22,7 +22,7 @@ def flush():
     
 def show_status():
     if state.console.contains("Sheet"):
-        state.console.write("Sheet", f"[History] All changes were saved.")
+        state.console.write("Sheet", f"[History] All changes have been saved.")
 
 def undo(sheet):
     while history:

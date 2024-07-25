@@ -1,3 +1,4 @@
 *.pyc
 node_modules/*
 pysheets.db
+openai.json

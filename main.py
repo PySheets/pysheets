@@ -81,8 +81,6 @@ def root():
     loading = "Loading..."
     files = FILES + FILES_LTK
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
-    interpreter = '' if pyodide else 'interpreter = "1.23.0"'
-    version_interpreter = 'latest' if pyodide else '1.23.0'
     vm = "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}"
     packages = f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else ""
     package_list = request.args.get(constants.PYTHON_PACKAGES, "")

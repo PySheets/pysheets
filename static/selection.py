@@ -214,12 +214,18 @@ class MultiSelection():
         self.draw()
 
 
-def remove_arrows():
+def remove_arrows(delay=1000):
+    def dissolve_arrow(arrow):
+        arrow.animate({ "opacity": 0 }, delay, ltk.proxy(lambda: arrow.remove()))
+    for arrow in ltk.find_list(".leader-line, .inputs-marker"):
+        if arrow.css("opacity") == "1":
+            dissolve_arrow(arrow)
     ltk.find(".arrow").removeClass("arrow")
-    ltk.find(".leader-line, .inputs-marker").remove()
+
 
 def scroll(cell):
     ltk.schedule(lambda: scroll_now(cell), "scroll later")
+
 
 def scroll_now(cell):
     container = ltk.find("#sheet-container")

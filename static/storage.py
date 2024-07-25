@@ -55,6 +55,10 @@ class Database():
         request.onerror = ltk.proxy(onerror)
         request.onsuccess = ltk.proxy(handler)
 
+    def delete(self, store, uid, onsuccess):
+        request = self.open(store).delete(uid)
+        request.onsuccess = ltk.proxy(onsuccess)
+
 
 def setup(db_loaded):
     global database
@@ -77,4 +81,7 @@ def load(sheet_id: str, onsuccess):
         onsuccess(models.Sheet(uid=sheet_id))
     database.load("sheets", sheet_id, new_sheet, found_sheet)
 
+
+def delete(sheet_id: str, oncomplete):
+    database.delete("sheets", sheet_id, oncomplete)
 

@@ -30,6 +30,7 @@ class Editor(ltk_Div):
             }))
             self.editor.setSize("100%", "100%")
             self.editor.on("blur", ltk.proxy(lambda *args: self.trigger("change")))
+            self.editor.on("change", ltk.proxy(lambda *args: self.clear_mark()))
             self.code_completor = lsp.CodeCompletor(self.editor)
 
     def get(self):
@@ -54,4 +55,10 @@ class Editor(ltk_Div):
     def handle_code_completion(self, completions):
         if self.code_completor:
             self.code_completor.handle_code_completion(completions)
+    
+    def clear_mark(self):
+        ltk.window.editorClearLine()
+        
+    def mark_line(self, lineno):
+        ltk.window.editorMarkLine(lineno - 1)
 

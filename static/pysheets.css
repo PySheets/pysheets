@@ -104,6 +104,7 @@ html, body {
     height: 100%;
     margin-top: 30px;
     margin-left: 61px;
+    overflow: hidden;
 }
 
 .cell-row {
@@ -452,12 +453,13 @@ h3 {
 }
 
 .ai-header {
-    margin-top: 5px;
+    margin-top: 1px;
     height: 32px;
 }
 
 .ai-header .ltk-button {
     min-width: 34px;
+    margin-top: 2px;
     margin-right: 5px;
     height: 24px;
 }
@@ -553,11 +555,25 @@ input {
     align-items: center;
 }
 
-#cell-font-color, #cell-fill {
+#cell-color, #cell-fill {
     padding: 0;
-    inline-size: 17px;
-    block-size: 19px;
+    inline-size: 19px;
+    block-size: 21px;
     background: white;
+}
+
+.cell-color-container, .cell-fill-container {
+    position: relative;
+    margin-right: 4px;
+}
+
+.cell-fill-icon, .cell-color-icon {
+    position: absolute;
+    background-color: white;
+    top: 1px;
+    left: 2px;
+    width: 15px;
+    height: 13px;
 }
 
 .cell-attributes-container {
@@ -1002,7 +1018,7 @@ input[type="checkbox"] {
   }
 
   .editor-error {
-    border: 1px solid red;
+    background-color: rgb(254, 227, 227);
   }
 
   .ltk-button {

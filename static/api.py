@@ -55,11 +55,7 @@ def find_inputs(script):
         inputs = set()
 
         def __init__(self, script):
-            try:
-                self.visit(ast.parse(script))
-            except:
-                import traceback
-                traceback.print_exc()
+            self.visit(ast.parse(script))
 
         def add_input(self, s):
             if is_cell_reference(s):

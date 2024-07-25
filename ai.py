@@ -1,21 +1,42 @@
 import json
 import openai
 import os
-import subprocess
+
+MISSING_KEY = "\n".join([
+    "# We could not find an OpenAI key. Please create a file containing:",
+    "",
+    "{",
+    "    \"api_key\": \"YOUR_SECRET_KEY\"",
+    "}",
+    "",
+    "# Place the file next to 'main.py' and try an OpenAI completion again.",
+])
 
 
+def load_key():
+    try:
+        dir = os.path.dirname(__file__)
 
-openai.api_key = json.loads(open(os.path.expanduser("~/openai.json")).read())["api_key"]
-sourcegraph = json.loads(open(os.path.expanduser("~/sourcegraph.json")).read())
+        openai.api_key = json.loads(open(os.path.join(dir, "openai.json")).read())["api_key"]
+    except Exception as e:
+        print(e)
+        pass
+
+metaprompt = '''
+
+'''
 
 
 def complete(prompt):
-    model = "davinci-002"
-    model = "babbage-002"
     model="gpt-3.5-turbo-instruct"
+    load_key()
+    if not openai.api_key:
+        return {
+            "text": MISSING_KEY,
+        }
     return openai.Completion.create(
         model=model,
-        prompt=prompt,
+        prompt=f"{metaprompt}\n{prompt}.",
         temperature=0,
         max_tokens=1000,
         top_p=1.0,
@@ -23,26 +44,3 @@ def complete(prompt):
         presence_penalty=0.0,
         stop=["\"\"\""]
     )["choices"][0]
-
-class SourceGraphError(TypeError): pass
-
-def sourcegraph_complete(prompt):
-    os.putenv("SRC_ENDPOINT", "https://sourcegraph.com")
-    os.putenv("SRC_ACCESS_TOKEN", sourcegraph["token"])
-    command = [
-        "node_modules/.bin/cody-agent",
-        "experimental-cli",
-        "chat",
-        "-m",
-        prompt,
-    ]
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = process.communicate()
-    text = f'{out.decode("utf-8")}{err.decode("utf-8")}'
-    if not "```" in text:
-        raise SourceGraphError(text)
-    text = re.sub(".*```", "", text)
-    text = re.sub("```.*", "", text)
-    return {
-        "text": text
-    }

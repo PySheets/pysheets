@@ -189,7 +189,7 @@
         });
     }
 
-    window.addArrow = (from, to, label) => {
+    window.addArrow = (from, to) => {
         if ($("#main").css("opacity") !== "1") return;
         try {
             const start = from[0];
@@ -198,7 +198,7 @@
                 return $(new LeaderLine(start, end, {
                     dash: { },
                     size: 3,
-                    middleLabel: LeaderLine.pathLabel(label || "")
+                    middleLabel: LeaderLine.pathLabel("")
                 })).appendTo($(".sheet-grid"));
             }
         } catch(e) {
@@ -271,10 +271,14 @@
         return window.editor;
     }
 
-    window.editorMarkLine = (lineno) => {
+    window.editorClearLine = () => {
         if (window.editorMarker) {
             window.editorMarker.clear()
         }
+    }
+
+    window.editorMarkLine = (lineno) => {
+        window.editorClearLine();
         window.editorMarker = window.editor.getDoc().markText(
             { line: lineno, ch: 0},
             { line: lineno, ch: 200},

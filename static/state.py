@@ -183,7 +183,7 @@ class Console():
                         window.alert("\n".join([
                             "The Python runtime reported a programming error in PySheets.",
                             "This does not look like a problem with your scripts.",
-                            "Please reload the sheet and add '&runtime=pyodide' to the URL and try again.",
+                            "Please reload the sheet again, adding '&runtime=py' to the URL.",
                             "This should produce better error messages for PySheets.",
                             "",
                         ]))
@@ -235,8 +235,8 @@ def start_worker_with_packages(packages):
         "packages": [ 
             "pandas",
             "matplotlib",
-            "pyscript-ltk",
             "numpy",
+            "pyscript-ltk",
             "requests"
         ] + packages,
         "files": {

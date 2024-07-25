@@ -23,7 +23,7 @@ def create_menu(sheet):
     file_menu = ltk.Menu("File",
         ltk.MenuItem("➕", "New", "", lambda item: new_sheet()),
         ltk.MenuItem("📂", "Open", "Cmd+O", lambda item: go_home()),
-        ltk.MenuItem("🗑", "Delete", "", lambda item: delete_doc()),
+        ltk.MenuItem("🗑", "Delete", "", lambda item: delete_sheet()),
     )
     view_menu = ltk.Menu("View",
         ltk.MenuItem("◱", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),
@@ -40,10 +40,17 @@ def create_menu(sheet):
     ]).css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
 
 
-def delete_doc():
+def delete_sheet():
     if window.confirm("This will permanently delete the current sheet."):
-        url = f"/delete?{constants.SHEET_ID}={state.uid}"
-        ltk.delete(url, lambda data: go_home())
+        import storage
+        storage.delete(
+            state.uid,
+            lambda result: ltk.find("#main").animate({
+                "opacity": 0,
+            },
+            constants.ANIMATION_DURATION_VERY_SLOW,
+            ltk.proxy(lambda: go_home()))
+        )
 
 
 IMPORT_MESSAGE = """

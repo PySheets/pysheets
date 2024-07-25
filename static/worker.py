@@ -219,7 +219,7 @@ def run(data):
         tb = traceback.format_exc()
         try:
             lines = tb.strip().split("\n")
-            line = [line for line in lines if "<string>" in line][0]
+            line = [line for line in lines if "<unknown>" in line][0]
             lineno = int(re.sub("[^0-9]", "", line))
             error = f"At line {lineno + 1}: {lines[-1]} - {tb}"
         except Exception as e:
@@ -289,13 +289,20 @@ def handle_request(sender, topic, request):
         elif topic == constants.TOPIC_WORKER_FIND_INPUTS:
             key, script = data["key"], data["script"]
             inputs = inputs_cache.get(script, None)
-            if inputs is None:
-                inputs = api.find_inputs(script)
-            inputs_cache[script] = inputs
-            publish(sender, receiver, constants.TOPIC_WORKER_INPUTS, json.dumps({
-                "key": key,
-                "inputs": inputs,
-            }))
+            try:
+                if inputs is None:
+                    inputs = api.find_inputs(script)
+                inputs_cache[script] = inputs
+                publish(sender, receiver, constants.TOPIC_WORKER_INPUTS, json.dumps({
+                    "key": key,
+                    "inputs": inputs,
+                }))
+            except Exception as e:
+                publish(sender, receiver, constants.TOPIC_WORKER_INPUTS, json.dumps({
+                    "key": key,
+                    "error": str(e),
+                    "inputs": [],
+                }))
         elif topic == constants.TOPIC_WORKER_CODE_COMPLETE:
             text, line, ch = data
             completions = lsp.complete_python(text, line, ch, cache, results)
@@ -305,9 +312,7 @@ def handle_request(sender, topic, request):
         else:
             print("Error: Unexpected topic request", topic)
     except Exception as e:
-        import traceback
-        print("Error: Handling topic", topic)
-        traceback.print_exc()
+        pass 
 
 polyscript.xworker.sync.handler = handle_request
 
@@ -317,6 +322,3 @@ subscribe("Worker", constants.TOPIC_WORKER_FIND_INPUTS, "pyodide-worker")
 subscribe("Worker", constants.TOPIC_WORKER_CODE_COMPLETE, "pyodide-worker")
 
 publish("Worker", "Sheet", ltk.pubsub.TOPIC_WORKER_READY, repr(sys.version))
-
-import pandas
-import matplotlib.pyplot

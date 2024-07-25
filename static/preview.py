@@ -31,7 +31,7 @@ class PreviewView(ltk.Div):
             .css("height", self.model.height or "fit-content")
             .on("click", ltk.proxy(lambda event: self.click()))
             .on("mousemove", ltk.proxy(lambda event: self.move()))
-            .on("mouseleave", ltk.proxy(lambda event: selection.remove_arrows()))
+            .on("mouseleave", ltk.proxy(lambda event: selection.remove_arrows(0)))
             .on("resizestop", ltk.proxy(lambda event, ui: self.resize(event)))
             .on("dragstop", ltk.proxy(lambda event, ui: self.dragstop(event)))
             .draggable(ltk.to_js({ "containment": ".sheet", "handle": ".preview-header" }))
@@ -72,11 +72,12 @@ class PreviewView(ltk.Div):
         ltk.find(event.target).text("+" if minimize else "-")
 
     def draw_arrows(self):
-        self.sheet.get_cell(self.model.key).draw_arrows()
-        ltk.window.addArrow(ltk.find(f"#{self.model.key}"), self.element.find(".preview-key"))
+        selection.remove_arrows(0)
+        self.sheet.get_cell(self.model.key).draw_arrows([])
+        ltk.window.addArrow(ltk.find(f"#{self.model.key}"), self.element.find(".preview-key"), self.model.key)
 
     def set_html(self, html):
-        html = self.fix_html(html)
+        self.model.html = self.fix_html(html)
         toggle_size_label = "-" if self.height() > constants.PREVIEW_HEADER_HEIGHT or self.height() == 0 else "+"
         self.empty().append(
             ltk.HBox(
@@ -84,7 +85,7 @@ class PreviewView(ltk.Div):
                 ltk.Button(toggle_size_label, ltk.proxy(lambda event: self.toggle_size(event))).addClass("toggle")
             ).addClass("preview-header"),
             ltk.Div(
-                ltk.create(html)
+                ltk.create(self.model.html)
             ).addClass("preview-content")
         )
         self.make_resizable()
