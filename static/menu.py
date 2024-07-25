@@ -8,7 +8,7 @@ logger = logging.getLogger('root')
 
 
 def landing(event):
-    window.open("/")
+    window.open("https://pysheets.app")
 
 
 def feedback(event):
@@ -20,41 +20,37 @@ def discord(event):
 
 
 def create_menu(sheet):
-    return ltk.MenuBar(
-        ltk.Menu("File",
-             ltk.MenuItem("➕", "New", "", lambda item: new_sheet()),
-             ltk.MenuItem("📂", "Open", "Cmd+O", lambda item: go_go()),
-             ltk.MenuItem("📂", "Import", "", lambda item: import_sheet()),
-             ltk.MenuItem("🎁", "Share", "", lambda item: share_sheet()),
-             ltk.MenuItem("🗑", "Delete", "", lambda item: delete_doc()),
-             ltk.MenuItem("R", "Restore", "", lambda item: sheet.restore()),
-        ),
-        ltk.Menu("View",
-             ltk.MenuItem("◱", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),
-        ),
-        ltk.Menu("User",
-            ltk.MenuItem("👋", "Sign out", "", ltk.proxy(state.logout)),
-            ltk.MenuItem("💀", "Forget me", "", ltk.proxy(state.forget_me)),
-        ),
-        ltk.Menu("Help",
-            ltk.MenuItem("🅿️", "About", "", ltk.proxy(landing)),
-            ltk.MenuItem("👏", "Feedback", "", ltk.proxy(feedback)),
-            ltk.MenuItem("💬", "Discord", "", ltk.proxy(discord)),
-        )
+    file_menu = ltk.Menu("File",
+        ltk.MenuItem("➕", "New", "", lambda item: new_sheet()),
+        ltk.MenuItem("📂", "Open", "Cmd+O", lambda item: go_home()),
+        ltk.MenuItem("🗑", "Delete", "", lambda item: delete_sheet()),
     )
-DELETE_PROMPT = """
-This will permanently delete the current sheet.
-You and anyone it has been shared with will lose access.
-We cannot recover the contents.
+    view_menu = ltk.Menu("View",
+        ltk.MenuItem("◱", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),
+    )
+    help_menu = ltk.Menu("Help",
+        ltk.MenuItem("🅿️", "About", "", ltk.proxy(landing)),
+        ltk.MenuItem("👏", "Feedback", "", ltk.proxy(feedback)),
+        ltk.MenuItem("💬", "Discord", "", ltk.proxy(discord)),
+    )
+    return ltk.MenuBar([
+        file_menu, 
+        view_menu, 
+        help_menu
+    ]).css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
 
-Enter the name of the sheet to actually delete it:")
-"""
 
-
-def delete_doc():
-    if window.prompt(DELETE_PROMPT) == state.doc.name:
-        url = f"/file?{constants.DATA_KEY_UID}={state.doc.uid}"
-        ltk.delete(state.add_token(url), lambda data: go_go())
+def delete_sheet():
+    if window.confirm("This will permanently delete the current sheet."):
+        import storage
+        storage.delete(
+            state.uid,
+            lambda result: ltk.find("#main").animate({
+                "opacity": 0,
+            },
+            constants.ANIMATION_DURATION_VERY_SLOW,
+            ltk.proxy(lambda: go_home()))
+        )
 
 
 IMPORT_MESSAGE = """
@@ -77,45 +73,17 @@ def go_home():
     window.document.location = "/"
 
 
-def go_go():
-    window.document.location = "/go"
-
-
 def load_doc(uid):
-    window.document.location = f"?{constants.DATA_KEY_UID}={uid}"
-
-
-def share(uid, email):
-    logger.info("share %s %s %s", uid, "with", email)
-    def confirm(response):
-        if response[constants.DATA_KEY_STATUS] == "error":
-            logger.error(response[constants.DATA_KEY_STATUS])
-            window.alert(response[constants.DATA_KEY_STATUS])
-        logger.info(f"Sheet {state.doc.uid} was shared with {email}")
-
-    url = f"/share?{constants.DATA_KEY_UID}={uid}&{constants.DATA_KEY_EMAIL}={email}"
-    ltk.get(state.add_token(url), ltk.proxy(confirm))
-    close_share_dialog()
-
-
-def close_share_dialog():
-    ltk.find(".share-popup").dialog('close')
+    window.document.location = f"?{constants.SHEET_ID}={uid}"
 
 
 def new_sheet():
-    state.doc.name = "Untitled"
-    ltk.get(state.add_token("/file"), ltk.proxy(lambda data: load_doc(data[constants.DATA_KEY_UID])))
+    import models
+    import storage
+    uid = window.crypto.randomUUID()
+    sheet = models.Sheet(uid=window.crypto.randomUUID())
+    storage.save(sheet)
+    load_doc(uid)
 
 
-def share_sheet():
-    ltk.VBox(
-        ltk.Text("Email name to share with:").addClass("share-label"),
-        ltk.Input("").attr("id", "share-email").addClass("share-email"),
-        ltk.HBox(
-            ltk.Button("Cancel", lambda event: close_share_dialog()).addClass("cancel-button"),
-            ltk.Button("Share", lambda event: share(state.doc.uid, ltk.find("#share-email").val())).addClass("share-button"),
-        ).css("margin-left", "auto")
-    ).dialog().addClass("share-popup").parent().width(350)
-
-
-ltk.find(".logo").on("click", ltk.proxy(lambda event: go_go()))
+ltk.find(".logo").on("click", ltk.proxy(lambda event: go_home()))

@@ -26,4 +26,5 @@ def schedule(function, key, duration=None):
     except Exception as e:
         print("Mocks: ignore")
         traceback.print_exc()
+
 ltk.schedule = schedule

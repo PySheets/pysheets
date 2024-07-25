@@ -1,19 +1,100 @@
 import base64
+import functools
 import io
 import json
 import ltk
 import pyscript # type: ignore
+import re
 import time
 
+
 window = pyscript.window
+cache = functools.cache if hasattr(functools, "cache") else lambda func: func
+
+@cache
+def get_col_row_from_key(key):
+    row = 0
+    col = 0
+    for c in key:
+        if c.isdigit():
+            row = row * 10 + int(c)
+        else:
+            col = col * 26 + ord(c) - ord("A") + 1
+    return col, row
 
 
-def edit_script(script): # TODO: use ast to parse script
-    lines = script.strip().split("\n")
-    if lines[-1].startswith("import ") or lines[-1].startswith("from "):
-        lines.append("_=None")
+@cache
+def get_column_name(col):
+    parts = []
+    while col > 0:
+        col, remainder = divmod(col - 1, 26)
+        parts.insert(0, chr(remainder + ord("A")))
+    return "".join(parts)
+
+
+@cache
+def get_key_from_col_row(col, row):
+    return f"{get_column_name(col)}{row}"
+
+
+cell_reference = re.compile("^[A-Z]+[0-9]+$")
+cell_range_reference = re.compile("^[A-Z]+[0-9]+ *: *[A-Z]+[0-9]+$")
+
+
+def is_cell_reference(s):
+    return isinstance(s, str) and re.match(cell_reference, s)
+
+
+def is_cell_range_reference(s):
+    return isinstance(s, str) and re.match(cell_range_reference, s)
+
+
+def find_inputs(script):
+    import ast
+    class InputFinder(ast.NodeVisitor):
+        inputs = set()
+
+        def __init__(self, script):
+            self.visit(ast.parse(script))
+
+        def add_input(self, s):
+            if is_cell_reference(s):
+                self.inputs.add(s)
+
+        def visit_Name(self, node):
+            if isinstance(node.ctx, ast.Load):
+                self.add_input(node.id)
+            return node
+
+        def visit_Constant(self, node):
+            if is_cell_range_reference(node.value):
+                start, end = node.value.split(":")
+                start = start.strip()
+                end = end.strip()
+                start_col, start_row = get_col_row_from_key(start)
+                end_col, end_row = get_col_row_from_key(end)
+                for col in range(start_col, end_col + 1):
+                    for row in range(start_row, end_row + 1):
+                        self.add_input(get_key_from_col_row(col, row))
+            return node
+
+        def generic_visit(self, node):
+            super().generic_visit(node)
+
+    return list(InputFinder(script).inputs)
+
+
+def intercept_last_expression(script):
+    import ast
+    if not script:
+        return ""
+    tree = ast.parse(script)
+    last = tree.body[-1]
+    lines = script.split("\n")
+    if isinstance(last, (ast.Expr, ast.Assign)):
+        lines[last.lineno - 1] = f"_ = {lines[last.lineno - 1]}"
     else:
-        lines[-1] = f"_={lines[-1]}"
+        lines.append("_ = None")
     return "\n".join(lines)
 
 
@@ -21,22 +102,6 @@ def to_js(python_object):
     if python_object.__class__.__name__ == "jsobj":
         return python_object
     return window.to_js(json.dumps(python_object))
-
-def get_col_row(key):
-    column = ''
-    row = ''
-    for char in key:
-        if char.isdigit():
-            row += char
-        else:
-            column += char
-
-    # Convert column letters to a column index (1-based)
-    column_index = 0
-    for i, c in enumerate(reversed(column)):
-        column_index += (ord(c) - ord('A') + 1) * (26 ** i)
-
-    return column_index, int(row)
 
 
 def index_to_col(index):
@@ -78,9 +143,9 @@ def load_with_trampoline(url):
         return value
 
     if url and url[0] != "/":
-        url = f"/load?u={window.encodeURIComponent(url)}"
+        url = f"/load?url={window.encodeURIComponent(url)}"
 
-    return base64.b64decode(get(window.addToken(url)))
+    return base64.b64decode(get(url))
    
 
 try:
@@ -101,8 +166,8 @@ class PySheets():
         import pandas as pd
 
         start, end = selection.split(":")
-        start_col, start_row = get_col_row(start)
-        end_col, end_row = get_col_row(end)
+        start_col, start_row = get_col_row_from_key(start)
+        end_col, end_row = get_col_row_from_key(end)
 
         data = {}
         for col in range(start_col, end_col + 1):
@@ -120,17 +185,17 @@ class PySheets():
     def cell(self, key):
         return self._spreadsheet.get(key) if self._spreadsheet else window.jQuery(f"#{key}")
 
-    def set_cell(self, column, row, value):
-        cell = self.cell(self.get_key(column, row))
-        cell.set(f"={repr(value)}")
-        cell.evaluate()
+    def set_cell(self, key, value):
+        cell = self.cell(key)
+        cell.text(f"{repr(value)}")
+        cell.attr("worker-set", f"{repr(value)}")
     
     def get_key(self, column, row):
         return window.getKeyFromColumnRow(column, row)
 
     def load(self, url, handler=None):
         if handler:
-            ltk.get(window.addToken(url), lambda data: handler(data))
+            ltk.get(url, lambda data: handler(data))
         else:
             return urlopen(url)
 
@@ -138,12 +203,15 @@ class PySheets():
         import pandas as pd
         try:
             data = urlopen(url)
+        except Exception as e:
+            raise ValueError(f"Cannot load url: {e}")
+        try:
             return pd.read_excel(data, engine='openpyxl')
         except:
             try:
                 return pd.read_csv(data)
             except Exception as e:
-                return f"Cannot load {url}: {type(e)}: {e}"
+                raise ValueError(f"Unsupported formet. Can only load data in Excel or CSV format: {e}")
 
 
 def get_dict_table(result):

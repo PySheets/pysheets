@@ -40,6 +40,8 @@ class CodeCompletor():
 
     def insert(self, string):
         string = magic_completions.get(string, string)
+        if "(" in string:
+            string = string.split("(")[0] + "()"
         cursor = self.editor.getCursor()
         token = self.editor.getTokenAt(cursor)
         length = 0 if token.string == "." else len(token.string)
@@ -58,6 +60,11 @@ class CodeCompletor():
             self.editor.execCommand("goCharLeft")
 
     def pick(self, event):
+        self.insert(ltk.find(event.target).text())
+        ltk.find(".completions").remove()
+        event.preventDefault()
+
+    def pick_selected(self, event):
         self.insert(ltk.find(".completions .selected").text())
         ltk.find(".completions").remove()
         event.preventDefault()
@@ -77,7 +84,7 @@ class CodeCompletor():
         if ltk.find(".completions").length == 0:
             return
         elif key == "Enter" or key == "Tab":
-            self.pick(event)
+            self.pick_selected(event)
         elif key == "Escape":
             ltk.find(".completions").remove()
             self.editor.focus()
@@ -99,10 +106,10 @@ class CodeCompletor():
 
     def handle_code_completion(self, completions):
         self.completions = completions
-        ltk.find(".completions").remove()
         token = self.getToken()
         if not completions or token.string in [" ", ":", ";"]:
             return
+        ltk.find(".completions").remove()
         ltk.find(".CodeMirror-code").append(
             ltk.create("<div>")
                 .addClass("completions")
@@ -149,7 +156,7 @@ def fuzzy_parse(text):
 
 
 
-def complete_python(text, line, ch, cache):
+def complete_python(text, line, ch, cache, results):
     import ast
     lines = text[1:].split("\n")[:line + 1]
     lines[-1] = lines[-1][:ch + 1]
@@ -165,6 +172,7 @@ def complete_python(text, line, ch, cache):
         def __init__(self):
             self.context = {}
             self.context.update(cache)
+            self.context.update(results)
             self.token = ""
 
         def inside(self, node):
@@ -189,8 +197,22 @@ def complete_python(text, line, ch, cache):
                 except:
                     pass
 
+            def get_parameters(name):
+                import inspect
+                function = getattr(obj, name)
+                try:
+                    signature = inspect.signature(function)
+                except:
+                    return []
+                parameters = []
+                for param in signature.parameters.values():
+                    param_name = param.name
+                    param_type = param.annotation if param.annotation != inspect.Parameter.empty else None
+                    parameters.append(f"{param_name}:{param_type or 'Any'}")
+                return ", ".join(parameters)
+
             attributes = [
-                f"{name}()" if is_callable(name) else name
+                f"{name}({get_parameters(name)})" if is_callable(name) else name
                 for name in dir(obj)
             ]
             if DEBUG_COMPLETION:
@@ -269,11 +291,6 @@ def complete_python(text, line, ch, cache):
             if self.inside(node):
                 self.add_attributes(self.context.keys(), node.id)
                 self.token = ast.unparse(node)
-
-        def generic_visit(self, node):
-            if DEBUG_COMPLETION:
-                print(" - generic", ast.dump(node))
-            ast.NodeVisitor.generic_visit(self, node)
 
     if DEBUG_COMPLETION:
         print("Visit:")

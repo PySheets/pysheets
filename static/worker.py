@@ -1,10 +1,8 @@
-import builtins
 import constants
 import json
 import ltk
 import sys
 import time
-import traceback
 import requests
 
 import js # type: ignore
@@ -12,20 +10,13 @@ import polyscript # type: ignore
 import pyodide # type: ignore
 import pyscript # type: ignore
 
-try:
-    from api import edit_script, PySheets, get_dict_table, to_js
-    from lsp import complete_python
-except:
-    pass # needed for bundling
-
 window = pyscript.window
 get = window.get
-cache = {
-    "pysheets": PySheets(),
-}
-token = window.localStorage.getItem(constants.DATA_KEY_TOKEN)
-
+cache = { }
+results = { }
 OriginalSession = requests.Session
+inputs_cache = {}
+
 
 
 class PyScriptResponse():
@@ -67,7 +58,7 @@ class PyScriptSession(OriginalSession):
         json=None,
     ):
         xhr = window.XMLHttpRequest.new()
-        xhr.open(method, f"load?{constants.DATA_KEY_TOKEN}={window.getToken()}&{constants.DATA_KEY_URL}={url}", False)
+        xhr.open(method, f"load?{constants.URL}={url}", False)
         xhr.setRequestHeader("Authorization", (headers or self.headers).get("Authorization"))
         xhr.send(data)
         return PyScriptResponse(url, xhr.status, xhr.responseText)
@@ -81,13 +72,14 @@ receiver = "Application"
 subscribe = polyscript.xworker.sync.subscribe
 publish = polyscript.xworker.sync.publish
 
-orig_print = builtins.print
-def worker_print(*args, file=None, end=""):
-    publish(sender, receiver, constants.TOPIC_WORKER_PRINT, f"[Worker] {' '.join(str(arg) for arg in args)}")
-    orig_print(*args)
-builtins.print = worker_print
-
-js.document = pyscript.document  # patch for matplotlib inside workers
+def setup():
+    import builtins
+    if js.document is pyscript.document:
+        return
+    js.document = pyscript.document  # patch for matplotlib inside workers
+    def worker_print(*args, file=None, end=""):
+        publish(sender, receiver, constants.TOPIC_WORKER_PRINT, f"[Worker] {' '.join(str(arg) for arg in args)}")
+    builtins.print = worker_print
 
 completion_cache = {}
 
@@ -104,16 +96,6 @@ class Logger():
 logger = Logger()
 
 
-
-def run_in_worker(script):
-    _globals = {}
-    _globals.update(cache)
-    _globals["pyodide"] = pyodide
-    _globals["pyscript"] = pyscript
-    _globals["pysheets"] = sys.modules["pysheets"] = PySheets(None, cache)
-    _locals = _globals
-    exec(script, _globals, _locals)
-    return _locals["_"]
 
 
 def get_image_data(figure):
@@ -136,8 +118,16 @@ def get_image_data(figure):
 
 
 def create_preview(result):
+    import api
     if str(result) == "DataFrame":
         return str(result)
+    if "plotly" in str(type(result)):
+        try:
+            import plotly
+            html = plotly.io.to_html(result, default_width=500, default_height=500)
+            return html
+        except:
+            pass
     try:
         return get_image_data(result)
     except:
@@ -151,7 +141,7 @@ def create_preview(result):
     except:
         pass # print(traceback.format_exc())
     try:
-        return get_dict_table(result)
+        return api.get_dict_table(result)
     except:
         pass # print(traceback.format_exc())
     return str(result)
@@ -165,24 +155,16 @@ Here are the column names for the dataframe:
 {columns}
     """.strip()
 
-def complete(key, kind):
-    if kind != "DataFrame":
-        return
-    prompt = get_visualization_prompt(key, cache[key].columns.values)
-    if prompt in completion_cache:
-        return completion_cache[prompt]
-    generate_completion(key, prompt)
-
 
 def generate_completion(key, prompt):
-    data = { constants.DATA_KEY_PROMPT: prompt }
+    data = { constants.PROMPT: prompt }
     start = time.time()
-    url = f"complete?{constants.DATA_KEY_TOKEN}={window.getToken()}"
+    url = f"complete"
 
     def success(response, status, xhr):
         data = json.loads(window.JSON.stringify(response))
-        if data.get(constants.DATA_KEY_STATUS, "ok") == "error":
-            text = data[constants.DATA_KEY_ERROR]
+        if data.get(constants.STATUS, "ok") == "error":
+            text = data[constants.ERROR]
         else:
             text = data["text"].replace("plt.show()", "figure")
             completion_cache[prompt] = data
@@ -190,7 +172,6 @@ def generate_completion(key, prompt):
             "key": key, 
             "prompt": prompt,
             "text": text,
-            "budget": data.get("budget"),
             "duration": time.time() - start,
         }))
 
@@ -199,7 +180,6 @@ def generate_completion(key, prompt):
             "key": key, 
             "prompt": prompt,
             "text": data,
-            "budget": {},
             "duration": time.time() - start,
         }))
 
@@ -212,46 +192,67 @@ def generate_completion(key, prompt):
     )
 
 
+def run_in_worker(key, script):
+    import api
+    _globals = {}
+    _globals.update(cache)
+    _globals.update(results)
+    _globals["pyodide"] = pyodide
+    _globals["pyscript"] = pyscript
+    _globals["pysheets"] = sys.modules["pysheets"] = api.PySheets(None, cache)
+    _locals = _globals
+    script = api.intercept_last_expression(script)
+    # print("Executing script:", script)
+    exec(script, _globals, _locals)
+    return _locals["_"]
+
+
 def run(data):
     start = time.time()
     try:
         key, script, inputs = data
         cache.update(inputs)
-        result = run_in_worker(script)
+        result = run_in_worker(key, script)
     except Exception as e:
+        import traceback
         import re
         tb = traceback.format_exc()
         try:
             lines = tb.strip().split("\n")
-            line = [line for line in lines if "<string>" in line][0]
-            line_number = int(re.sub("[^0-9]", "", line))
-            error = f"At line {line_number + 1}: {lines[-1]} - {tb}"
-        except:
+            line = [line for line in lines if "<unknown>" in line][0]
+            lineno = int(re.sub("[^0-9]", "", line))
+            error = f"At line {lineno + 1}: {lines[-1]} - {tb}"
+        except Exception as e:
             error = str(e)
+            lineno = 1
         publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "value": None,
             "preview": "",
             "duration": time.time() - start,
-            "error": str(e),
+            "lineno": lineno,
+            "error": error,
             "traceback": tb,
         }))
         return
 
     try:
         kind = result.__class__.__name__
-        cache[key] = result
+        cache[key] = results[key] = result
     except Exception as e:
+        import traceback
         publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "script": script,
             "value": None,
             "preview": "",
             "duration": time.time() - start,
-            "error": str(e),
+            "error": f"Worker result error: {type(error)}:{error}",
             "traceback": traceback.format_exc()
         }))
         return
+
+    prompt = get_visualization_prompt(key, results[key].columns.values) if kind == "DataFrame" else ""
 
     try:
         preview = create_preview(result)
@@ -262,41 +263,62 @@ def run(data):
             "script": script,
             "value": preview if base_kind else kind,
             "preview": "" if base_kind else preview,
-            "error": None,
+            "prompt": prompt,
+            "error": preview if kind == "str" and preview.startswith("ERROR:") else None,
         }))
-        complete(key, kind)
-    except:
+    except Exception as e:
+        import traceback
         publish(sender, receiver, ltk.pubsub.TOPIC_WORKER_RESULT, json.dumps({
             "key": key, 
             "value": None,
             "script": script,
             "preview": "",
             "duration": time.time() - start,
-            "error": traceback.format_exc(),
+            "error": f"Worker preview error: {type(e)}:{e}",
+            "traceback": traceback.format_exc()
         }))
 
 def handle_request(sender, topic, request):
+    setup()
+    import api
+    import lsp
     try:
         data = json.loads(request)
         if topic == constants.TOPIC_WORKER_COMPLETE:
             generate_completion(data["key"], data["prompt"])
+        elif topic == constants.TOPIC_WORKER_FIND_INPUTS:
+            key, script = data["key"], data["script"]
+            inputs = inputs_cache.get(script, None)
+            try:
+                if inputs is None:
+                    inputs = api.find_inputs(script)
+                inputs_cache[script] = inputs
+                publish(sender, receiver, constants.TOPIC_WORKER_INPUTS, json.dumps({
+                    "key": key,
+                    "inputs": inputs,
+                }))
+            except Exception as e:
+                publish(sender, receiver, constants.TOPIC_WORKER_INPUTS, json.dumps({
+                    "key": key,
+                    "error": str(e),
+                    "inputs": [],
+                }))
         elif topic == constants.TOPIC_WORKER_CODE_COMPLETE:
             text, line, ch = data
-            completions = complete_python(text, line, ch, cache)
+            completions = lsp.complete_python(text, line, ch, cache, results)
             publish(sender, receiver, constants.TOPIC_WORKER_CODE_COMPLETION, json.dumps(completions))
         elif topic == ltk.pubsub.TOPIC_WORKER_RUN:
             run(data)
         else:
-            print("Error: Unexpect topic request", topic)
+            print("Error: Unexpected topic request", topic)
     except Exception as e:
-        print("Error: Handling topic", topic)
-        traceback.print_exc()
+        pass 
 
 polyscript.xworker.sync.handler = handle_request
 
 subscribe("Worker", ltk.TOPIC_WORKER_RUN, "pyodide-worker")
 subscribe("Worker", constants.TOPIC_WORKER_COMPLETE, "pyodide-worker")
-publish("Worker", "Sheet", ltk.pubsub.TOPIC_WORKER_READY, repr(sys.version))
-
-
+subscribe("Worker", constants.TOPIC_WORKER_FIND_INPUTS, "pyodide-worker")
 subscribe("Worker", constants.TOPIC_WORKER_CODE_COMPLETE, "pyodide-worker")
+
+publish("Worker", "Sheet", ltk.pubsub.TOPIC_WORKER_READY, repr(sys.version))
