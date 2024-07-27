@@ -280,10 +280,10 @@ class MultiSelection(): # pylint: disable=too-many-instance-attributes
         """
         cells = self.sheet.cells.values()
         if cells:
-            min_col = min([cell.column for cell in cells])
-            max_col = max([cell.column for cell in cells])
-            min_row = min([cell.row for cell in cells])
-            max_row = max([cell.row for cell in cells])
+            min_col = min(cell.column for cell in cells)
+            max_col = max(cell.column for cell in cells)
+            min_row = min(cell.row for cell in cells)
+            max_row = max(cell.row for cell in cells)
             self.cell1 = self.sheet.get_cell(api.get_key_from_col_row(min_col, min_row))
             self.cell2 = self.sheet.get_cell(api.get_key_from_col_row(max_col, max_row))
             self.update()

@@ -208,7 +208,7 @@ class Model(SerializableDict):
             self.notify(listener, info)
 
 
-class Sheet(Model):
+class Sheet(Model):  # pylint: disable=too-many-instance-attributes
     """
     A class representing a sheet in a spreadsheet-like application.
     
@@ -217,7 +217,7 @@ class Sheet(Model):
     It includes methods for converting and encoding the sheet's data, as well as 
     retrieving specific cells and previews.
     """
-    def __init__(self, uid="", name="Untitled Sheet",
+    def __init__(self, uid="", name="Untitled Sheet",    # pylint: disable=too-many-arguments
                  columns=None, rows=None, cells=None, previews=None,
                  selected="A1", screenshot="/screenshot.png",
                  created_timestamp=0, updated_timestamp=0,
@@ -402,7 +402,7 @@ class Preview(Model):
         width (int): The width of the preview, in pixels.
         height (int): The height of the preview, in pixels.
     """
-    def __init__(self, key, html="", left=0, top=0, width=0, height=0):
+    def __init__(self, key, html="", left=0, top=0, width=0, height=0):    # pylint: disable=too-many-arguments
         super().__init__()
         self.key = key
         self.html = html
@@ -425,8 +425,9 @@ class Cell(Model):
     """
     Represents the model for a cell in a sheet.
     """
-    def __init__(self, key="", column=0, row=0, value="", script="", s="",
-                 style=None, _class="Cell", _="Cell", k="", prompt=""): # pylint: disable=too-many-arguments, redefined-outer-name
+    def __init__(self,  # pylint: disable=too-many-arguments,redefined-outer-name
+                 key="", column=0, row=0, value="", script="", s="",
+                 style=None, _class="Cell", _="Cell", k="", prompt=""):  # pylint: disable=redefined-outer-name
         super().__init__()
         self.key = key or k
         if not row or not column:

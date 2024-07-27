@@ -23,7 +23,7 @@ class CycleError(Exception):
     """
 
 
-class CellView(ltk.Widget):
+class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
     """
     Represents a cell view in the sheet, managing the display and behavior of a single cell.
     """
@@ -338,7 +338,7 @@ class CellView(ltk.Widget):
             The created marker element.
         """
         if not cells:
-            return
+            return None
         if len(cells) == 1:
             cells[0].draw_arrows(seen)
             return cells[0]

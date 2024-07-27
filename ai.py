@@ -31,7 +31,8 @@ def load_key():
     try:
         folder = os.path.dirname(__file__)
         path = os.path.join(folder, "openai.json")
-        openai.api_key = json.loads(open(path, encoding="utf-8").read())["api_key"]
+        with open(path, encoding="utf-8").read() as fd:
+            openai.api_key = json.loads(fd)["api_key"]
     except Exception as e: # pylint: disable=broad-except
         print(e)
 
