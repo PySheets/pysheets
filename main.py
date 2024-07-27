@@ -1,27 +1,39 @@
-from flask import Flask
-from flask import jsonify
-from flask import render_template
-from flask import request
-from flask import send_file
+"""
+CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
+
+This Flask application serves as the main entry point for the PySheets application.
+It sets up the Flask app, defines error handlers, and provides various routes for handling different functionality.
+"""
 
 import base64
 import json
-import logging
-import storage
+import os
+import sys
+import threading
 import time
 import traceback
+import webbrowser
+
+
 import requests
 
-from static.constants import *
+from flask import Flask
+from flask import render_template
+from flask import request
+
+import ai
+
+from static import constants
 
 
 app = Flask(__name__)
-storage.set_logger(app.logger)
-app.logger.setLevel(logging.INFO)
 
 
 @app.after_request
 def set_response_headers(response):
+    """
+    Sets the response headers to enable cross-origin resource sharing (CORS) and other security-related headers.
+    """
     response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
     response.headers['X-Custom-Header'] = 'value'
     response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
@@ -30,23 +42,35 @@ def set_response_headers(response):
     return response
 
 
-@app.errorhandler(Exception) 
+@app.errorhandler(Exception)
 def handle_error(error):
-    app.logger.error(error)
+    """
+    Handles an exception that occurs in the Flask application.
+    
+    Args:
+        error (Exception): The exception that occurred.
+    
+    Returns:
+        A JSON response containing the error message and status.
+    """
+    app.logger.error(error) # pylint: disable=no-member
     traceback.print_exc()
-    response = { 
-        DATA_KEY_ERROR: f"{error.__class__.__name__}: {error}",
-        DATA_KEY_STATUS: "error",
+    return {
+        "error": f"{error.__class__.__name__}: {error}",
+        "status": "error",
     }
-    return response
 
 
-@app.errorhandler(404) 
-def handle_error(error):
-    app.logger.error("404: %s", request.path)
+@app.errorhandler(404)
+def handle_404(error): # pylint: disable=unused-argument
+    """
+    Handles when the requested URL was not found. 
+    """
+    app.logger.error("404: %s", request.path) # pylint: disable=no-member
     return "Nothing here"
 
 
+PATH = os.path.join(os.path.dirname(__file__), "static")
 RUNTIME_PYODIDE = "py"
 RUNTIME_MICROPYTHON = "mpy"
 FILES = """
@@ -54,9 +78,19 @@ FILES = """
     "static/menu.py" = "menu.py"
     "static/state.py" = "state.py"
     "static/pysheets.py" = "pysheets.py"
+    "static/timeline.py" = "timeline.py"
     "static/editor.py" = "editor.py"
     "static/api.py" = "api.py"
     "static/lsp.py" = "lsp.py"
+    "static/preview.py" = "preview.py"
+    "static/inventory.py" = "inventory.py"
+    "static/models.py" = "models.py"
+    "static/selection.py" = "selection.py"
+    "static/storage.py" = "storage.py"
+    "static/history.py" = "history.py"
+    "static/html_maker.py" = "html_maker.py"
+    "static/views/spreadsheet.py" = "views/spreadsheet.py"
+    "static/views/cell.py" = "views/cell.py"
 """
 FILES_LTK = """
     "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/jquery.py" = "ltk/jquery.py"
@@ -71,305 +105,191 @@ FILES_LTK = """
 
 @app.route("/")
 def root():
-    if request.args:
-        return go()
-    return render_template("landing.html")
-
-
-@app.route("/go")
-def go():
-    package_names = request.args.get(DATA_KEY_PACKAGES, "").split()
-    pyodide = request.args.get(DATA_KEY_RUNTIME, "") == "pyodide"
-    files = FILES + FILES_LTK
+    """
+    Renders the main index page of the application.
+    """
+    package_names = request.args.get(constants.PYTHON_PACKAGES, "").split()
+    pyodide = request.args.get(constants.PYTHON_RUNTIME) == "py"
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
-    interpreter = '' if pyodide else 'interpreter = "1.22.0-272"'
-    version_interpreter = 'latest' if pyodide else '1.22.0-272'
-    auto = 'experimental_create_proxy = "auto"' if pyodide else ''
-    packages = f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else ""
-    vm = "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}"
-    return render_template("index.html", **locals())
+    return render_template("index.html", **{
+        "loading": "Loading...",
+        "files": FILES + FILES_LTK,
+        "runtime": runtime,
+        "vm": "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}",
+        "packages": f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else "",
+        "package_list": request.args.get(constants.PYTHON_PACKAGES, ""),
+        "editor_width": 350,
+        "path": PATH,
+    })
 
 
-@app.route("/list")
-def list_files():
-    files = storage.list_files(request.args.get(DATA_KEY_TOKEN))
-    return jsonify({ DATA_KEY_IDS: files })
+@app.route("/ltk/ltk.css")
+def get_ltk_css():
+    """
+    Retrieves the latest contents of the LTK CSS file from the GitHub repository.
+    """
+    return ssl_get("https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.css")
 
 
-def get_file(token):
-    if not token:
-        return "{}"
-    uid = request.args.get(DATA_KEY_UID)
-    if not uid:
-        return jsonify({
-            DATA_KEY_UID: storage.new(token),
-            DATA_KEY_NAME: "Untitled Sheet",
-        })
-    else:
-        timestamp = float(request.args.get(DATA_KEY_TIMESTAMP, "0"))
-        data = storage.get_file(token, uid) or {
-            DATA_KEY_NAME: "Untitled Sheet",
-            DATA_KEY_CELLS: {},
-            DATA_KEY_UID: uid,
-            DATA_KEY_SCREENSHOT: None
-        }
-        if timestamp and timestamp == data[DATA_KEY_TIMESTAMP]:
-            return jsonify({
-                DATA_KEY_STATUS: "Unchanged",
-                DATA_KEY_UID: uid,
-            })
-        data[DATA_KEY_STATUS] = "Changed" if timestamp else "Fetched"
-        if DATA_KEY_SCREENSHOT in data:
-            del data[DATA_KEY_SCREENSHOT]
-        return jsonify(data)
+@app.route("/ltk/ltk.js")
+def get_ltk_js():
+    """
+    Retrieves the latest contents of the LTK JavaScript file from the GitHub repository.
+    """
+    return ssl_get("https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.js")
 
-
-def post_file(token):
-    data = get_form_data()
-    uid = data[DATA_KEY_UID]
-    app.logger.info("POST %s %s", token, uid)
-    storage.save(token, uid, data)
-    return jsonify({DATA_KEY_STATUS: "OK"})
-
-
-def delete_file(token):
-    uid = request.args.get(DATA_KEY_UID)
-    storage.delete(token, uid)
-    return jsonify({DATA_KEY_STATUS: "OK"})
-
-
-FILE_ACTIONS = {
-    "GET": get_file,
-    "POST": post_file,
-    "DELETE": delete_file,
-}
 
 def get_form_data():
+    """
+    Retrieves the form data from the current request.
+    
+    Returns:
+        dict: The form data from the current request.
+    """
     form = request.form.to_dict()
     try:
         json_data = list(form.keys())[0]
         data = json.loads(json_data)
-    except:
+    except Exception: # pylint: disable=broad-except
         data = form
     if isinstance(data, list):
         data = data[0]
     return data
 
-@app.route("/login", methods=["POST"])
-def login():
-    data = get_form_data()
-    token = storage.login(data[DATA_KEY_EMAIL], data[DATA_KEY_PASSWORD])
-    return {
-        DATA_KEY_TOKEN: token,
-        DATA_KEY_STATUS: "OK" if token else "error",
-    }
-
-
-@app.route("/register", methods=["POST"])
-def register():
-    data = get_form_data()
-    return { DATA_KEY_STATUS: storage.register(data[DATA_KEY_EMAIL], data[DATA_KEY_PASSWORD]) }
-
-
-@app.route("/reset", methods=["POST"])
-def reset():
-    data = get_form_data()
-    return { DATA_KEY_STATUS: storage.reset_password(data[DATA_KEY_EMAIL]) }
-
-
-@app.route("/reset_code", methods=["POST"])
-def reset_code():
-    data = get_form_data()
-    token = storage.reset_password_with_code(data[DATA_KEY_EMAIL], data[DATA_KEY_PASSWORD], data[DATA_KEY_CODE])
-    return {
-        DATA_KEY_TOKEN: token,
-        DATA_KEY_STATUS: "OK" if token else "error",
-    }
-
-
-@app.route("/confirm", methods=["POST"])
-def confirm():
-    data = get_form_data()
-    token = storage.confirm(data[DATA_KEY_EMAIL], data[DATA_KEY_PASSWORD], data[DATA_KEY_CODE])
-    return {
-        DATA_KEY_TOKEN: token,
-        DATA_KEY_STATUS: "OK" if token else "error",
-    }
-
-
-@app.route("/share", methods=["GET"])
-def share():
-    uid = request.args.get(DATA_KEY_UID)
-    email = request.args.get(DATA_KEY_EMAIL)
-    token = request.args.get(DATA_KEY_TOKEN)
-    storage.share(token, uid, email)
-    return jsonify({ DATA_KEY_STATUS: "OK" })
-
 
 @app.route("/complete", methods=["POST"])
 def complete():
+    """
+    Completes a prompt by calling the AI model's completion function.
+    
+    Args:
+        data (dict): The form data containing the prompt to complete.
+    
+    Returns:
+        The result of the AI model's completion for the given prompt.
+    """
     data = get_form_data()
-    token = request.args.get(DATA_KEY_TOKEN)
-    prompt = data[DATA_KEY_PROMPT]
-    return storage.complete(prompt, token)
-
-
-@app.route("/users", methods=["GET"])
-def users():
-    return storage.get_users(request.args.get(DATA_KEY_TOKEN))
-
-
-@app.route("/file", methods=["GET", "POST", "DELETE"])
-def file():
-    return FILE_ACTIONS[request.method](request.args.get(DATA_KEY_TOKEN))
-
-
-@app.route("/edits", methods=["GET"])
-def edits():
-    return storage.get_edits(
-        request.args.get(DATA_KEY_TOKEN),
-        request.args.get(DATA_KEY_UID),
-        request.args.get(DATA_KEY_TIMESTAMP)
-    )
-
-
-@app.route("/emails", methods=["GET"])
-def emails():
-    response = {
-        "emails": storage.get_all_emails(request.args.get(DATA_KEY_TOKEN))
-    }
-    return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
-
-
-@app.route("/history", methods=["GET"])
-def history():
-    return storage.get_history(
-        request.args.get(DATA_KEY_TOKEN),
-        request.args.get(DATA_KEY_UID),
-        request.args.get(DATA_KEY_BEFORE),
-        request.args.get(DATA_KEY_AFTER)
-    )
-
-
-@app.route("/embed", methods=["GET"])
-def embed():
-    key = request.args.get(DATA_KEY_CELL)
-    uid = request.args.get(DATA_KEY_UID)
-    file = storage.get_file_with_uid(uid)
-    if DATA_KEY_CELLS_ENCODED in file:
-        cells = json.loads(file[DATA_KEY_CELLS_ENCODED])
-    else:
-        cells = file[DATA_KEY_CELLS]
-    if key in cells:
-        cell = cells[key]
-        if cell.get(DATA_KEY_VALUE_EMBED):
-            return cell[DATA_KEY_VALUE].get(DATA_KEY_VALUE_PREVIEW, "")
-    return f'<html>[Chart is missing]</html>'
-
-
-@app.route("/forget", methods=["GET"])
-def forget():
-    return { 
-        "status": "OK",
-        "removed": storage.forget(request.args[DATA_KEY_TOKEN]),
-    }
-
-
-@app.route("/edit", methods=["POST"])
-def edit():
-    data = get_form_data()
-    email = storage.get_email(request.args.get(DATA_KEY_TOKEN))
-    return storage.add_edit(
-        email,
-        data[DATA_KEY_UID],
-        data[DATA_KEY_EDIT],
-    )
-
-
-@app.route("/logs", methods=["GET"])
-def logs():
-    response = storage.get_logs(
-        request.args.get(DATA_KEY_TOKEN),
-        request.args.get(DATA_KEY_UID),
-        request.args.get(DATA_KEY_TIMESTAMP),
-    )
-    print("Logs", request.args.get(DATA_KEY_UID), "=>", response)
-    return base64.b64encode(json.dumps(response).encode('utf-8')) # send base64 encoded bytes
-
-
-@app.route("/log", methods=["POST"])
-def log():
-    data = get_form_data()
-    doc_uid = data[DATA_KEY_UID]
-    token = request.args.get(DATA_KEY_TOKEN)
-    for time, message in data[DATA_KEY_ENTRIES]:
-        storage.log(token, doc_uid, time, message)
-    return f'{{ "{DATA_KEY_RESULT}":  "OK" }}'
+    prompt = data[constants.PROMPT]
+    return ai.complete(prompt)
 
 
 def ssl_get(url, headers=None):
+    """
+    Retrieves the contents of the specified URL using an SSL connection.
+    
+    Args:
+        url (str): The URL to retrieve.
+        headers (dict, optional): Any additional headers to include in the request.
+    
+    Returns:
+        bytes: The content of the URL, or an error message if the request fails.
+    """
     try:
-        return requests.get(url, verify=True, headers=headers or {}).content
-    except Exception as e:
-        app.logger.error("ssl_get: error %s: %s", url, e)
-        pass
+        return requests.get(url, verify=True, headers=headers or {}, timeout=2000).content
+    except Exception as e: # pylint: disable=broad-except
+        app.logger.error("ssl_get: error %s: %s", url, e)  # pylint: disable=no-member
     try:
-        return requests.get(url, verify=False, headers=headers or {}).content
-    except Exception as e:
-        app.logger.error("ssl_get: error %s: %s", url, e)
+        return requests.get(url, verify=False, headers=headers or {}, timeout=2000).content
+    except Exception as e: # pylint: disable=broad-except
+        app.logger.error("ssl_get: error %s: %s", url, e)  # pylint: disable=no-member
         return f"error: {e}"
 
 
 def ssl_post(url, data, headers=None):
+    """
+    Sends an HTTP POST request to the specified URL using an SSL connection.
+    
+    Args:
+        url (str): The URL to send the POST request to.
+        data (dict): The data to include in the POST request body.
+        headers (dict, optional): Any additional headers to include in the request.
+    
+    Returns:
+        bytes: The content of the URL response, or an error message if the request fails.
+    """
     try:
-        return requests.post(url, data, verify=True, headers=headers or {}).content
-    except:
+        return requests.post(url, data, verify=True, headers=headers or {}, timeout=2000).content
+    except Exception: # pylint: disable=broad-except
         pass
     try:
-        return requests.post(url, data, verify=False, headers=headers or {}).content
-    except Exception as e:
+        return requests.post(url, data, verify=False, headers=headers or {}, timeout=2000).content
+    except Exception as e: # pylint: disable=broad-except
         return f"error: {e}"
+
 
 load_cache = {}
 
+
 @app.route("/load", methods=["GET", "POST"])
 def load():
-    app.logger.info("Load, url=%s token=%s", request.args.get(DATA_KEY_URL), request.args.get(DATA_KEY_TOKEN))
-    if storage.get_email(request.args.get(DATA_KEY_TOKEN)):
-        url = request.args.get(DATA_KEY_URL)
-        if url in load_cache:
-            when, response = load_cache[url]
-            if time.time() - when < 60:
-                app.logger.info("/load: network cache hit: %s", url)
-                return response
-        headers = {
-            "Authorization": request.headers.get("Authorization")
-        }
-        if request.method == "GET":
-            response = ssl_get(url, headers=headers)
-        elif request.method == "POST":
-            data = get_form_data()
-            response = ssl_post(url, data, headers=headers)
-        else:
-            raise ValueError(f"Bad method {request.method}")
-        try:
-            response = base64.b64encode(response) # send base64 encoded bytes
-        except:
-            pass
-        load_cache[url] = time.time(), response
-        app.logger.info("/load: network cache miss: %s, %s bytes", url, len(response))
-        return response # send regular string
-
-    raise ValueError("Not logged in")
+    """
+    Retrieves the contents of a URL using an SSL connection, caching the response for up to 60 seconds.
+    
+    Args:
+        url (str): The URL to retrieve.
+    
+    Returns:
+        bytes: The content of the URL, or an error message if the request fails.
+    """
+    app.logger.info("Load, url=%s", request.args.get(constants.URL)) # pylint: disable=no-member
+    url = request.args.get(constants.URL)
+    if url in load_cache:
+        when, response = load_cache[url]
+        if time.time() - when < 60:
+            print("/load: network cache hit: %s", url)
+            return response
+    headers = {
+        "Authorization": request.headers.get("Authorization")
+    }
+    if request.method == "GET":
+        response = ssl_get(url, headers=headers)
+    elif request.method == "POST":
+        data = get_form_data()
+        response = ssl_post(url, data, headers=headers)
+    else:
+        raise ValueError(f"Bad method {request.method}")
+    print(response)
+    try:
+        response = base64.b64encode(response) # send base64 encoded bytes
+    except Exception: # pylint: disable=broad-except
+        pass
+    load_cache[url] = time.time(), response
+    print("/load: network cache miss: %s, %s bytes", url, len(response))
+    return response # send regular string
 
 
 @app.route("/<path:path>")
 def send(path):
-    import os
+    """
+    Sends a file from the "static" directory.
+    
+    Args:
+        path (str): The path to the static file to send.
+    
+    Raises:
+        ValueError: If the requested file does not exist in the "static" directory.
+    
+    Returns:
+        The contents of the requested static file.
+    """
     if not os.path.exists("static/"+path):
         raise ValueError(f"Cannot return requested file: /static/{path} is missing")
     return app.send_static_file(path)
 
 
+def open_browser():
+    """
+    Opens the default web browser to the local server URL.
+    
+    This function is called after a short delay to automatically open the application
+    in the user's default web browser when the server starts up. This provides a
+    convenient way for the developer to access the running application without
+    having to manually open a browser window.
+    """
+    webbrowser.open('http://127.0.0.1:8081')
+
+
 if __name__ == '__main__':
+    if "--nolaunch" not in sys.argv:
+        threading.Timer(1.5, open_browser).start()
     app.run(host='127.0.0.1', port=8081, debug=True)

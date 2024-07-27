@@ -1,189 +1,83 @@
-import builtins
-import ltk
-from pyscript import window # type: ignore
-from polyscript import XWorker # type: ignore
-import constants
+"""
+CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
+
+This module contains the global state and utility functions for the PySheets application.
+"""
+
 import sys
 
-pyodide = "Clang" in sys.version
-micropython = "Clang" not in sys.version
-local_storage = window.localStorage
-worker_version = constants.WORKER_LOADING
-worker_dots = ""
+import builtins
+import ltk
+import constants
 
-class Document():
-    uid = ltk.get_url_parameter(constants.DATA_KEY_UID)
-    name = ""
-    timestamp = 0
-    edits = {}
-    edit_count = 0
-    dirty = False
-    last_edit = 0
-    edit_count = 0
-
-    def __init__(self):
-        self.empty_edits()
-
-    def empty_edits(self):
-        self.edits = {
-            constants.DATA_KEY_CELLS: {},
-            constants.DATA_KEY_COLUMNS: {},
-            constants.DATA_KEY_ROWS: {},
-            constants.DATA_KEY_PREVIEWS: {},
-        }
+from pyscript import window # type: ignore  pylint: disable=import-error
+from polyscript import XWorker # type: ignore   pylint: disable=import-error
 
 
-class User():
-    def __init__(self):
-        self.email = local_storage.getItem(constants.DATA_KEY_EMAIL) or ""
-        self.token = local_storage.getItem(constants.DATA_KEY_TOKEN) or ""
-        self.photo = ""
-        self.name = ""
-
-    def login(self, email, token, name="", photo=""):
-        self.email = email
-        self.token = token
-        self.name = name
-        self.photo = photo
-
-    def clear(self):
-        self.email = ""
-        self.photo = ""
-        self.name = ""
-        self.token = ""
-
-    def __repr__(self):
-        return f"User[{self.email},{self.name},{self.photo},{self.token}]"
-
-
-doc = Document()
-user = User()
-minimized = __name__ != "state"
-mode = constants.MODE_PRODUCTION if minimized else constants.MODE_DEVELOPMENT
-sync_edits = True
-
-
-def login(email, token):
-    local_storage.setItem(constants.DATA_KEY_EMAIL, email)
-    local_storage.setItem(constants.DATA_KEY_TOKEN, token)
-    user.login(email, token)
-
-            
-def create_user_image(email, timestamp):
-    if not email or ltk.find(f'.person[{constants.DATA_KEY_EMAIL}="{email}"]').length != 0:
-        return
-    first_letter = email[0].upper()
-    color = constants.IMAGE_COLORS[ord(first_letter) % len(constants.IMAGE_COLORS)]
-    ltk.find(".user-image-container").prepend(
-        (ltk.Text(first_letter)
-            .attr(constants.DATA_KEY_EMAIL, email)
-            .attr(constants.DATA_KEY_TIMESTAMP, timestamp)
-            .attr("title", f"{email} - {timestamp}")
-            .css("background", color)
-            .addClass("person"))
-    )
-
-
-def logout(event=None):
-    local_storage.removeItem(constants.DATA_KEY_EMAIL)
-    local_storage.removeItem(constants.DATA_KEY_TOKEN)
-    user.clear()
-    window.location = "/"
+PYODIDE = "Clang" in sys.version
+WORKER_VERSION = constants.WORKER_LOADING
+WORKER_DOTS = ""
+UID = ltk.get_url_parameter(constants.SHEET_ID)
+SHEET = None
 
 
 def set_title(title):
+    """
+    Sets the title of the PySheets application window.
+    
+    Args:
+        title (str): The title to set for the application window.
+    """
     show_message(title)
     window.document.title = f"{title} {'- ' if title else ''}PySheets"
-    email = local_storage.getItem(constants.DATA_KEY_EMAIL)
-    ltk.find(".user-image-container").prepend(
-        create_user_image(email, 0)
-    )
 
 
 def show_message(message):
-    ltk.find("#title").val(message)
+    """
+    Shows a message in the title of the PySheets application window with a fade-in animation.
+    
+    Args:
+        message (str): The title to set for the application window.
+    """
+    ltk.find("#title").val(message).css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), 2000)
 
 
 def clear():
-    global doc
+    """
+    Clears the state of the PySheets application.
+    """
     set_title("")
-    ltk.find("#main").empty()
     ltk.find(".dataframe-preview").remove()
     ltk.find(".arrow").removeClass("arrow")
     ltk.find(".leader-line").remove()
     ltk.find(".inputs-marker").remove()
-    doc = Document()
 
 
 def mobile():
+    """
+    Determines whether the current device is a mobile device based on the width of the body element.
+    
+    Returns:
+        bool: True if the body element width is less than 800 pixels, False otherwise.
+    """
     return ltk.find("body").width() < 800
 
 
-def forget_result(result):
-    if "removed" in result:
-        logout()
-    window.location = "/"
-
-
-def really_forget_me():
-    window.localStorage.clear()
-    console.write("main", "User activated really_forget_me")
-    ltk.get(add_token(f"/forget"), ltk.proxy(forget_result))
-
-    
-def forget_me(event):
-    button = ltk.Button("Continue", lambda event: None) \
-        .css("padding", 10) \
-        .css("color", "white") \
-        .css("background", "gray") \
-        .attr("disabled", True)
-    dialog = ltk.VBox(
-        ltk.Heading1("⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️")
-            .css("color", "red"),
-        ltk.Text(f"This action results in permanent changes for {user.email}:"),
-        ltk.UnorderedList(
-            ltk.ListItem(f"All sheets owned by {user.email} be deleted and can never be recovered, not even by PySheets admins."),
-            ltk.ListItem(f"Login details for {user.email} will be removed from PySheet's storage. You will have to register again."),
-        ),
-        ltk.Text(f"Some logging information related to {user.email} will be kept for PySheet's continued operation. However, all sheet data will be removed."),
-        ltk.Break(),
-        ltk.Label("I understand this is a permanent operation.",
-            ltk.Checkbox(False)
-                .on(
-                    "change", 
-                    ltk.proxy(lambda *args: button
-                        .attr("disabled", button.attr("disabled") != "disabled")
-                        .css("background", "grey" if button.attr("disabled") == "disabled" else "red")
-                    )
-                )
-        ).css("font-size", 18),
-        ltk.Break(),
-        ltk.HBox(
-            ltk.Button("Cancel", lambda event: dialog.remove())
-                .css("padding", 10)
-                .css("color", "white")
-                .css("background", "green")
-                .css("margin-right", "30px"),
-            button
-                .on("click", ltk.proxy(lambda event: (dialog.remove(), really_forget_me())))
-        )
-    ).dialog().addClass("permanent-forget")
-    dialog.parent().css("width", 400)
-
-
-def add_token(url):
-    sep = "&" if "?" in url else "?"
-    return f"{url}{sep}{constants.DATA_KEY_TOKEN}={user.token}"
-
-
 class ConsoleLogger(ltk.Logger):
+    """
+    Logs messages to the application console.
+    """
     def _add(self, level, *args, **argv):
         console.print(args)
 
 
 class Console():
+    """
+    The `Console` class is responsible for logging messages to the application console.
+    It overrides the default console logging functions and provides methods for writing,
+    formatting, and rendering console messages.
+    """
     messages = {}
-    log_queue = []
     ignore_log = [ "[Debug]", "[Worker] Starting PyOdide" ]
 
     def __init__(self):
@@ -193,80 +87,132 @@ class Console():
         window.console.log = self.console_log
         window.console.warn = self.console_log
         window.console.error = self.console_log
-        if pyodide:
-            import warnings
+        if PYODIDE:
+            import warnings # pylint: disable=import-outside-toplevel
             warnings.warn = self.console_log
+        builtins.orig_print = builtins.print
         builtins.print = self.print
         self.setup_py_error()
-    
+
     def setup(self):
+        """
+        Initializes the state
+        """
         ltk.find(".console-filter") \
             .on("keyup", ltk.proxy(lambda event: self.render()))
         self.render()
-    
-    def print(self, *args, **vargs):
+
+    def print(self, *args, **vargs): # pylint: disable=unused-argument
+        """
+        Writes a formatted message to the console.
+        """
         self.write(f"{ltk.get_time()}", f"[print] {self.format(*args)}")
-    
+
     def format(self, *args):
-        return " ".join(str(arg).replace("<", "&lt;") for arg in args)
+        """
+        Formats the provided arguments as a string by joining them together with spaces,
+        and escaping any less-than characters (`<`) by replacing them with the HTML entity `<`.
         
-    def save(self, message, action=None):
-        for ignore in self.ignore_log:
-            if message.startswith(ignore):
-                return
-        self.log_queue.append((round(ltk.get_time(), 3), message))
-        ltk.schedule(self.flush_log_queue, "flush log queue", 3)
-    
-    def flush_log_queue(self):
-        if self.log_queue:
-            ltk.post(add_token("/log"), { 
-                constants.DATA_KEY_UID: doc.uid,
-                constants.DATA_KEY_ENTRIES: self.log_queue,
-            }, lambda response: None)
-            self.log_queue = []
+        Args:
+            *args: The arguments to format as a string.
+        
+        Returns:
+            A string representation of the provided arguments, with less-than characters escaped.
+        """
+        return " ".join(str(arg).replace("<", "&lt;") for arg in args)
 
     def clear(self, key=None):
+        """
+        Clears the console messages, either for a specific key or for all messages.
+        
+        Args:
+            key (str, optional): The key of the message to clear. If not provided, all messages will be cleared.
+        """
         if key is None:
             self.messages.clear()
+            self.render()
         elif key in self.messages:
             del self.messages[key]
-        self.render()
+            self.render()
+
+    def contains(self, key):
+        """
+        Checks if the state object contains a message with the given key.
+        
+        Args:
+            key (str): The key of the message to check for.
+        
+        Returns:
+            bool: True if a message with the given key exists, False otherwise.
+        """
+        return key in self.messages
 
     def write(self, key, *args, action=None):
-        try:
-            message = " ".join(str(arg) for arg in args)
-        except Exception as e:
-            message = f"Error writing {key}: {e}"
+        """
+        Writes a message to the console with the current timestamp.
+        
+        Args:
+            key (str): A unique identifier for the message.
+            *args: The message to be written to the console.
+            action (Optional[Any]): An optional action to be associated with the message.
+        """
+        message = " ".join(str(arg) for arg in args)
         if message.startswith("[Console] [Network]"):
             return
         now = window.Date.new()
-        try:
-            ts = f"{now.getHours()}:{now.getMinutes():02d}:{now.getSeconds():02d}.{now.getMilliseconds():03d}"
-        except:
-            ts = str(now)
+        ts = f"{now.getHours()}:{now.getMinutes():02d}:{now.getSeconds():02d}.{now.getMilliseconds():03d}"
         self.messages[key] = ts, f"{ts} {message}", action
         if "RuntimeError: pystack exhausted" in message:
-            self.messages["critical"] = ts, f"{ts:4.3f}s  [Critical] MicroPython Error. Enable 'PyOdide' and reload the page."
+            self.messages["critical"] = ts, f"{ts}s  [Critical] MicroPython Error. Try running with 'PyOdide'."
         self.render_message(key, *self.messages[key])
-        self.save(message, action)
 
     def render(self):
+        """
+        Schedules the rendering of the console messages.
+        """
+        ltk.schedule(self.render_now, "render later", 0.1)
+
+    def render_now(self):
+        """
+        Renders the console messages.
+        """
         ltk.find(".console .ltk-tr").remove()
         for key, (when, message, action) in sorted(self.messages.items(), key=lambda pair: pair[1][0]):
             self.render_message(key, when, message, action)
-    
+
     def get_filter(self):
+        """
+        Returns the current value of the console filter input element, or an empty string if the input is empty.
+        
+        Returns:
+            str: The current value of the console filter input, or an empty string.
+        """
         return str(ltk.find(".console-filter").val() or "")
-    
+
     def remove(self, key):
+        """
+        Removes the console message with the given key from the console table.
+        
+        Args:
+            key (str): The unique identifier of the console message to remove.
+        """
         ltk.find(f"#console-{key}").remove()
-    
-    def render_message(self, key, when, message, action=None):
+
+    def render_message(self, key, when, message, action=None): # pylint: disable=unused-argument
+        """
+        Renders a console message with the given key, timestamp, and message text.
+        The message is filtered based on the current value of the console filter 
+        nput element, and the message is removed from the console table if it matches the filter.
+        
+        Args:
+            key (str): A unique identifier for the console message.
+            when (str): The timestamp of the console message.
+            message (str): The text of the console message.
+            action (Optional[Any]): An optional action to be associated with the console message.
+        """
         action = ltk.Span("") if action is None else action
-        if "Discord" in message:
-            window.console.orig_log("render", action)
-        filter = self.get_filter()
-        if filter and not filter in message:
+        filter_text = self.get_filter()
+        if filter_text and not filter_text in message:
             return
         self.remove(key)
         parts = message.split()
@@ -285,30 +231,47 @@ class Console():
             .attr("id", f"console-{key}").addClass(clazz)
         )
 
-    def console_log(self, *args, category=None, stacklevel=0, source=None):
+    def console_log(self, *args, category=None, stacklevel=0, source=None):  # pylint: disable=unused-argument
+        """
+        Logs a console message with the given arguments.
+        """
         message = " ".join(str(arg) for arg in args)
+        if message.startswith("js_callable_proxy"):
+            return
         if not message.startswith("💀🔒 - Possible deadlock"):
             key = "Network" if message.startswith("[Network]") else f"{ltk.get_time()}"
             self.write(key, f"[Console] {message}")
-        window.console.orig_log(message)
 
-    def runtime_error(self, text):
+    def contains_runtime_error(self, text):
+        """
+        Checks if the given text indicates a runtime error.
+        
+        Args:
+            text (str): The text to check for runtime errors.
+        
+        Returns:
+            bool: True if the text indicates a runtime error, False otherwise.
+        """
         if "RuntimeError: pystack exhausted" in text:
             return True
         if "Uncaught" in text and not "<string>" in text:
             return True
+        return False
 
     def setup_py_error(self):
+        """
+        Checks for and handles Python runtime errors in the PySheets application.
+        """
         def find_errors():
             py_error = ltk.find(".py-error")
             try:
                 if py_error.length > 0:
                     text = py_error.text()
-                    if self.runtime_error(text):
+                    if self.contains_runtime_error(text):
                         window.alert("\n".join([
                             "The Python runtime reported a programming error in PySheets.",
                             "This does not look like a problem with your scripts.",
-                            "Please reload the sheet by selecting 'PyOdide' and trying again.",
+                            "Please reload the sheet again, adding '&runtime=py' to the URL.",
                             "This should produce better error messages for PySheets.",
                             "",
                         ]))
@@ -316,43 +279,82 @@ class Console():
                         self.write("py-error", f"[Error] {text}")
             finally:
                 py_error.remove()
-        ltk.repeat(find_errors, 1)
+        ltk.repeat(find_errors, 5)
+
 
 console = Console()
-print = console.print
+print = console.print # pylint: disable=redefined-builtin
+
 
 def vm_type(sys_version):
+    """
+    Determines the type of VM to use based on the Python version.
+    
+    Args:
+        sys_version (str): The version string of the Python runtime.
+    
+    Returns:
+        str: The type of VM to use, either "PyOdide" or "MicroPython".
+    """
     return "PyOdide" if "Clang" in sys_version else "MicroPython"
 
 
 def show_worker_status():
-    global worker_dots
-    if worker_version == constants.WORKER_LOADING:
-        worker_dots += "."
-        if len(worker_dots) == 6:
-            worker_dots = "." 
-        console.write("worker-status", f"[Worker] Starting PyOdide {constants.ICON_HOUR_GLASS} {worker_dots}")
-        ltk.schedule(show_worker_status, "worker-status", 1)
+    """
+    Displays the status of the PyOdide worker, including the time it has been running and a loading indicator.
+    """
+    global WORKER_DOTS # pylint: disable=global-statement
+    if WORKER_VERSION == constants.WORKER_LOADING:
+        WORKER_DOTS += "."
+        if len(WORKER_DOTS) == 6:
+            WORKER_DOTS = "."
+        console.write(
+            "worker-status",
+            f"[Worker] Starting PyOdide {constants.ICON_HOUR_GLASS} {round(ltk.get_time())}s {WORKER_DOTS}"
+        )
+        ltk.schedule(show_worker_status, "worker-status", 0.95)
     else:
-        console.write("worker-status", f"[Worker] Worker is running PyOdide; Python v{worker_version} ✅")
+        console.write(
+            "worker-status", 
+            f"[Worker] Running PyOdide; Python v{WORKER_VERSION}; Worker startup took {ltk.get_time():.3f}s."
+        )
 
 
 def start_worker():
-    if not doc.uid:
+    """
+    Starts the PyOdide worker with the specified packages when we are editing a sheet.
+    
+    Args:
+        None
+    
+    Returns:
+        None
+    """
+    if not UID:
         return
     show_worker_status()
-    url_packages = ltk.get_url_parameter(constants.DATA_KEY_PACKAGES)
+    url_packages = ltk.get_url_parameter(constants.PYTHON_PACKAGES)
     packages = url_packages.split(" ") if url_packages else []
     start_worker_with_packages(packages)
 
 
 def start_worker_with_packages(packages):
+    """
+    Starts the PyOdide worker with the specified packages when editing a sheet.
+    
+    Args:
+        packages (List[str]): A list of additional packages to include in the PyOdide worker.
+    
+    Returns:
+        XWorker: The started PyOdide worker.
+    """
     config = {
         "packages": [ 
             "pandas",
             "matplotlib",
-            "pyscript-ltk",
             "numpy",
+            "openpyxl",
+            "pyscript-ltk",
             "requests"
         ] + packages,
         "files": {
@@ -361,37 +363,64 @@ def start_worker_with_packages(packages):
             "static/lsp.py": "./lsp.py",
         }
     }
-    worker = XWorker(f"./worker{window.version_app}.py", config=ltk.to_js(config), type="pyodide")
+    worker = XWorker("./worker.py", config=ltk.to_js(config), type="pyodide")
     ltk.register_worker("pyodide-worker", worker)
     ltk.schedule(lambda: check_worker(packages), "check-worker", 10)
     return worker
 
 
 def check_worker(packages):
-    if worker_version == constants.WORKER_LOADING:
-        def fix_packages(event):
+    """
+    Checks the status of the PyOdide worker and displays a message if the worker
+    takes longer than expected to start.
+    """
+    if WORKER_VERSION == constants.WORKER_LOADING:
+        def fix_packages(event): # pylint: disable=unused-argument
             protocol = window.document.location.protocol
             host = window.document.location.host
-            window.location = f"{protocol}//{host}/?U=${doc.uid}"
+            window.location = f"{protocol}//{host}/?U=${UID}"
+
         packages_note = "Note that only full-Python wheels are supported by PyScript." if packages else ""
+
         console.write(
             "worker-failed",
             f"[Error] It takes longer for the worker to start than expected. {packages_note}",
-            action=ltk.Button(f"⚠️ Fix", fix_packages).addClass("small-button completion-button")
+            action=ltk.Button("⚠️ Fix", fix_packages).addClass("small-button completion-button")
         )
 
 
 def worker_ready(data):
-    global worker_version
-    worker_version = data[1:].split()[0]
+    """
+    Handles the event when the PyOdide worker is ready.
+    
+    Args:
+        data (str): The data associated with the worker ready event.
+    
+    This function is called when the PyOdide worker is ready to be used. It updates the global
+    `WORKER_VERSION` variable with the version of the worker, and removes the
+    "worker-failed" message from the console if it was previously displayed.
+    """
+    global WORKER_VERSION   # pylint: disable=global-statement
+    WORKER_VERSION = data[1:].split()[0]
     console.remove("worker-failed")
 
 
 ltk.subscribe(constants.PUBSUB_STATE_ID, ltk.pubsub.TOPIC_WORKER_READY, worker_ready)
 
 def check_lastpass():
+    """
+    Checks if the LastPass browser extension is detected on the page, and if so, writes
+    a warning message to the console.
+    """
     if ltk.find("div[data-lastpass-root]").length:
-        console.write("lastpass", f"[Error] Lastpass was detected. It slows down PySheets. Please disable it for this page.")
+        console.write(
+            "lastpass", 
+            "[Error] Lastpass was detected. It slows down PySheets. Please disable it for this page."
+        )
 
 ltk.window.addEventListener("popstate", lambda event: print("popstate"))
-check_lastpass()
+
+try:
+    check_lastpass()
+except TypeError: # handle unit test mock error
+    pass
