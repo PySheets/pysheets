@@ -8,9 +8,9 @@ and undoing the most recent edit.
 
 import ltk
 import models
-import storage
 import state
 
+import storage
 
 history = []
 

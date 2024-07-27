@@ -9,10 +9,11 @@ import sys
 import ltk
 import constants
 import inventory
-import storage
 import state
 
 from views.spreadsheet import SpreadsheetView
+
+import storage
 
 
 

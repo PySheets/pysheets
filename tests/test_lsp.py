@@ -8,9 +8,6 @@ import sys
 import unittest
 import unittest.mock
 
-import pandas as pd
-import numpy as np
-
 sys.path.append("..")
 
 from tests import mocks # pylint: disable=wrong-import-position,unused-import
@@ -170,17 +167,3 @@ class TestCompletePython(unittest.TestCase):
         completions = lsp.complete_python(text, line, pos, {}, {})
         self.assertIn('["dogs"]', completions)
         self.assertIn('["cats"]', completions)
-
-    def test_dataframe(self):
-        """
-        Tests completion of the `align()` method on a pandas DataFrame object.
-        """
-        worker.cache["A1"] = pd.DataFrame(
-            np.array(([1, 2, 3], [4, 5, 6])),
-            index=['mouse', 'rabbit'],
-            columns=['one', 'two', 'three']
-        )
-        text, line, pos = self.set_text("=\nA1.")
-        completions = lsp.complete_python(text, line, pos, worker.cache, {})
-        align = "align(other:NDFrameT, join:AlignJoin, axis:Axis | None, level:Level | None, copy:bool_t | None, fill_value:Hashable | None, method:FillnaOptions | None | lib.NoDefault, limit:int | None | lib.NoDefault, fill_axis:Axis | lib.NoDefault, broadcast_axis:Axis | None | lib.NoDefault)" # pylint: disable=line-too-long
-        self.assertIn(align, completions)

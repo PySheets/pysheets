@@ -4,5 +4,3 @@ requests==2.28.2
 certifi
 pyscript-ltk
 openai==0.28
-matplotlib==3.5.1
-pandas==2.2.2
