@@ -4,3 +4,4 @@ requests==2.28.2
 pyscript-ltk
 openai==0.28
 pandas
+pylint

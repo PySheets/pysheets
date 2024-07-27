@@ -1,54 +1,93 @@
+"""
+CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
+
+Tests the `intercept_last_expression` function from the `static.api` module.
+"""
+
+
 import sys
 import unittest
+import unittest.mock
 
-import sys
 sys.path.append("..")
 
-from static.api import intercept_last_expression
+from tests import mocks # pylint: disable=wrong-import-position,unused-import
+from static import api # pylint: disable=wrong-import-position
 
 
 class TestEditScript(unittest.TestCase):
+    """
+    Tests the `intercept_last_expression` function from the `static.api` module.
+    """
+
     def test_empty(self):
-        input = ""
+        """
+        Tests an empty script.
+        """
+        script = ""
         expected = ""
-        self.assertEquals(intercept_last_expression(input), expected)
+        self.assertEqual(api.intercept_last_expression(script), expected)
 
     def test_function(self):
-        input = "def foo():\n  return 4\n\nfoo()"
+        """
+        Tests a function call.
+        """
+        script = "def foo():\n  return 4\n\nfoo()"
         expected = "def foo():\n  return 4\n\n_ = foo()"
-        self.assertEquals(intercept_last_expression(input), expected)
+        self.assertEqual(api.intercept_last_expression(script), expected)
 
     def test_multiline_expression(self):
-        input = "x=4\n'a' + '''b\nc'''"
+        """
+        Tests multiple expressions.
+        """
+        script = "x=4\n'a' + '''b\nc'''"
         expected = "x=4\n_ = 'a' + '''b\nc'''"
-        self.assertEquals(intercept_last_expression(input), expected)
+        self.assertEqual(api.intercept_last_expression(script), expected)
 
     def test_call(self):
-        input = "C11.plot()"
+        """
+        Tests a call on a cell reference.
+        """
+        script = "C11.plot()"
         expected = "_ = C11.plot()"
-        self.assertEquals(intercept_last_expression(input), expected)
+        self.assertEqual(api.intercept_last_expression(script), expected)
 
     def test_expression(self):
-        input = "foo()"
+        """
+        Tests a simple expression.
+        """
+        script = "foo()"
         expected = "_ = foo()"
-        self.assertEquals(intercept_last_expression(input), expected)
+        self.assertEqual(api.intercept_last_expression(script), expected)
 
     def test_assignment(self):
-        input = "x = 1 + 2"
+        """
+        Tests an assignment statement.
+        """
+        script = "x = 1 + 2"
         expected = "_ = x = 1 + 2"
-        self.assertEquals(intercept_last_expression(input), expected)
+        self.assertEqual(api.intercept_last_expression(script), expected)
 
     def test_loop(self):
-        input = "while x:\n  pass"
-        expected = input + "\n_ = None"
-        self.assertEquals(intercept_last_expression(input), expected)
+        """
+        Tests a while loop.
+        """
+        script = "while x:\n  pass"
+        expected = script + "\n_ = None"
+        self.assertEqual(api.intercept_last_expression(script), expected)
 
     def test_import(self):
-        input = "import sys"
-        expected = input + "\n_ = None"
-        self.assertEquals(intercept_last_expression(input), expected)
+        """
+        Tests an import statement.
+        """
+        script = "import sys"
+        expected = script + "\n_ = None"
+        self.assertEqual(api.intercept_last_expression(script), expected)
 
     def test_intercept_last_expression_with_invalid_syntax(self):
+        """
+        Tests a Syntax Error.
+        """
         script = "x = 1 +)"
         with self.assertRaises(SyntaxError):
-            intercept_last_expression(script)
+            api.intercept_last_expression(script)

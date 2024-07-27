@@ -1,3 +1,9 @@
+<!--
+ Copyright (c) 2024 laffra - All Rights Reserved. 
+ 
+ This file is part of the PySheets projects and contains the HTML for rendering the applicaiton UI.
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -21,7 +27,7 @@
     <script defer src="html2canvas.min.js"></script>
     <script src="pysheets.js" type="module"></script>
     <script>
-        window.version_pyscript = '2024.5.2';
+        window.version_pyscript = '2024.7.1';
         window.version_interpreter = '{{version_interpreter}}';
         window.runtime = '{{runtime}}';
         window.editor_width = parseFloat('{{editor_width}}');
@@ -35,9 +41,6 @@
         {{auto|safe}}
         {{packages|safe}}
         [files]
-        ### "static/main_min_0.py" = "main_min_0.py"
-        ### "static/main_min_1.py" = "main_min_1.py"
-        ### "static/main_min_2.py" = "main_min_2.py"
         {{files|safe}}
     </{{runtime}}-config>
     <script type="{{runtime}}">

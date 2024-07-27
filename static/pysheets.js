@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2024 laffra - All Rights Reserved. 
+ * 
+ * This file is part of the PySheets projects and contains "native" methods for performance.
+ */
+
 (async function pysheets() {
 
     window.start = new Date().getTime();
@@ -360,7 +366,7 @@
                 cells[`${col}-${row}`] = td.text();
             }
         }
-        setTimeout(() => insertDone(columnCount, rowCount, cells));
+        setTimeout(() => insertDone(columnCount, rowCount, Object.keys(cells)));
     }
 
     window.getattr = (obj, property) => {

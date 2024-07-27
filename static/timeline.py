@@ -1,14 +1,35 @@
-import ltk
-import state
+"""
+CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
+
+Profiles the execution of a Python program and generating a timeline visualization of the function calls.
+"""
+
 import sys
 import time
 
+import ltk
+import state
 
-colors = [ "#FFE5E5", "#FFEFD5", "#FFFACD", "#E6E6FA", "#D8BFD8", "#DDA0DD", "#EEE9E9", "#F0FFF0", "#E0FFFF", "#FFDAB9", "#FFF0F5", "#FFE4E1", "#FFE4B5", "#D8BFD8", "#F5DEB3", "#F0E68C" ]
-color_map = {}
+
+COLORS = [
+    "#FFE5E5", "#FFEFD5", "#FFFACD", "#E6E6FA", "#D8BFD8", "#DDA0DD", "#EEE9E9", "#F0FFF0",
+    "#E0FFFF", "#FFDAB9", "#FFF0F5", "#FFE4E1", "#FFE4B5", "#D8BFD8", "#F5DEB3", "#F0E68C"
+]
+COLOR_MAP = {}
 
 
 class Call():
+    """
+    Represents a call in the execution timeline of a Python program.
+    
+    Attributes:
+        when (float): The time in seconds when the call occurred.
+        depth (int): The depth or nesting level of the call in the call stack.
+        frame (frame): The Python frame object for the call.
+        filename (str): The filename where the call occurred.
+        lineno (int): The line number where the call occurred.
+        duration (float): The duration of the call in seconds.
+    """
     def __init__(self, when, depth, frame):
         self.when = when
         self.depth = depth
@@ -16,9 +37,12 @@ class Call():
         self.filename = frame.f_globals.get("__file__", "")
         self.lineno = frame.f_lineno
         self.duration = 0
-       
+
 
 class Span(ltk.Widget):
+    """
+    Represents a timespan for a call in the flame graph timeline visualization.
+    """
     classes = [ "call" ]
     height = 20
 
@@ -40,38 +64,81 @@ class Span(ltk.Widget):
         self.css("left", 8 + (call.when - when) * pixels_per_second)
         self.css("top", 40 + Span.height * call.depth)
         self.css("width", max(2, pixels_per_second * call.duration))
-        
+
     def get_vscode_link(self, filename, lineno):
+        """
+        Returns a VSCode URL link for the specified filename and line number.
+        
+        Args:
+            filename (str): The filename to include in the VSCode URL.
+            lineno (int): The line number to include in the VSCode URL.
+        
+        Returns:
+            str: A VSCode URL link for the specified filename and line number.
+        """
         return f"vscode://file/{ltk.window.path}/{filename}:{lineno}"
 
     def get_color(self, name):
-        if not name in color_map:
-            color = colors[hash(name) % len(colors)]
-            color_map[name] = color
-        return color_map[name]
+        """
+        Returns a unique color for the given name.
+        
+        Args:
+            name (str): The name to get a color for.
+        
+        Returns:
+            str: The color for the given name, in CSS format (e.g. "#FFFFFF" for white).
+        """
+        if not name in COLOR_MAP:
+            color = COLORS[hash(name) % len(COLORS)]
+            COLOR_MAP[name] = color
+        return COLOR_MAP[name]
 
     def __eq__(self, other):
         return isinstance(other, Span) and self.key == other.key
 
 
 class FlameGraph(ltk.VBox):
+    """
+    A `FlameGraph` widget that displays a flame graph visualization of the profiled function calls.
+    
+    The `FlameGraph` class inherits from `ltk.VBox` and is responsible for rendering a flame graph
+    visualization of the profiled function calls. It takes a list of `Call` objects as input and
+    displays a flame graph with the function call durations and names.
+    
+    The flame graph can be zoomed in and out using the provided buttons, and the entire widget
+    can be removed from the timeline container.
+    """
     classes = [ "flame" ]
 
     def __init__(self, calls):
         ltk.VBox.__init__(self)
         self.calls = calls
         self.scale = 1
-        self.container = ltk.Div().on("wheel", lambda event: self.zoom(-event.originalEvent.deltaY))
         call = self.calls[-1]
         name = call.frame.f_code.co_name.replace("<", "&lt;")
+
+        def zoom(dy):
+            self.scale = max(1, self.scale / 3) if dy < 0 else self.scale * 3
+            self.render()
+
+        def zoom_out(event): # pylint: disable=unused-argument
+            self.scale = max(1, self.scale / 3)
+            self.render()
+
+        def zoom_in(event): # pylint: disable=unused-argument
+            self.scale *= 3
+            self.render()
+
+        self.container = ltk.Div().on("wheel", lambda event: zoom(-event.originalEvent.deltaY))
+
         self.append(
             ltk.VBox(
                 ltk.HBox(
                     ltk.Text(f"{name} took {call.duration}s").addClass("flame-title"),
                     ltk.Span("").css("flex", 1),
-                    ltk.Button("-", lambda event: self.zoom_out(event)),
-                    ltk.Button("+", lambda event: self.zoom_in(event)),
-                    ltk.Button("x", lambda event: self.remove()).css("margin-right", 14),
+                    ltk.Button("-", lambda event: zoom_out(event)), # pylint: disable=unnecessary-lambda
+                    ltk.Button("+", lambda event: zoom_in(event)), # pylint: disable=unnecessary-lambda
+                    ltk.Button("x", lambda event: self.remove()).css("margin-right", 14), # pylint: disable=unnecessary-lambda
                 ).addClass("flame-header"),
             ),
             self.container
@@ -79,6 +146,9 @@ class FlameGraph(ltk.VBox):
         self.render()
 
     def render(self):
+        """
+        Renders the flame graph visualization of the profiled function calls.
+        """
         last = self.calls[-1]
         min_duration = 0 if self.scale > 1 else 0.01
         spans = [
@@ -92,19 +162,12 @@ class FlameGraph(ltk.VBox):
         self.css("height", 52 + (max_depth + 1) * Span.height)
         self.find(".flame-title").css("visibility", "visible" if self.scale > 1 else "hidden")
 
-    def zoom(self, dy):
-        self.scale = max(1, self.scale / 3) if dy < 0 else self.scale * 3
-        self.render()
-
-    def zoom_out(self, event):
-        self.scale = max(1, self.scale / 3)
-        self.render()
-
-    def zoom_in(self, event):
-        self.scale *= 3
-        self.render()
 
 class Profiler():
+    """
+    The `Profiler` class is responsible for profiling the execution of a Python program and
+    generating a flame graph visualization of the profiled function calls.
+    """
     MIN_DURATION = 0.1
 
     calls = [] # when, duration, depth, frame
@@ -116,12 +179,24 @@ class Profiler():
         self.enable_profile()
 
     def enabled(self):
+        """
+        Returns whether the timeline profiling is currently enabled.
+        """
         return ltk.window.localStorage.getItem("timeline-enabled") == "true"
-        
+
     def enable(self, enabled):
+        """
+        Enables or disables the timeline profiling functionality.
+        
+        Args:
+            enabled (bool): True to enable the timeline profiling, False to disable it.
+        """
         ltk.window.localStorage.setItem("timeline-enabled", enabled)
-    
+
     def add_toggle(self):
+        """
+        Adds a toggle switch to the timeline container that enables or disables the timeline profiling functionality.
+        """
         ltk.find(".timeline-container").append(
             ltk.Switch("enabled", self.enabled())
                 .addClass("timeline-switch")
@@ -129,13 +204,41 @@ class Profiler():
         )
 
     def toggle(self, checkbox):
+        """
+        Toggles the profiling functionality of the Profiler class.
+        
+        Args:
+            checkbox (ltk.Widget): The checkbox widget that represents the profiling toggle.
+        """
         self.enable(checkbox.prop("checked"))
         self.enable_profile()
-    
+
     def enable_profile(self):
+        """
+        Enables or disables the profiling functionality of the Profiler class.
+        
+        When profiling is enabled, the `sys.setprofile()` function is set to the `self.profile`
+        method, which is responsible for recording function call information.
+        When profiling is disabled, `sys.setprofile()` is set to `None` to stop the profiling.
+        """
         sys.setprofile(self.profile if self.enabled() else None)
 
-    def profile(self, frame, event, arg=None):
+    def profile(self, frame, event, arg=None): # pylint: disable=unused-argument
+        """
+        Records function call information for the timeline profiling functionality.
+        
+        This method is set as the `sys.setprofile()` function when the timeline profiling is enabled.
+        It is responsible for recording function call information, including the timestamp, call depth,
+        and duration of each function call. The recorded information is stored in the `self.calls` list.
+        
+        If a function call takes longer than the `Profiler.MIN_DURATION` threshold, a console message is
+        written with the function name and duration, and a FlameGraph is appended to the timeline container.
+        
+        Args:
+            frame (frame): The current stack frame.
+            event (str): The event type, either "call" or "return".
+            arg (Any, optional): The argument passed to the function, if any.
+        """
         now = round(time.time() - self.epoch, 3)
         if event == "call":
             Profiler.stack.append(Call(now, len(Profiler.stack), frame))
@@ -148,7 +251,10 @@ class Profiler():
                 if call.depth == 0:
                     if call.filename != "/home/pyodide/timeline.py" and call.duration > Profiler.MIN_DURATION:
                         name = call.frame.f_code.co_name
-                        state.console.write(f"timeline-{name}", f"[Timeline] Call to '{name}' took {call.duration}s. See timeline. 🔔️")
+                        state.console.write(
+                            f"timeline-{name}", 
+                            f"[Timeline] Call to '{name}' took {call.duration}s. See timeline. 🔔️"
+                        )
                         ltk.find(".timeline-container").append(
                             FlameGraph(self.calls)
                         )
@@ -158,5 +264,13 @@ class Profiler():
 
 
 def setup():
-    if not 'unittest' in sys.modules and hasattr(sys, "setprofile"):
+    """
+    Enables the timeline profiling functionality by creating a new `Profiler` instance.
+    
+    This function is called to set up the timeline profiling feature. It checks if the
+    `unittest` module is not loaded and if the `sys.setprofile()` function is available.
+    If these conditions are met, it creates a new `Profiler` instance to start recording
+    function call information for the timeline.
+    """
+    if 'unittest' not in sys.modules and hasattr(sys, "setprofile"):
         Profiler()
