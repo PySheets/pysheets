@@ -15,7 +15,7 @@ from pyscript import window # type: ignore   pylint: disable=import-error
 COMPLETION_MAKE_CELL_FUNCTION = f"{constants.ICON_STAR} Make this a Python cell function"
 COMPLETION_IMPORT_SHEET = f"{constants.ICON_STAR} Import a sheet"
 
-FORBES = "https://raw.githubusercontent.com/PySheets/pysheets/main/datafiles/forbes_ai_50_2024.csv"
+FORBES = "https://raw.githubusercontent.com/PySheets/pysheets/main/datafiles/forbes_ai_50.csv"
 MAGIC_COMPLETIONS = {
     COMPLETION_MAKE_CELL_FUNCTION: "=\n\n",
     COMPLETION_IMPORT_SHEET: f"url = \"{FORBES}\"\npysheets.load_sheet(url)",

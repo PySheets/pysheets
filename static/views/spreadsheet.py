@@ -956,7 +956,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         Load a sheet from the specified URL by calling `pysheets.load_sheet(url)`.
         """
         self.insert_prompt("Load a sheet from the URL " \
-            "https://raw.githubusercontent.com/PySheets/pysheets/main/datafiles/forbes_ai_50_2024.csv" \
+            "https://raw.githubusercontent.com/PySheets/pysheets/main/datafiles/forbes_ai_50.csv" \
             "by calling 'pysheets.load_sheet(url)'.".strip()
         )
 
