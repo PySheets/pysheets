@@ -73,7 +73,6 @@ html, body {
 #sheet-container {
     min-height: 100px;
     min-width: 300px;
-    overflow: hidden;
 }
 
 ::-webkit-scrollbar {
@@ -104,7 +103,6 @@ html, body {
     height: 100%;
     margin-top: 30px;
     margin-left: 61px;
-    overflow: hidden;
 }
 
 .cell-row {
@@ -355,11 +353,6 @@ h3 {
 .preview-header .ltk-text {
     color: white;
     margin-right: 4px;
-}
-
-.preview-header .embed {
-    color: white;
-    margin-top: 2px;
 }
 
 .preview-header .toggle {

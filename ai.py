@@ -1,6 +1,14 @@
+"""
+CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
+
+Wrapper for OpenAI's GPT API.
+"""
+
 import json
-import openai
 import os
+
+import openai
+
 
 MISSING_KEY = "\n".join([
     "# We could not find an OpenAI key. Please create a file containing:",
@@ -14,20 +22,41 @@ MISSING_KEY = "\n".join([
 
 
 def load_key():
+    """
+    Loads the OpenAI API key from a JSON file located in the same directory as the current script.
+    
+    If the API key file is not found or there is an error reading it, the function
+    will silently fail and the `openai.api_key` will remain unset.
+    """
     try:
-        dir = os.path.dirname(__file__)
-
-        openai.api_key = json.loads(open(os.path.join(dir, "openai.json")).read())["api_key"]
-    except Exception as e:
+        folder = os.path.dirname(__file__)
+        path = os.path.join(folder, "openai.json")
+        openai.api_key = json.loads(open(path, encoding="utf-8").read())["api_key"]
+    except Exception as e: # pylint: disable=broad-except
         print(e)
-        pass
 
-metaprompt = '''
 
+METAPROMPT = '''
+You are an expert Python Data Scientist. You know about Pandas, Matplotlib, Numpy, etc.
+When your answer is a list of things, return a Python list.
+when your answer looks like a table, return a Python dictionary.
+Generate python code to be used in a Jupyter Notebook cell.
+On the last line, just give the expression, do not call print(expression).
+Replace calls to 'figure.show()' with 'figure'.
+Do not generate explanations, but just show the Python code.
 '''
 
 
 def complete(prompt):
+    """
+    Generates a code completion using the OpenAI GPT-3.5 language model.
+    
+    Args:
+        prompt (str): The input prompt to generate the completion from.
+    
+    Returns:
+        dict: A dictionary containing the generated text completion.
+    """
     model="gpt-3.5-turbo-instruct"
     load_key()
     if not openai.api_key:
@@ -36,7 +65,7 @@ def complete(prompt):
         }
     return openai.Completion.create(
         model=model,
-        prompt=f"{metaprompt}\n{prompt}.",
+        prompt=f"{METAPROMPT}\n{prompt}.",
         temperature=0,
         max_tokens=1000,
         top_p=1.0,

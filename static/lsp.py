@@ -1,28 +1,46 @@
+"""
+Copyright (c) 2024 laffra - All Rights Reserved. 
+
+Provides code completion functionality in the editor. Listens for key events
+in the editor and triggers code completion when appropriate. 
+Also handles the display and selection of completion options.
+"""
+
 import constants
 import ltk
 
-from pyscript import window # type: ignore
+from pyscript import window # type: ignore   pylint: disable=import-error
 
 
 COMPLETION_MAKE_CELL_FUNCTION = f"{constants.ICON_STAR} Make this a Python cell function"
 COMPLETION_IMPORT_SHEET = f"{constants.ICON_STAR} Import a sheet"
 
-magic_completions = {
+FORBES = "https://raw.githubusercontent.com/PySheets/pysheets/main/datafiles/forbes_ai_50_2024.csv"
+MAGIC_COMPLETIONS = {
     COMPLETION_MAKE_CELL_FUNCTION: "=\n\n",
-    COMPLETION_IMPORT_SHEET: "url = \"https://chrislaffra.com/forbes_ai_50_2024.csv\"\npysheets.load_sheet(url)",
+    COMPLETION_IMPORT_SHEET: f"url = \"{FORBES}\"\npysheets.load_sheet(url)",
 }
 
 
 class CodeCompletor():
+    """
+    Provides a code completion functionality in the editor. Listens for key events in the editor
+    and triggers code completion when appropriate. Also handles the display and selection of 
+    completion options.
+    """
+
     def __init__(self, editor):
         self.editor = editor
-        self.editor.on("keydown", ltk.proxy(self.keydown))
+        self.editor.on("keydown", ltk.proxy(lambda editor, event: self.keydown(editor, event)))
         self.completions = []
-        window.completePython = ltk.proxy(lambda text, line, ch: self.complete_python(text, line, ch))
-        # editor.on("cursorActivity", ltk.proxy(lambda *args: self.trigger_completion()))
-        # editor.on("focus", ltk.proxy(lambda *args: self.trigger_completion()))
+        window.completePython = ltk.proxy(
+            lambda text, line, ch: self.complete_python(text, line, ch) # pylint: disable=unnecessary-lambda
+        )
 
     def trigger_completion(self):
+        """
+        Triggers code completion based on the current state of the editor.
+        """
         if not self.editor.getValue():
             self.handle_code_completion([
                 COMPLETION_MAKE_CELL_FUNCTION,
@@ -34,12 +52,25 @@ class CodeCompletor():
                     COMPLETION_IMPORT_SHEET,
                 ])
 
-    def getToken(self):
+    def get_token(self):
+        """
+        Returns the token at the current cursor position in the editor.
+        
+        Args:
+            self (CodeCompletor): The CodeCompletor instance.
+        
+        Returns:
+            The token at the current cursor position.
+        """
         cursor = self.editor.getCursor()
         return self.editor.getTokenAt(cursor)
 
-    def insert(self, string):
-        string = magic_completions.get(string, string)
+    def insert(self, string: str):
+        """
+        Inserts the given string into the editor at the current cursor position,
+        replacing the current token if it exists.
+        """
+        string = MAGIC_COMPLETIONS.get(string, string)
         if "(" in string:
             string = string.split("(")[0] + "()"
         cursor = self.editor.getCursor()
@@ -60,16 +91,37 @@ class CodeCompletor():
             self.editor.execCommand("goCharLeft")
 
     def pick(self, event):
+        """
+        Inserts the selected completion into the editor and removes the completion popup.
+        
+        Args:
+            self (CodeCompletor): The CodeCompletor instance.
+            event (Event): The click event on the selected completion.
+        """
         self.insert(ltk.find(event.target).text())
         ltk.find(".completions").remove()
         event.preventDefault()
 
     def pick_selected(self, event):
+        """
+        Inserts the selected completion into the editor and removes the completion popup.
+        
+        Args:
+            self (CodeCompletor): The CodeCompletor instance.
+            event (Event): The click event on the selected completion.
+        """
         self.insert(ltk.find(".completions .selected").text())
         ltk.find(".completions").remove()
         event.preventDefault()
 
     def select(self, choice):
+        """
+        Selects the given choice in the completion popup and scrolls the popup to ensure the selected choice is visible.
+        
+        Args:
+            self (CodeCompletor): The CodeCompletor instance.
+            choice (jQuery): The jQuery object representing the selected completion choice.
+        """
         if choice.length:
             ltk.find(".completions .choice").removeClass("selected")
             choice.addClass("selected")
@@ -78,9 +130,17 @@ class CodeCompletor():
             if top < 2 or top > container.height() - choice.height() - 2:
                 choice.parent().prop("scrollTop", choice.index() * choice.outerHeight())
 
-    def keydown(self, editor, event):
-        key = event.key
+    def keydown(self, editor, event): # pylint: disable=unused-argument
+        """
+        Handles keyboard events for the code completion popup.
         
+        Args:
+            self (CodeCompletor): The CodeCompletor instance.
+            editor (CodeMirror): The CodeMirror editor instance.
+            event (Event): The keyboard event.
+        """
+        key = event.key
+
         if ltk.find(".completions").length == 0:
             return
         elif key == "Enter" or key == "Tab":
@@ -97,6 +157,15 @@ class CodeCompletor():
         event.preventDefault()
 
     def complete_python(self, text, line, ch):
+        """
+        Requests code completion for the given text, line, and column position.
+        
+        Args:
+            self (CodeCompletor): The CodeCompletor instance.
+            text (str): The current text in the editor.
+            line (int): The current line number in the editor.
+            ch (int): The current column number in the editor.
+        """
         ltk.publish(
             "Application",
             "Worker",
@@ -105,8 +174,16 @@ class CodeCompletor():
         )
 
     def handle_code_completion(self, completions):
+        """
+        Handles the display and interaction of the code completion popup.
+        
+        When code completions are received, this method creates a popup div with the
+        available completion choices. It positions the popup relative to the cursor
+        and adds click handlers to each completion choice. It also handles keyboard
+        events for navigating and selecting the completion choices.
+        """
         self.completions = completions
-        token = self.getToken()
+        token = self.get_token()
         if not completions or token.string in [" ", ":", ";"]:
             return
         ltk.find(".completions").remove()
@@ -121,15 +198,26 @@ class CodeCompletor():
                 ltk.create("<div>")
                     .addClass("choice")
                     .text(choice)
-                    .on("click", ltk.proxy(lambda event: self.pick(event)))
+                    .on("click", ltk.proxy(lambda event: self.pick(event))) # pylint: disable=unnecessary-lambda
                 )
         ltk.find(".completions").find(".choice").eq(0).addClass("selected")
 
 DEBUG_COMPLETION = False
 
 def fuzzy_parse(text):
-    import ast
-    import traceback
+    """
+    Attempts to parse the given text using a set of fuzzy fixes, returning the fix
+    used and the parsed AST if successful.
+    
+    Args:
+        text (str): The text to parse.
+    
+    Returns:
+        Tuple[str, ast.AST | None]: A tuple containing the fix used (if any) and
+            the parsed AST (if successful), or (None, None) if parsing failed.
+    """
+    import ast # pylint: disable=import-outside-toplevel
+    import traceback # pylint: disable=import-outside-toplevel
     fuzzy_fixes = [
         "",
         " :pass",
@@ -149,7 +237,7 @@ def fuzzy_parse(text):
     for fix in fuzzy_fixes:
         try:
             return fix, ast.parse(f"{text}{fix}")
-        except:
+        except SyntaxError:
             if DEBUG_COMPLETION:
                 traceback.print_exc()
     return None, None
@@ -157,7 +245,18 @@ def fuzzy_parse(text):
 
 
 def complete_python(text, line, ch, cache, results):
-    import ast
+    """
+    Attempts to parse the given text using a set of fuzzy fixes, returning the fix used and 
+    the parsed AST if successful.
+    
+    Args:
+        text (str): The text to parse.
+    
+    Returns:
+        Tuple[str, ast.AST | None]: A tuple containing the fix used (if any) and the parsed AST
+            (if successful), or (None, None) if parsing failed.
+    """
+    import ast # pylint: disable=import-outside-toplevel
     lines = text[1:].split("\n")[:line + 1]
     lines[-1] = lines[-1][:ch + 1]
     text = "\n".join(lines)
@@ -169,6 +268,11 @@ def complete_python(text, line, ch, cache, results):
         return
 
     class CompletionFinder(ast.NodeVisitor):
+        """
+        The `CompletionFinder` class is responsible for finding and sorting code completions 
+        based on the given text, line, and column position. It uses a set of "fuzzy fixes" 
+        to attempt to parse the text, and then visits the resulting AST to extract relevant completion candidates.
+        """
         def __init__(self):
             self.context = {}
             self.context.update(cache)
@@ -176,33 +280,57 @@ def complete_python(text, line, ch, cache, results):
             self.token = ""
 
         def inside(self, node):
-            return hasattr(node, "lineno") and node.lineno == line + 1 and node.col_offset <= ch and ch <= node.end_col_offset
+            """
+            Checks if the given AST node is located within the current line and column range.
+            
+            Args:
+                node (ast.AST): The AST node to check.
+                line (int): The current line number.
+                ch (int): The current column number.
+            
+            Returns:
+                bool: True if the node is located within the current line and column range, False otherwise.
+            """
+            return hasattr(node, "lineno") and node.lineno == line + 1 and node.col_offset <= ch <= node.end_col_offset
 
         def matches(self, lower_attr, lower_match):
+            """
+            Checks if a given attribute string matches a search string using a fuzzy matching algorithm.
+            
+            Args:
+                lower_attr (str): The lowercase version of the attribute string to match against.
+                lower_match (str): The lowercase version of the search string.
+            
+            Returns:
+                bool: True if the attribute string matches the search string, False otherwise.
+            """
             if fix and lower_match.endswith(fix):
                 lower_match = lower_match[:-len(fix)]
             for c in lower_match:
                 try:
                     lower_attr = lower_attr[lower_attr.index(c):]
-                except:
+                except ValueError:
                     return False
             return True
 
         def get_attributes(self, obj):
-            from typing import Callable
+            """
+            Retrieves the attributes of the given object, including both properties and callable methods.
+            """
+            from typing import Callable # pylint: disable=import-outside-toplevel
 
             def is_callable(name):
                 try:
-                    return isinstance(getattr(obj, name), Callable) 
-                except:
-                    pass
+                    return isinstance(getattr(obj, name), Callable)
+                except AttributeError:
+                    return None
 
             def get_parameters(name):
-                import inspect
+                import inspect # pylint: disable=import-outside-toplevel
                 function = getattr(obj, name)
                 try:
                     signature = inspect.signature(function)
-                except:
+                except ValueError:
                     return []
                 parameters = []
                 for param in signature.parameters.values():
@@ -220,42 +348,84 @@ def complete_python(text, line, ch, cache, results):
             return attributes
 
         def add_object(self, obj, match):
+            """
+            Adds the attributes of the given object to the list of completions if they match the provided search string.
+            
+            Args:
+                obj (object): The object whose attributes should be added to the completions.
+                match (str): The search string to match the object's attributes against.
+            """
             self.add_attributes(self.get_attributes(obj), match)
 
         def add_attributes(self, attributes, match):
+            """
+            Adds the given attributes to the list of completions if they match the provided search string.
+            
+            Args:
+                attributes (list[str]): The list of attributes to add to the completions.
+                match (str): The search string to match the attributes against.
+            """
             lower_match = match.lower()
             for attr in attributes:
                 if self.matches(attr.lower(), lower_match):
                     completions.append(attr)
-        
+
         def get_value(self, node):
+            """
+            Evaluates the given AST node and returns its value, using the context dictionary to resolve any references.
+            
+            Args:
+                node (ast.AST): The AST node to evaluate.
+            
+            Returns:
+                Any: The value of the evaluated node, or an empty string if the evaluation fails.
+            """
             text = ast.unparse(node)
             if DEBUG_COMPLETION:
                 print(" - get_value", repr(text), self.context.keys())
             try:
-                return eval(text, self.context, self.context)
-            except:
+                return eval(text, self.context, self.context)  # pylint: disable=eval-used
+            except NameError:
                 # traceback.print_exc()
                 function = f"{text}()"
                 return self.context.get(function, "")
 
-        def visit_Import(self, node):
+        def visit_Import(self, node): # pylint: disable=invalid-name
+            """
+            Handles the import of modules and their aliases in the completion context.
+            
+            Args:
+                node (ast.Import): The AST node representing the import statement.
+            """
             for alias in node.names:
                 if DEBUG_COMPLETION:
                     print(" - import", ast.dump(alias))
                 asname = alias.asname or alias.name
                 try:
                     self.context[asname] = __import__(alias.name)
-                except:
+                except ImportError:
                     pass
 
-        def visit_FunctionDef(self, node):
+        def visit_FunctionDef(self, node): # pylint: disable=invalid-name
+            """
+            Handles the definition of functions in the completion context.
+            
+            Args:
+                node (ast.FunctionDef): The AST node representing the function definition.
+            """
             if DEBUG_COMPLETION:
                 print(" - function", ast.dump(node))
-            def function(): pass
+            def function():
+                pass
             self.context[f"{node.name}()"] = function
 
-        def visit_Assign(self, node):
+        def visit_Assign(self, node): # pylint: disable=invalid-name
+            """
+            Handles the assignment of values to variables in the completion context.
+            
+            Args:
+                node (ast.Assign): The AST node representing the assignment statement.
+            """
             if DEBUG_COMPLETION:
                 print(" - assign", ast.dump(node))
             for name in node.targets:
@@ -263,29 +433,47 @@ def complete_python(text, line, ch, cache, results):
                     continue
                 try:
                     self.context[name.id] = self.get_value(node.value)
-                except:
+                except NameError:
                     # not a constant expression
                     self.context[name.id] = None
             ast.NodeVisitor.generic_visit(self, node)
 
-        def visit_Attribute(self, node):
+        def visit_Attribute(self, node): # pylint: disable=invalid-name
+            """
+            Handles the access of attributes on objects in the completion context.
+            
+            Args:
+                node (ast.Attribute): The AST node representing the attribute access.
+            """
             if DEBUG_COMPLETION:
                 print(" - attribute", self.inside(node), ast.dump(node))
             if self.inside(node):
                 self.add_object(self.get_value(node.value), "" if node.attr == "_" else node.attr)
                 self.token = node.attr
 
-        def visit_Subscript(self, node):
+        def visit_Subscript(self, node): # pylint: disable=invalid-name
+            """
+            Handles the access of subscripts on objects in the completion context.
+            
+            Args:
+                node (ast.Subscript): The AST node representing the subscript access.
+            """
             if DEBUG_COMPLETION:
                 print(" - subscript", self.inside(node), ast.dump(node))
             if self.inside(node):
-                slice = eval(ast.unparse(node.slice).lower())
                 if isinstance(node.value, ast.Name):
+                    node_slice = eval(ast.unparse(node.slice).lower())  # pylint: disable=eval-used
                     for key in self.context.get(node.value.id, {}):
-                        if self.matches(key.lower(), slice):
+                        if self.matches(key.lower(), node_slice):
                             completions.append(f'["{key}"]')
 
-        def visit_Name(self, node):
+        def visit_Name(self, node): # pylint: disable=invalid-name
+            """
+            Handles the access of names in the completion context.
+            
+            Args:
+                node (ast.Name): The AST node representing the name access.
+            """
             if DEBUG_COMPLETION:
                 print(" - name", self.inside(node), ast.dump(node))
             if self.inside(node):
@@ -308,4 +496,3 @@ def complete_python(text, line, ch, cache, results):
         return prefix + rest + private
 
     return sort(completions)
-

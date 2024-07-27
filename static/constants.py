@@ -1,3 +1,9 @@
+"""
+Copyright (c) 2024 laffra - All Rights Reserved. 
+
+Global constants used by the UI, worker, and models.
+"""
+
 DEFAULT_COLUMN_COUNT = 26
 DEFAULT_ROW_COUNT = 65
 BIG_SHEET_SIZE = 2000
