@@ -8,8 +8,9 @@ import sys
 import time
 import os
 
-sys.path.append(os.path.dirname(__file__))
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "static"))
+sys.path.append("src")
+sys.path.append("src/static")
+sys.path.append(".")
 
 import ltk      # pylint: disable=wrong-import-position
 import state    # pylint: disable=wrong-import-position
