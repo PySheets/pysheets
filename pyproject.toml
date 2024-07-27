@@ -1,0 +1,35 @@
+# pyproject.toml
+
+[build-system]
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pysheets-app"
+version = "0.1.5"
+description = "A Spreadsheet UI for Python"
+readme = "README.md"
+authors = [{ name = "Chris Laffra", email = "chris@chrislaffra.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["spreadsheets", "pyscript", "local-first"]
+dependencies = [ ]
+requires-python = ">=3.10"
+
+[project.scripts]
+pysheets = "pysheets:run_app"
+
+[tool.setuptools]
+include-package-data = true
+
+[project.optional-dependencies]
+dev = ["mock", "pytest"]
+
+[tool.setuptools.package-data]
+mypkg = ["*.png", "*.html"]
+
+[project.urls]
+Homepage = "https://pysheets.app"
