@@ -476,7 +476,7 @@ try:
     import pandas               # pylint: disable=unused-import,wrong-import-position,import-error
     import matplotlib           # pylint: disable=wrong-import-position,import-error
     import matplotlib.pyplot    # pylint: disable=wrong-import-position,import-error
-except (TypeError, ImportError):
+except (TypeError, ModuleNotFoundError, ImportError):
     pass # ignore load error on Github Actions build
 
 setup()
