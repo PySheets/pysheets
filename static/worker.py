@@ -472,8 +472,11 @@ polyscript.xworker.sync.publish(
     "Worker", "Sheet", ltk.pubsub.TOPIC_WORKER_READY, repr(sys.version)
 )
 
-import pandas               # pylint: disable=unused-import,wrong-import-position
-import matplotlib           # pylint: disable=wrong-import-position
-import matplotlib.pyplot    # pylint: disable=wrong-import-position
+try:
+    import pandas               # pylint: disable=unused-import,wrong-import-position
+    import matplotlib           # pylint: disable=wrong-import-position
+    import matplotlib.pyplot    # pylint: disable=wrong-import-position
+except TypeError:
+    pass # ignore load error on Github Actions build
 
 setup()
