@@ -254,7 +254,7 @@ def load():
     except Exception: # pylint: disable=broad-except
         pass
     load_cache[url] = time.time(), response
-    print("/load: network cache miss: %s, %s bytes", url, len(response))
+    print("/load: network cache miss", url, len(response))
     return response # send regular string
 
 

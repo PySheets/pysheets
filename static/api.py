@@ -265,10 +265,7 @@ def wrap_as_file(content):
     Returns:
         file-like object: A file-like object containing the provided content.
     """
-    try:
-        return io.BytesIO(content)
-    except ValueError:
-        return io.StringIO(content)
+    return io.StringIO(content) if isinstance(content, str) else io.BytesIO(content)
 
 
 def shorten(s: str, length: int):
@@ -321,7 +318,8 @@ def load_with_trampoline(url):
     if url and url[0] != "/":
         url = f"/load?url={window.encodeURIComponent(url)}"
 
-    return base64.b64decode(get(url))
+    content = base64.b64decode(get(url))
+    return content
 
 
 try:
@@ -458,9 +456,10 @@ class PySheets():
             return pd.read_excel(data, engine='openpyxl')
         except Exception as e1: # pylint: disable=broad-except
             try:
-                return pd.read_csv(data)
+                content = data.decode("utf-8")
+                return pd.read_csv(io.StringIO(content))
             except Exception as e2:
-                print(data.decode("utf-8"), url)
+                print(e2, url, data)
                 raise ValueError(f"Cannot load as Excel ({e1}) or CSV ({e2})") from e2
 
 
