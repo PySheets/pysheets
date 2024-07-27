@@ -6,7 +6,6 @@ This module provides a set of mocks and utility functions for testing purposes.
 
 import sys
 import time
-import os
 
 sys.path.append("src")
 sys.path.append("src/static")
