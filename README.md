@@ -1,6 +1,6 @@
 # PySheets
 
-PySheets is a spreadsheet UI for Python, implemented in Python, running in the browser, using PyScript.
+PySheets is a spreadsheet UI for Python, implemented in Python, running logic and saving data in the browser, using PyScript and IndexedDB.
   
 # Installation
 
