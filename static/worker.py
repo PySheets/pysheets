@@ -473,9 +473,9 @@ polyscript.xworker.sync.publish(
 )
 
 try:
-    import pandas               # pylint: disable=unused-import,wrong-import-position
-    import matplotlib           # pylint: disable=wrong-import-position
-    import matplotlib.pyplot    # pylint: disable=wrong-import-position
+    import pandas               # pylint: disable=unused-import,wrong-import-position,import-error
+    import matplotlib           # pylint: disable=wrong-import-position,import-error
+    import matplotlib.pyplot    # pylint: disable=wrong-import-position,import-error
 except TypeError:
     pass # ignore load error on Github Actions build
 

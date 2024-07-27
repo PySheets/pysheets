@@ -358,7 +358,7 @@ class PySheets():
         Returns:
             pandas.DataFrame: A Pandas DataFrame containing the data from the specified spreadsheet selection.
         """
-        import pandas as pd # pylint: disable=import-outside-toplevel
+        import pandas as pd # pylint: disable=import-outside-toplevel,import-error
 
         start, end = selection.split(":")
         start_col, start_row = get_col_row_from_key(start)
@@ -449,7 +449,7 @@ class PySheets():
         Raises:
             ValueError: If the URL cannot be loaded or the data cannot be parsed as an Excel or CSV file.
         """
-        import pandas as pd # pylint: disable=import-outside-toplevel
+        import pandas as pd # pylint: disable=import-outside-toplevel,import-error
         try:
             data = urlopen(url).read()
         except Exception as e: # pylint: disable=broad-except
