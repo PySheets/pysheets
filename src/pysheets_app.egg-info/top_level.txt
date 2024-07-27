@@ -1,5 +1,0 @@
-ai
-datafiles
-pysheets
-static
-templates
