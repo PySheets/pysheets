@@ -277,7 +277,7 @@ def run_in_worker(script):
     _globals.update(results)
     _globals["pyodide"] = pyodide
     _globals["pyscript"] = pyscript
-    _globals["pysheets"] = sys.modules["pysheets"] = api.PySheets(None, cache)
+    _globals["pysheets"] = api.PySheets(None, cache)
     _locals = _globals
     script = api.intercept_last_expression(script)
     # print("Executing script:", script)
