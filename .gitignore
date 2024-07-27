@@ -2,3 +2,7 @@
 node_modules/*
 pysheets.db
 openai.json
+.DS_Store
+src/pysheets_app.egg-info/*
+dist/*
+.do/app.yaml
