@@ -4,3 +4,7 @@ requests==2.28.2
 certifi
 pyscript-ltk
 openai==0.28
+setuptools
+wheel
+twine
+build

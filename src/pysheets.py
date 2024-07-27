@@ -14,7 +14,6 @@ import time
 import traceback
 import webbrowser
 
-
 import requests
 
 from flask import Flask
@@ -26,7 +25,8 @@ import ai
 from static import constants
 
 
-app = Flask(__name__)
+static_folder = os.path.join(os.path.dirname(__file__), "static")
+app = Flask(__name__, static_folder=static_folder)
 
 
 @app.after_request
@@ -272,8 +272,6 @@ def send(path):
     Returns:
         The contents of the requested static file.
     """
-    if not os.path.exists("static/"+path):
-        raise ValueError(f"Cannot return requested file: /static/{path} is missing")
     return app.send_static_file(path)
 
 
@@ -288,8 +286,13 @@ def open_browser():
     """
     webbrowser.open('http://127.0.0.1:8081')
 
-
-if __name__ == '__main__':
+def run_app():
+    """
+    Runs the PySheets application after `pip install pyscript-app` and calling `pysheets`.
+    """
     if "--nolaunch" not in sys.argv:
         threading.Timer(1.5, open_browser).start()
     app.run(host='127.0.0.1', port=8081, debug=True)
+
+if __name__ == '__main__':
+    run_app()

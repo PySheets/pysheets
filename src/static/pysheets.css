@@ -105,6 +105,11 @@ html, body {
     margin-left: 61px;
 }
 
+.buy-button {
+    color: white;
+    background-color: #1f77b4;
+}
+
 .cell-row {
     display: flex;
     width: fit-content;

@@ -1,4 +1,4 @@
 [MASTER]
-init-hook='import sys; sys.path.append("static")'
+init-hook='import sys; sys.path.append("src"); sys.path.append("src/static")'
 
 max-line-length=120

@@ -11,7 +11,7 @@ import openai
 
 
 MISSING_KEY = "\n".join([
-    "# We could not find an OpenAI key. Please create a file named 'openai.json' containing:",
+    "# We could not find an OpenAI key. Please create a file named '~/openai.json' containing:",
     "",
     "{",
     "    \"api_key\": \"YOUR_SECRET_KEY\"",
@@ -30,7 +30,7 @@ def load_key():
     """
     try:
         folder = os.path.dirname(__file__)
-        path = os.path.join(folder, "openai.json")
+        path = os.path.join(folder, os.path.expanduser("~/openai.json"))
         with open(path, encoding="utf-8") as fd:
             openai.api_key = json.loads(fd.read())["api_key"]
     except Exception as e: # pylint: disable=broad-except
