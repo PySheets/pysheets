@@ -28,7 +28,7 @@ from views.cell import CellView
 completion_cache = {}
 
 
-class SpreadsheetView():
+class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
     The SpreadsheetView class is responsible for managing the user interface and interactions of a
     spreadsheet-like application. It handles the rendering of the spreadsheet cells, selection and
@@ -474,7 +474,7 @@ class SpreadsheetView():
         self.editor.set(self.selection.val())
         ltk.find("#ai-prompt").val(self.current.model.prompt)
 
-    def navigate_main(self, event):
+    def navigate_main(self, event): # pylint: disable=too-many-branches
         """
         Handles navigation events for the main spreadsheet area.
         
@@ -490,7 +490,7 @@ class SpreadsheetView():
         column, row = current.model.column, current.model.row
         if event.key == "Tab":
             column += -1 if event.shiftKey else 1
-        elif event.key == "Delete" or event.key == "Backspace":
+        elif event.key in ["Delete", "Backspace"]:
             self.multi_selection.clear()
         elif event.key == "ArrowLeft":
             column = max(1, column - 1)
@@ -506,7 +506,7 @@ class SpreadsheetView():
             row = row + 25
         elif event.key == "PageUp":
             row = max(1, row - 25)
-        elif event.key == "ArrowDown" or event.key == "Enter":
+        elif event.key in ["ArrowDown", "Enter"]:
             row += 1
 
         if len(event.key) == 1:
@@ -786,7 +786,7 @@ class SpreadsheetView():
         cell = self.get_cell(data["key"])
         cell.handle_inputs(data["inputs"])
 
-    def create_ui(self):
+    def create_ui(self):  # pylint: disable=too-many-locals
         """
         Creates the user interface for the spreadsheet, including the editor, console, timeline,
         and AI-related components.

@@ -39,7 +39,8 @@ def create_menu():
         window.open("https://pysheets.app")
 
     def feedback(event): # pylint: disable=unused-argument
-        window.open("https://docs.google.com/forms/d/e/1FAIpQLScmeDuDr5fxKYhe04Jo-pNS73P4VF2m-i8X8EC9rfKl-jT84A/viewform")
+        window.open("https://docs.google.com/forms/d/e/1FAIpQLScmeDuDr5fxKYhe04Jo"
+                    "-pNS73P4VF2m-i8X8EC9rfKl-jT84A/viewform")
 
     def discord(event): # pylint: disable=unused-argument
         window.open("https://discord.gg/4wy23872th")

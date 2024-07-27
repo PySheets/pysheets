@@ -347,7 +347,7 @@ class PySheets():
         self._spreadsheet = spreadsheet
         self._inputs = inputs or []
 
-    def sheet(self, selection, headers=True):
+    def sheet(self, selection, headers=True):   # pylint: disable=too-many-locals
         """
         Generates a Pandas DataFrame from a spreadsheet selection.
         
@@ -434,8 +434,7 @@ class PySheets():
         """
         if handler:
             return ltk.get(url, handler)
-        else:
-            return urlopen(url)
+        return urlopen(url)
 
     def load_sheet(self, url):
         """

@@ -31,7 +31,8 @@ class CodeCompletor():
 
     def __init__(self, editor):
         self.editor = editor
-        self.editor.on("keydown", ltk.proxy(lambda editor, event: self.keydown(editor, event)))
+        self.editor.on("keydown",
+                ltk.proxy(lambda editor, event: self.keydown(editor, event))) # pylint: disable=unnecessary-lambda
         self.completions = []
         window.completePython = ltk.proxy(
             lambda text, line, ch: self.complete_python(text, line, ch) # pylint: disable=unnecessary-lambda
@@ -143,7 +144,8 @@ class CodeCompletor():
 
         if ltk.find(".completions").length == 0:
             return
-        elif key == "Enter" or key == "Tab":
+
+        if key in ["Enter", "Tab"]:
             self.pick_selected(event)
         elif key == "Escape":
             ltk.find(".completions").remove()
@@ -244,7 +246,7 @@ def fuzzy_parse(text):
 
 
 
-def complete_python(text, line, ch, cache, results):
+def complete_python(text, line, ch, cache, results):  # pylint: disable=too-many-statements
     """
     Attempts to parse the given text using a set of fuzzy fixes, returning the fix used and 
     the parsed AST if successful.
@@ -265,7 +267,7 @@ def complete_python(text, line, ch, cache, results):
     if not tree:
         if DEBUG_COMPLETION:
             print("Cannot complete", repr(text), line, ch)
-        return
+        return []
 
     class CompletionFinder(ast.NodeVisitor):
         """

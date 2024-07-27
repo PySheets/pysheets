@@ -18,7 +18,7 @@ COLORS = [
 COLOR_MAP = {}
 
 
-class Call():
+class Call():  # pylint: disable=too-few-public-methods
     """
     Represents a call in the execution timeline of a Python program.
     

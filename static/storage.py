@@ -73,7 +73,7 @@ class Database():
                 found_all(results)
 
         self.open(store).openCursor().onsuccess = ltk.proxy(extract_all_from_cursor)
-    
+
     def save(self, store, document):
         """
         Saves a document to the specified object store in the IndexedDB database.
