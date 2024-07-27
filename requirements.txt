@@ -5,3 +5,4 @@ certifi
 pyscript-ltk
 openai==0.28
 matplotlib==3.5.1
+pandas
