@@ -58,11 +58,31 @@ def write_startup_message():
     message = f"[UI] Running {vm_type}; Python {vm_version}; UI startup took {ltk.get_time():.3f}s."
     state.console.write("pysheets", message)
 
+def check_version():
+    """
+    Checks the latest version of the PySheets application.
+    """
+    def report_version(latest, *rest): # pylint: disable=unused-argument
+        latest = latest.strip()
+        message = f"You are using the latest version of PySheets: {latest} 👍."
+        if latest != ltk.window.version:
+            message = f"⛔⛔⛔ You must upgrade to PySheets v{latest} ⛔⛔⛔ "
+        state.console.write("version", f"[Version] {message}")
+        
+    def report_error(xhr, status, error): # pylint: disable=unused-argument
+        state.console.write(
+            "version", 
+            f"[Main] Error getting the latest version of PySheets: {error}."
+        )
+    
+    ltk.window.ltk_get("https://pysheets.app/version", report_version, "text", report_error)
+
 
 def main():
     """
     The main entry point for the PySheets application. 
     """
+    check_version()
     write_startup_message()
     state.start_worker()
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_PRINT, print)

@@ -8,6 +8,7 @@ It sets up the Flask app, defines error handlers, and provides various routes fo
 import base64
 import json
 import os
+import subprocess
 import sys
 import threading
 import time
@@ -24,6 +25,13 @@ import ai
 
 from static import constants
 
+try:
+    command = ["pip", "show", "pysheets-app"]
+    lines = subprocess.check_output(command).decode("utf-8").split("\n")
+    version_lines = [line for line in lines if line.startswith("Version:")]
+    VERSION = version_lines[0].split(" ")[1]
+except Exception as e:   # pylint: disable=broad-except
+    VERSION = str(e)
 
 static_folder = os.path.join(os.path.dirname(__file__), "static")
 app = Flask(__name__, static_folder=static_folder)
@@ -114,6 +122,7 @@ def root():
     return render_template("index.html", **{
         "loading": "Loading...",
         "files": FILES + FILES_LTK,
+        "version": VERSION,
         "runtime": runtime,
         "vm": "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}",
         "packages": f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else "",
