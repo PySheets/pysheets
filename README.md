@@ -1,6 +1,11 @@
 # PySheets
 
 PySheets is a spreadsheet UI for Python, implemented in Python, running logic and saving data in the browser, using PyScript and IndexedDB.
+
+# Licensing
+
+PySheets is free to use for personal use. If you use it in a commercial setting, please get a [license](https://buy.stripe.com/00g1684SS2BZ9Es7st). Of course, if you use PySheets for personal project and 
+you really like it, you can still sponsor the project and buy a license.
   
 # Installation
 
