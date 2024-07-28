@@ -68,13 +68,13 @@ def check_version():
         if latest != ltk.window.version:
             message = f"⛔⛔⛔ You must upgrade to PySheets v{latest} ⛔⛔⛔ "
         state.console.write("version", f"[Version] {message}")
-        
+
     def report_error(xhr, status, error): # pylint: disable=unused-argument
         state.console.write(
             "version", 
             f"[Main] Error getting the latest version of PySheets: {error}."
         )
-    
+
     ltk.window.ltk_get("https://pysheets.app/version", report_version, "text", report_error)
 
 
