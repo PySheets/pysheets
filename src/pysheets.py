@@ -195,13 +195,14 @@ def ssl_get(url, headers=None):
     """
     try:
         return requests.get(url, verify=True, headers=headers or {}, timeout=2000).content
-    except Exception as e: # pylint: disable=broad-except
-        app.logger.error("ssl_get: error %s: %s", url, e)  # pylint: disable=no-member
+    except Exception as ssl_error: # pylint: disable=broad-except
+        app.logger.error("ssl_get: error %s: %s", url, ssl_error)  # pylint: disable=no-member
+
     try:
         return requests.get(url, verify=False, headers=headers or {}, timeout=2000).content
-    except Exception as e: # pylint: disable=broad-except
-        app.logger.error("ssl_get: error %s: %s", url, e)  # pylint: disable=no-member
-        return f"error: {e}"
+    except Exception as non_ssl_error: # pylint: disable=broad-except
+        app.logger.error("ssl_get: error %s: %s", url, non_ssl_error)  # pylint: disable=no-member
+        return f"error: {non_ssl_error}"
 
 
 def ssl_post(url, data, headers=None):
@@ -222,8 +223,8 @@ def ssl_post(url, data, headers=None):
         pass
     try:
         return requests.post(url, data, verify=False, headers=headers or {}, timeout=2000).content
-    except Exception as e: # pylint: disable=broad-except
-        return f"error: {e}"
+    except Exception as post_error: # pylint: disable=broad-except
+        return f"error: {post_error}"
 
 
 load_cache = {}

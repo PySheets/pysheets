@@ -591,6 +591,20 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             if cell.script.startswith("="):
                 self.get_cell(key).show_loading()
 
+    def start_running(self, cell: CellView):
+        """
+        Starts the cell's evaluation.
+        """
+        if self.current is cell:
+            self.editor.start_running()
+
+    def stop_running(self, cell: CellView):
+        """
+        Stops the cell's evaluation.
+        """
+        if self.current is cell:
+            self.editor.stop_running()
+
     def worker_ready(self, data): # pylint: disable=unused-argument
         """
         This method is called when the worker is ready to process cells in the spreadsheet.

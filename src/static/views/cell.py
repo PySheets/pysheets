@@ -110,6 +110,26 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         if evaluate:
             ltk.schedule(self.evaluate, f"eval-{self.model.key}")
 
+    def is_running(self):
+        """
+        Determines whether the cell is currently running.
+        """
+        return self.running
+
+    def start_running(self):
+        """
+        Starts the cell's evaluation.
+        """
+        self.running = True
+        self.sheet.start_running(self)
+
+    def stop_running(self):
+        """
+        Stops the cell's evaluation.
+        """
+        self.running = False
+        self.sheet.stop_running(self)
+
     def is_formula(self):
         """
         Determines whether the cell's script is a formula.
@@ -184,7 +204,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         """
         if self.model.key in self.sheet.cache:
             del self.sheet.cache[self.model.key]
-        self.running = False
+        self.stop_running()
         self.evaluate()
 
     def select(self):
@@ -421,9 +441,9 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         """
         Resolves the input cells required to evaluate the current cell's formula or script.
         """
-        if self.running:
+        if self.is_running():
             return
-        self.running = True
+        self.start_running()
         ltk.publish(
             "Application",
             "Worker",
@@ -478,7 +498,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         count, mark the cell as needing worker processing, and publish a message to the
         worker to run the cell's script.
         """
-        self.running = False
+        self.stop_running()
         if self.model.key in inputs:
             self.report_cycle(inputs)
         self.set_inputs(inputs)
@@ -508,7 +528,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         If the worker job completed successfully, this method will update the cell's value and notify
         any dependents of the cell that the value has changed.
         """
-        self.running = False
+        self.stop_running()
         if self.model.script == "":
             self.update(0, "")
             return

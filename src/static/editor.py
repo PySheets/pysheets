@@ -122,3 +122,15 @@ class Editor(ltk.Div):
             lineno (int): The line number to mark, starting from 1.
         """
         ltk.window.editorMarkLine(lineno - 1)
+
+    def start_running(self):
+        """
+        Sets the editor in "run" mode.
+        """
+        self.find(".CodeMirror-scroll").css("background", "#f2f2f2")
+
+    def stop_running(self):
+        """
+        Sets the editor in "edit" mode.
+        """
+        self.find(".CodeMirror-scroll").css("background", "#FFF")

@@ -23,7 +23,7 @@ MISSING_KEY = "\n".join([
 
 def load_key():
     """
-    Loads the OpenAI API key from a JSON file located in the same directory as the current script.
+    Loads the OpenAI API key from a JSON file located in the home directory.
     
     If the API key file is not found or there is an error reading it, the function
     will silently fail and the `openai.api_key` will remain unset.
