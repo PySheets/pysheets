@@ -1,8 +1,11 @@
 include src/requirements.txt
-include src/static/*.ico
+
 include src/static/*.css
 include src/static/*.js
-include src/static/*.png
+
+include src/static/icons/*.png
+include src/static/icons/*.ico
+
 include src/datafiles/*.csv
 include src/templates/*.html
 include CONTRIBUTE.MD

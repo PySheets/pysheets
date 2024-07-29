@@ -219,7 +219,7 @@ class Sheet(Model):  # pylint: disable=too-many-instance-attributes
     """
     def __init__(self, uid="", name="Untitled Sheet",    # pylint: disable=too-many-arguments
                  columns=None, rows=None, cells=None, previews=None,
-                 selected="A1", screenshot="/screenshot.png",
+                 selected="A1", screenshot="/icons/screenshot.png",
                  created_timestamp=0, updated_timestamp=0,
                  column_count=constants.DEFAULT_COLUMN_COUNT, row_count=constants.DEFAULT_ROW_COUNT,
                  _class="Sheet", _="Sheet"):

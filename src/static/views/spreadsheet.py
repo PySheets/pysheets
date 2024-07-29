@@ -667,7 +667,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             str: The data URL of the screenshot image.
         """
         src = ltk.find(".preview img").attr("src")
-        return src if isinstance(src, str) else "/screenshot.png"
+        return src if isinstance(src, str) else "/icons/screenshot.png"
 
     def complete_prompt(self, event=None): # pylint: disable=unused-argument
         """
