@@ -101,14 +101,25 @@ FILES = """
     "static/views/cell.py" = "views/cell.py"
 """
 FILES_LTK = """
-    "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/jquery.py" = "ltk/jquery.py"
-    "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/widgets.py" = "ltk/widgets.py"
-    "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/pubsub.py" = "ltk/pubsub.py"
-    "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/__init__.py" = "ltk/__init__.py"
-    "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/logger.py" = "ltk/logger.py"
-    "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.js" = "ltk/ltk.js"
-    "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.css" = "ltk/ltk.css"
+    "static/ltk/jquery.py" = "ltk/jquery.py"
+    "static/ltk/widgets.py" = "ltk/widgets.py"
+    "static/ltk/pubsub.py" = "ltk/pubsub.py"
+    "static/ltk/__init__.py" = "ltk/__init__.py"
+    "static/ltk/logger.py" = "ltk/logger.py"
+    "static/ltk/ltk.js" = "ltk/ltk.js"
+    "static/ltk/ltk.css" = "ltk/ltk.css"
 """
+PYSCRIPT_OFFLINE = """
+    <link rel="stylesheet" href="pyscript/core.css">
+    <script type="module" src="pyscript/core.js"></script>
+"""
+PYSCRIPT_ONLINE = """
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.7.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.7.1/core.js"></script>
+"""
+ONLINE = "online"
+OFFLINE = "offline"
+HOSTING = ONLINE
 
 
 @app.route("/")
@@ -119,10 +130,14 @@ def root():
     package_names = request.args.get(constants.PYTHON_PACKAGES, "").split()
     pyodide = request.args.get(constants.PYTHON_RUNTIME) == "py"
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
+    interpreter = "/pyodide/pyodide.js" if pyodide else "/micropython/micropython.mjs"
+    pyscript = PYSCRIPT_OFFLINE if HOSTING == OFFLINE else PYSCRIPT_ONLINE
     return render_template("index.html", **{
         "loading": "Loading...",
         "files": FILES + FILES_LTK,
         "version": VERSION,
+        "pyscript": pyscript,
+        "interpreter": interpreter if HOSTING == OFFLINE else "",
         "runtime": runtime,
         "vm": "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}",
         "packages": f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else "",
@@ -282,7 +297,11 @@ def send(path):
     Returns:
         The contents of the requested static file.
     """
-    return app.send_static_file(path)
+    try:
+        return app.send_static_file(f"/icons/{path}")
+    except Exception: # pylint: disable=broad-except
+        return app.send_static_file(path)
+
 
 
 def open_browser():

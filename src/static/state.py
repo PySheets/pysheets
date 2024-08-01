@@ -349,18 +349,24 @@ def start_worker_with_packages(packages):
         XWorker: The started PyOdide worker.
     """
     config = {
+        "interpreter": "pyodide/pyodide.js",
         "packages": [ 
             "pandas",
             "matplotlib",
             "numpy",
-            "openpyxl",
-            "pyscript-ltk",
             "requests"
         ] + packages,
         "files": {
             "static/api.py": "./api.py",
             "static/constants.py": "./constants.py",
             "static/lsp.py": "./lsp.py",
+            "static/ltk/jquery.py": "ltk/jquery.py",
+            "static/ltk/widgets.py": "ltk/widgets.py",
+            "static/ltk/pubsub.py": "ltk/pubsub.py",
+            "static/ltk/__init__.py": "ltk/__init__.py",
+            "static/ltk/logger.py": "ltk/logger.py",
+            "static/ltk/ltk.js": "ltk/ltk.js",
+            "static/ltk/ltk.css": "ltk/ltk.css"
         }
     }
     worker = XWorker("./worker.py", config=ltk.to_js(config), type="pyodide")

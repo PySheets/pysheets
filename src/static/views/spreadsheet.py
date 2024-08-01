@@ -38,9 +38,11 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         self.model = model
         self.model.listen(self.model_changed)
         self.current = None
+        self.freeze_notifications = False
         self.clear()
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_WORKER_RESULT, self.handle_worker_result)
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.pubsub.TOPIC_WORKER_READY, self.worker_ready)
+        ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_API_SET_CELLS, self.handle_set_cells)
         self.cell_views = {}
         self.selection = ltk.Input("").addClass("selection")
         self.multi_selection = selection.MultiSelection(self)
@@ -49,6 +51,33 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         self.fill_cache()
         self.create_ui()
         self.setup_pubsub()
+
+    def no_notification(self):
+        """ Do not notify any UI elements when models changes """
+        sheet = self
+        class NoNotifications:
+            """ No notifications context manager """
+
+            def __enter__(self):
+                """ Enter the context manager """
+                sheet.freeze_notifications = True
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                """ Leave the context manager """
+                sheet.freeze_notifications = False
+
+        return NoNotifications()
+
+
+    def handle_set_cells(self, cells):
+        """
+        Handle a request from the worker to set a collection of cells
+        """
+        with self.no_notification():
+            for key, value in cells.items():
+                cell = self.get_cell(key)
+                cell.set(value)
 
     def fill_cache(self):
         """
@@ -973,6 +1002,14 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             "https://raw.githubusercontent.com/PySheets/pysheets/main/src/datafiles/forbes-ai-50.csv " \
             "by calling 'pysheets.load_sheet(url)'.".strip()
         )
+
+    def set_cells(self, cells):
+        """
+        Handle setting of cell values from a user's script.
+        """
+        for key, value in cells.items():
+            self.get_cell(key).set(value)
+            print("set", key, value)
 
     def clear_name(self):
         """

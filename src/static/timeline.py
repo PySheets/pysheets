@@ -129,7 +129,7 @@ class FlameGraph(ltk.VBox):
             self.scale *= 3
             self.render()
 
-        self.container = ltk.Div().on("wheel", lambda event: zoom(-event.originalEvent.deltaY))
+        self.container = ltk.Div().on("wheel", ltk.proxy(lambda event: zoom(-event.originalEvent.deltaY)))
 
         self.append(
             ltk.VBox(
@@ -250,7 +250,7 @@ class Profiler():
                 self.calls.append(call)
                 if call.depth == 0:
                     if call.filename != "/home/pyodide/timeline.py" and call.duration > Profiler.MIN_DURATION:
-                        name = call.frame.f_code.co_name
+                        name = call.frame.f_code.co_name.replace("<","").replace(">","")
                         state.console.write(
                             f"timeline-{name}", 
                             f"[Timeline] Call to '{name}' took {call.duration}s. See timeline. 🔔️"

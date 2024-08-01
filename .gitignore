@@ -6,3 +6,7 @@ openai.json
 src/pysheets_app.egg-info/*
 dist/*
 .do/app.yaml
+src/static/pyscript/*
+src/static/pyodide/*
+src/static/micropython/*
+src/static/ltk/*

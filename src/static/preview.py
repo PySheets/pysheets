@@ -116,7 +116,7 @@ class PreviewView(ltk.Div):
         """
         selection.remove_arrows(0)
         self.sheet.get_cell(self.model.key).draw_arrows([])
-        ltk.window.addArrow(ltk.find(f"#{self.model.key}"), self.element.find(".preview-key"), self.model.key)
+        ltk.window.addArrow(ltk.find(f"#{self.model.key}"), self.element.find(".preview-header"), self.model.key)
 
     def set_html(self, html):
         """

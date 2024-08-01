@@ -12,20 +12,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
 
-    <link rel="stylesheet" href="https://pyscript.net/releases/2024.7.1/core.css">
-    <script type="module" src="https://pyscript.net/releases/2024.7.1/core.js"></script>
+    {{pyscript|safe}}
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/themes/base/jquery-ui.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="lib/jquery.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="lib/jqueryui.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="lib/jqueryui.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.35.0/codemirror.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/python/python.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
+    <script src="lib/codemirror.js"></script>
+    <script src="lib/python.min.js"></script>
+    <link rel="stylesheet" href="lib/codemirror.min.css">
 
-    <script defer src="leader-line.min.js"></script>
-    <script defer src="html2canvas.min.js"></script>
+    <script defer src="lib/leader-line.min.js"></script>
+    <script defer src="lib/html2canvas.min.js"></script>
+
     <script src="pysheets.js" type="module"></script>
+
     <script>
         window.version_pyscript = '2024.7.1';
         window.version_interpreter = '{{version_interpreter}}';
@@ -38,7 +39,7 @@
     <link defer rel="stylesheet" href="pysheets.css">
 
     <{{runtime}}-config>
-        {{interpreter|safe}}
+        interpreter = "{{interpreter|safe}}"
         {{auto|safe}}
         {{packages|safe}}
         [files]
@@ -55,7 +56,7 @@
 <body>
     <div class="header">
         <div class="logo-container">
-            <img class="logo" src="icons/favicon.ico">
+            <img class="logo" src="favicon.ico">
             <div id="menu" class="menu"></div>
         </div>
         <div id="cell-attributes-container" class="cell-attributes-container"></div>

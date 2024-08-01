@@ -11,12 +11,13 @@ import json
 import re
 import time
 
+import constants
+
 import ltk
 
-import pyscript # type: ignore  pylint: disable=import-error
+import polyscript # type: ignore    pylint: disable=import-error
 
 
-window = pyscript.window
 cache = functools.cache if hasattr(functools, "cache") else lambda func: func
 
 @cache
@@ -235,7 +236,7 @@ def to_js(python_object):
     """
     if python_object.__class__.__name__ == "jsobj":
         return python_object
-    return window.to_js(json.dumps(python_object))
+    return ltk.window.to_js(json.dumps(python_object))
 
 
 def index_to_col(index: int):
@@ -306,7 +307,7 @@ def load_with_trampoline(url):
             if time.time() - when < 60:
                 return value
 
-        xhr = window.XMLHttpRequest.new()
+        xhr = ltk.window.XMLHttpRequest.new()
         xhr.open("GET", url, False)
         xhr.send(None)
         if xhr.status != 200:
@@ -316,7 +317,7 @@ def load_with_trampoline(url):
         return value
 
     if url and url[0] != "/":
-        url = f"/load?url={window.encodeURIComponent(url)}"
+        url = f"/load?url={ltk.window.encodeURIComponent(url)}"
 
     content = base64.b64decode(get(url))
     return content
@@ -344,6 +345,7 @@ class PySheets():
     def __init__(self, spreadsheet=None, inputs=None):
         self._spreadsheet = spreadsheet
         self._inputs = inputs or []
+        self._cells_to_set = {}
 
     def sheet(self, selection, headers=True):   # pylint: disable=too-many-locals
         """
@@ -388,22 +390,34 @@ class PySheets():
         Returns:
             object: The cell object for the given key.
         """
-        return self._spreadsheet.get(key) if self._spreadsheet else window.jQuery(f"#{key}")
+        return self._spreadsheet.get(key) if self._spreadsheet else ltk.window.jQuery(f"#{key}")
 
     def set_cell(self, key, value):
         """
         Sets the value of a cell in the spreadsheet.
+
+        This call happens in the worker and needs to be sent to the UI. To improve
+        performance, we bundle up all cells being set in the current execution
+        and send them to the UI.
         
         Args:
             key (str): The key of the cell to set.
             value (object): The value to set the cell to.
-        
-        Returns:
-            None
         """
-        cell = self.cell(key)
-        cell.text(f"{repr(value)}")
-        cell.attr("worker-set", f"{repr(value)}")
+        self._cells_to_set[key] = value
+        ltk.schedule(lambda: self.flush_set_cells(), "flushing cells to set", 0.1) # pylint: disable=unnecessary-lambda
+
+    def flush_set_cells(self):
+        """
+        Sets the value of a cell in the spreadsheet.
+        """
+        polyscript.xworker.sync.publish(
+            "Worker",
+            "Application",
+            constants.TOPIC_API_SET_CELLS,
+            json.dumps(self._cells_to_set)
+        )
+        self._cells_to_set.clear()
 
     def get_key(self, column, row):
         """
@@ -416,7 +430,7 @@ class PySheets():
         Returns:
             str: The key for the given column and row.
         """
-        return window.getKeyFromColumnRow(column, row)
+        return ltk.window.getKeyFromColumnRow(column, row)
 
     def load(self, url, handler=None):
         """

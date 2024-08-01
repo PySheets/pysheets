@@ -68,6 +68,8 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             info (dict): A dictionary containing information about the update,
             including the name of the property that changed.
         """
+        if self.sheet.freeze_notifications:
+            return
         if info["name"] == "script":
             self.set(model.script)
         elif info["name"] == "value":
@@ -96,12 +98,9 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         if self.model.script != script:
             history.add(
                 models.CellScriptChanged(self.model.key, self.model.script, script)
-                    .apply(self.sheet.model
-                )
+                    .apply(self.sheet.model)
             )
             self.model.script = script
-        if script == "":
-            self.clear()
         if self.sheet.current == self:
             self.sheet.editor.set(self.model.script)
             self.sheet.select(self)
@@ -184,6 +183,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         """
         return api.get_dict_table(value) if isinstance(value, dict) else None
 
+
     def notify(self):
         """
         Notifies any dependent cells of changes to this cell.
@@ -262,19 +262,19 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         - Notifying the sheet that the cell has been cleared
         - Reselecting the sheet to update the UI
         """
-        self.css("font-family", constants.DEFAULT_FONT_FAMILY)
-        self.css("font-size", constants.DEFAULT_FONT_SIZE)
-        self.css("font-style", constants.DEFAULT_FONT_STYLE)
-        self.css("color", constants.DEFAULT_COLOR)
-        self.css("background-color", constants.DEFAULT_FILL)
-        self.css("vertical-align", constants.DEFAULT_VERTICAL_ALIGN)
-        self.css("font-weight", constants.DEFAULT_FONT_WEIGHT)
-        self.css("text-align", constants.DEFAULT_TEXT_ALIGN)
+        self.css({
+            "font-family": constants.DEFAULT_FONT_FAMILY,
+            "font-size": constants.DEFAULT_FONT_SIZE,
+            "font-style": constants.DEFAULT_FONT_STYLE,
+            "color": constants.DEFAULT_COLOR,
+            "background-color": constants.DEFAULT_FILL,
+            "vertical-align": constants.DEFAULT_VERTICAL_ALIGN,
+            "font-weight": constants.DEFAULT_FONT_WEIGHT,
+            "text-align": constants.DEFAULT_TEXT_ALIGN,
+        })
 
         ltk.find(f"#preview-{self.model.key}").remove()
         preview.remove(self.model.key)
-        if self.model.key in self.sheet.model.previews:
-            history.add(models.PreviewDeleted(key=self.model.key))
 
         ltk.find(f"#completion-{self.model.key}").remove()
         state.console.remove(f"ai-{self.model.key}")

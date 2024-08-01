@@ -7,7 +7,6 @@ and undoing the most recent edit.
 
 
 import ltk
-import models
 import state
 
 import storage
@@ -20,8 +19,6 @@ def add(edit):
     Adds an edit to the history and schedules a flush of the changes to storage.
     """
     history.append(edit)
-    if isinstance(edit, models.USER_EDITS):
-        state.console.write("Sheet", "[History] Saving...")
     schedule_flush()
 
 

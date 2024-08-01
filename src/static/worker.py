@@ -255,9 +255,9 @@ def generate_completion(key, prompt):
     window.ltk_post(
         url,
         data,
-        pyodide.ffi.create_proxy(success),
+        ltk.proxy(success),
         None,
-        pyodide.ffi.create_proxy(error),
+        ltk.proxy(error),
     )
 
 
@@ -285,7 +285,7 @@ def run_in_worker(script):
     return _locals["_"]
 
 
-def run(data): # pylint: disable=too-many-locals
+def handle_run(data): # pylint: disable=too-many-locals
     """
     Executes a Python script in the worker context, with access to the global
     cache and results dictionaries, as well as the pyodide, pyscript, and pysheets modules.
@@ -376,7 +376,7 @@ def run(data): # pylint: disable=too-many-locals
             ),
         )
     except Exception as e: # pylint: disable=broad-exception-caught
-        polyscript.xworker.sync.publish(
+        polyscript.xworker.sync(
             "Worker",
             "Application",
             ltk.pubsub.TOPIC_WORKER_RESULT,
@@ -392,6 +392,14 @@ def run(data): # pylint: disable=too-many-locals
                 }
             ),
         )
+
+
+def handle_set_cells(cells):
+    """
+    Handle a request from the api to set a collection of cells
+    """
+    for key, value in cells.items():
+        cache[key] = value
 
 
 def handle_request(sender, topic, request): # pylint: disable=unused-argument
@@ -447,7 +455,9 @@ def handle_request(sender, topic, request): # pylint: disable=unused-argument
                 json.dumps(completions),
             )
         elif topic == ltk.pubsub.TOPIC_WORKER_RUN:
-            run(data)
+            handle_run(data)
+        elif topic == constants.TOPIC_API_SET_CELLS:
+            handle_set_cells(data)
         else:
             print("Error: Unexpected topic request", topic)
     except Exception as e: # pylint: disable=broad-exception-caught
@@ -467,6 +477,9 @@ polyscript.xworker.sync.subscribe(
 )
 polyscript.xworker.sync.subscribe(
     "Worker", constants.TOPIC_WORKER_CODE_COMPLETE, "pyodide-worker"
+)
+polyscript.xworker.sync.subscribe(
+    "Worker", constants.TOPIC_API_SET_CELLS, "pyodide-worker"
 )
 polyscript.xworker.sync.publish(
     "Worker", "Sheet", ltk.pubsub.TOPIC_WORKER_READY, repr(sys.version)

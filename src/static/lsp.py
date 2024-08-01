@@ -9,7 +9,7 @@ Also handles the display and selection of completion options.
 import constants
 import ltk
 
-from pyscript import window # type: ignore   pylint: disable=import-error
+import api
 
 
 COMPLETION_MAKE_CELL_FUNCTION = f"{constants.ICON_STAR} Make this a Python cell function"
@@ -34,7 +34,7 @@ class CodeCompletor():
         self.editor.on("keydown",
                 ltk.proxy(lambda editor, event: self.keydown(editor, event))) # pylint: disable=unnecessary-lambda
         self.completions = []
-        window.completePython = ltk.proxy(
+        ltk.window.completePython = ltk.proxy(
             lambda text, line, ch: self.complete_python(text, line, ch) # pylint: disable=unnecessary-lambda
         )
 
@@ -193,7 +193,7 @@ class CodeCompletor():
             ltk.create("<div>")
                 .addClass("completions")
                 .css("left", ltk.find(".CodeMirror-cursor").css("left"))
-                .css("top", window.parseFloat(ltk.find(".CodeMirror-cursor").css("top")) + 24)
+                .css("top", ltk.window.parseFloat(ltk.find(".CodeMirror-cursor").css("top")) + 24)
         )
         for choice in self.completions:
             ltk.find(".completions").append(
@@ -279,6 +279,7 @@ def complete_python(text, line, ch, cache, results):  # pylint: disable=too-many
             self.context = {}
             self.context.update(cache)
             self.context.update(results)
+            self.context["pysheets"] = api.PySheets(None, cache)
             self.token = ""
 
         def inside(self, node):

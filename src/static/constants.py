@@ -69,6 +69,7 @@ TOPIC_WORKER_CODE_COMPLETE = "worker.code.complete"
 TOPIC_WORKER_CODE_COMPLETION = "worker.code.completion"
 TOPIC_WORKER_FIND_INPUTS = "worker.find.inputs"
 TOPIC_WORKER_INPUTS = "worker.inputs"
+TOPIC_API_SET_CELLS = "api.set_cells"
 
 URL = "url"
 PROMPT = "prompt"
