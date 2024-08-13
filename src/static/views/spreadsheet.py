@@ -69,10 +69,9 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
 
         return NoNotifications()
 
-
     def handle_set_cells(self, cells):
         """
-        Handle a request from the worker to set a collection of cells
+        Handle a request from the worker to set a collection of cells.
         """
         with self.no_notification():
             for key, value in cells.items():
@@ -223,7 +222,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         Clears the state of the spreadsheet, resetting the cells, cache, and counts. Also sets the current cell to None.
         """
-        self.cells = {}
+        self.cell_views = {}
         self.cache = {}
         self.counts = collections.defaultdict(int)
         self.current = None
@@ -368,11 +367,14 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         if width > 1 and height > 1:
             add_frame(cell.model, width, height)
 
-    def save_current_position(self):
+    def save_current_position(self, key):
         """
         Saves the current selection position in the spreadsheet model's history.
+
+        Args:
+            key (Optional[str]): the key of the cell being selected.
         """
-        history.add(models.SelectionChanged(key=self.current.model.key).apply(self.model))
+        history.add(models.SelectionChanged(key=key).apply(self.model))
 
     def get_url_keys(self):
         """
@@ -585,6 +587,8 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         if self.current is cell and not force:
             return
         ltk.find(".selection").remove()
+        if self.current and not self.current is cell:
+            self.save_current_position(cell.model.key)
         self.current = cell
         self.multi_selection.select(cell)
         cell.select()
@@ -944,7 +948,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
 
         editor_and_tabs = ltk.VerticalSplitPane(
             editor_container,
-            tabs if state.PYODIDE else console,
+            tabs,
             "editor-and-console",
         )
         right_panel = ltk.VerticalSplitPane(

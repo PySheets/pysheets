@@ -1,7 +1,11 @@
 """
 CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
 
-Profiles the execution of a Python program and generating a timeline visualization of the function calls.
+Shows edit history and versions.
+
+When running on PyOdide, also profiles the execution of PySheets and generates a
+flamegraph visualization of the function calls for operations taking more than
+100ms.
 """
 
 import sys
@@ -261,6 +265,38 @@ class Profiler():
                     Profiler.calls = []
 
         return self.profile
+
+
+class Edit(ltk.HBox):
+    """
+    An `Edit` widget that displays an edit made by the user.
+    """
+    classes = [ "edit" ]
+
+    def __init__(self, edit):
+        self.edit = edit
+        description = edit.describe()
+        if description:
+            ltk.HBox.__init__(self,
+                ltk.Div(description),
+                ltk.Button("undo", lambda event: self.undo()).addClass("undo-button"),
+            )
+
+    def undo(self):
+        """
+        Undoes the edit and removes it from the timeline.
+        """
+        self.edit.undo(state.SHEET)
+        self.remove()
+
+
+def add_edit(edit):
+    """
+    Adds an edit to the timeline view, so the user can inspect the edit history.
+    """
+    ltk.find(".timeline-container").prepend(
+        Edit(edit).element
+    )
 
 
 def setup():

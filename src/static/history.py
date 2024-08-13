@@ -10,6 +10,7 @@ import ltk
 import state
 
 import storage
+import timeline
 
 history = []
 
@@ -20,6 +21,7 @@ def add(edit):
     """
     history.append(edit)
     schedule_flush()
+    timeline.add_edit(edit)
 
 
 def schedule_flush():

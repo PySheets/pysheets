@@ -511,6 +511,13 @@ class Edit(SerializableDict):
         """
         raise NotImplementedError(f"{self.__class__.__name__}.undo")
 
+    def describe(self):
+        """
+        This method is overridden by subclasses of `Edit` to provide the implementation
+        for describing what this edit does.
+        """
+        raise NotImplementedError(f"{self.__class__.__name__}.undo")
+
 
 class NameChanged(Edit):
     """
@@ -529,6 +536,9 @@ class NameChanged(Edit):
         sheet.name = self._name
         return True
 
+    def describe(self):
+        return f"The sheet was renamed to '{self.name}'"
+
 
 class SelectionChanged(Edit):
     """
@@ -545,6 +555,9 @@ class SelectionChanged(Edit):
     def undo(self, sheet: Sheet):
         return False
 
+    def describe(self):
+        return None
+
 
 class ScreenshotChanged(Edit):
     """
@@ -560,6 +573,9 @@ class ScreenshotChanged(Edit):
 
     def undo(self, sheet: Sheet):
         return False
+
+    def describe(self):
+        return f"A new screenshot was saved"
 
 
 class ColumnChanged(Edit):
@@ -579,6 +595,9 @@ class ColumnChanged(Edit):
     def undo(self, sheet: Sheet):
         return False
 
+    def describe(self):
+        return f"The width of column {self.column} was changed to {self.width}"
+
 
 class RowChanged(Edit):
     """
@@ -596,6 +615,9 @@ class RowChanged(Edit):
 
     def undo(self, sheet: Sheet):
         return False
+
+    def describe(self):
+        return f"The height of row {self.row} was changed to {self.height}"
 
 
 class CellChanged(Edit):
@@ -620,6 +642,9 @@ class CellChanged(Edit):
                 setattr(cell, key[1:], value)
         return True
 
+    def describe(self):
+        raise NotImplementedError("description")
+
 
 class CellValueChanged(CellChanged):
     """
@@ -630,6 +655,9 @@ class CellValueChanged(CellChanged):
         self._value = _value
         self.value = value
 
+    def describe(self):
+        return f"The value for cell {self.key} was changed to '{self.value}'"
+
 
 class CellScriptChanged(CellChanged):
     """
@@ -639,6 +667,9 @@ class CellScriptChanged(CellChanged):
         super().__init__(key)
         self._script = _script
         self.script = script
+
+    def describe(self):
+        return f"The script for cell {self.key} was changed to '{self.script}'"
 
 
 class CellStyleChanged(CellChanged):
@@ -672,6 +703,8 @@ class CellStyleChanged(CellChanged):
                 del style[key]
         return style
 
+    def describe(self):
+        return f"The style for cell {self.key} was changed"
 
 class PreviewChanged(Edit):
     """
@@ -692,6 +725,9 @@ class PreviewChanged(Edit):
     def undo(self, sheet: Sheet):
         return False
 
+    def describe(self):
+        raise NotImplementedError("description")
+
 
 class PreviewPositionChanged(PreviewChanged):
     """
@@ -710,6 +746,9 @@ class PreviewPositionChanged(PreviewChanged):
         preview.top = self._top
         return True
 
+    def describe(self):
+        return f"The preview for cell {self.key} was moved to a new position"
+
 
 class PreviewDimensionChanged(PreviewChanged):
     """
@@ -720,6 +759,9 @@ class PreviewDimensionChanged(PreviewChanged):
         self.width = width
         self.height = height
 
+    def describe(self):
+        return f"The preview for cell {self.key} was resized"
+
 
 class PreviewValueChanged(PreviewChanged):
     """
@@ -728,6 +770,9 @@ class PreviewValueChanged(PreviewChanged):
     def __init__(self, key="", html=0):
         super().__init__(key)
         self.html = html
+
+    def describe(self):
+        return None
 
 
 class PreviewDeleted(Edit):
@@ -745,6 +790,9 @@ class PreviewDeleted(Edit):
 
     def undo(self, sheet: Sheet):
         return False
+
+    def describe(self):
+        return None
 
 
 #

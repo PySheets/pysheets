@@ -105,6 +105,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             self.sheet.editor.set(self.model.script)
             self.sheet.select(self)
         if not self.is_formula():
+            self.remove_preview()
             self.sheet.cache[self.model.key] = api.convert(script)
         if evaluate:
             ltk.schedule(self.evaluate, f"eval-{self.model.key}")
@@ -215,7 +216,6 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         CSS editors, and scrolls the selection into view.
         """
         self.remove_arrows()
-        ltk.schedule(self.sheet.save_current_position, "save selection", 3)
         self.sheet.editor.set(self.model.script)
         ltk.find("#ai-prompt").val(self.model.prompt)
         ltk.find("#selection").text(f"Cell: {self.model.key}")
@@ -273,17 +273,14 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             "text-align": constants.DEFAULT_TEXT_ALIGN,
         })
 
-        ltk.find(f"#preview-{self.model.key}").remove()
-        preview.remove(self.model.key)
-
         ltk.find(f"#completion-{self.model.key}").remove()
         state.console.remove(f"ai-{self.model.key}")
 
         self.text("")
         self.model.clear(self.sheet.model)
         self.inputs.clear()
-        if self.model.key in self.sheet.cells:
-            del self.sheet.cells[self.model.key]
+        if self.model.key in self.sheet.cell_views:
+            del self.sheet.cell_views[self.model.key]
         self.sheet.cache[self.model.key] = 0
 
         history.add(models.CellScriptChanged(key=self.model.key, script=""))
@@ -292,6 +289,10 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         self.notify()
 
         self.sheet.reselect()
+
+    def remove_preview(self):
+        ltk.find(f"#preview-{self.model.key}").remove()
+        preview.remove(self.model.key)
 
     def draw_cell_arrows(self):
         """
