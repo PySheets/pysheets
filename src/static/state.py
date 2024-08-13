@@ -238,7 +238,7 @@ class Console():
         message = " ".join(str(arg) for arg in args)
         if message.startswith("js_callable_proxy"):
             return
-        if not message.startswith("💀🔒 - Possible deadlock"):
+        if not message.startswith("💀🔒 - "):
             key = "Network" if message.startswith("[Network]") else f"{ltk.get_time()}"
             self.write(key, f"[Console] {message}")
 
