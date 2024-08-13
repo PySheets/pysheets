@@ -6,6 +6,7 @@ Wrapper for OpenAI's GPT API.
 
 import json
 import os
+import requests
 
 import openai
 
@@ -49,6 +50,43 @@ Do not generate explanations, but just show the Python code.
 
 
 def complete(prompt):
+    """
+    Generates a code completion using the currently selected language model.
+    
+    Args:
+        prompt (str): The input prompt to generate the completion from.
+    
+    Returns:
+        dict: A dictionary containing the generated text completion.
+    """
+    return complete_with_openai(prompt)
+
+
+def complete_with_ollama(prompt):
+    """
+    Generates a code completion using Ollama with the llama3 language model.
+    
+    Args:
+        prompt (str): The input prompt to generate the completion from.
+    
+    Returns:
+        dict: A dictionary containing the generated text completion.
+    """
+    response = requests.post("http://127.0.0.1:11434/api/generate", json={
+        "model": "llama3.1",
+        "prompt": "What is the meaning of life?",
+    }, timeout=10)
+    response.raise_for_status()
+    for line in response.iter_lines():
+        body = json.loads(line)
+        print("########", body)
+    return {
+        "status": "OK",
+        "text": response.text,
+    }
+
+
+def complete_with_openai(prompt):
     """
     Generates a code completion using the OpenAI GPT-3.5 language model.
     
