@@ -741,6 +741,7 @@ td:hover .debug-info {
 
 .timeline-container {
     display: contents;
+    background-color: #f9f9ff;
     width: 100%;
     height: 100%;
     overflow-x: scroll;
@@ -1039,12 +1040,8 @@ input[type="checkbox"] {
   }
 
   .edit .undo-button {
-    display: none;
-    position: absolute;
-    top: 2px;
-    left: 4px;
-  }
-
-  .edit:hover .undo-button {
-    display: block;
+    min-width: 0;
+    display: inline;
+    background-color: #1f77b4;
+    color: white;
   }

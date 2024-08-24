@@ -7,21 +7,46 @@ and undoing the most recent edit.
 
 
 import ltk
-import state
 
+import state
 import storage
+import models
 import timeline
 
 history = []
+
+
+class SingleEdit:
+    """
+    A context manager for edits that should be considered as one for undo.
+    """
+    def __init__(self, description):
+        self.description = description
+
+    def __enter__(self):
+        add(models.EditGroup(self.description))
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        add(models.EmptyEdit())
+        flush()  # Flush changes when exiting the context
+
+
 
 
 def add(edit):
     """
     Adds an edit to the history and schedules a flush of the changes to storage.
     """
-    history.append(edit)
+    if isinstance(edit, models.EmptyEdit):
+        return
+    if history and isinstance(history[-1], models.EditGroup):
+        history[-1].add(edit)
+    else:
+        history.append(edit)
+        timeline.add_edit(edit)
+
     schedule_flush()
-    timeline.add_edit(edit)
 
 
 def schedule_flush():
@@ -59,7 +84,7 @@ def undo(sheet):
     """
     while history:
         edit = history.pop()
+        timeline.remove(edit)
         if edit.undo(sheet):
-            print("undo", edit)
             schedule_flush()
             return

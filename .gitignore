@@ -10,3 +10,4 @@ src/static/pyscript/*
 src/static/pyodide/*
 src/static/micropython/*
 src/static/ltk/*
+.venv

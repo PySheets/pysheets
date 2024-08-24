@@ -9,11 +9,8 @@ import base64
 import json
 import os
 import subprocess
-import sys
-import threading
 import time
 import traceback
-import webbrowser
 
 import requests
 
@@ -303,25 +300,33 @@ def send(path):
         return app.send_static_file(path)
 
 
+class TerminalColors:
+    """
+    Terminal color codes.
+    """
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    DEFAULT = '\033[0m'
 
-def open_browser():
-    """
-    Opens the default web browser to the local server URL.
-    
-    This function is called after a short delay to automatically open the application
-    in the user's default web browser when the server starts up. This provides a
-    convenient way for the developer to access the running application without
-    having to manually open a browser window.
-    """
-    webbrowser.open('http://127.0.0.1:8081')
 
 def run_app():
     """
     Runs the PySheets application after `pip install pyscript-app` and calling `pysheets`.
     """
-    if "--nolaunch" not in sys.argv:
-        threading.Timer(1.5, open_browser).start()
+    print(
+        'The PySheets server is running. Open this URL in your browser:',
+        TerminalColors.OKGREEN,
+        'http://127.0.0.1:8081',
+        TerminalColors.DEFAULT
+    )
     app.run(host='127.0.0.1', port=8081, debug=True)
+
 
 if __name__ == '__main__':
     run_app()

@@ -291,6 +291,9 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         self.sheet.reselect()
 
     def remove_preview(self):
+        """
+        Removes the preview element associated with the cell and removes the cell from the preview collection.
+        """
         ltk.find(f"#preview-{self.model.key}").remove()
         preview.remove(self.model.key)
 

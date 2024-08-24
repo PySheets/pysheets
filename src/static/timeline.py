@@ -10,8 +10,9 @@ flamegraph visualization of the function calls for operations taking more than
 
 import sys
 import time
-
 import ltk
+
+import models
 import state
 
 
@@ -267,7 +268,7 @@ class Profiler():
         return self.profile
 
 
-class Edit(ltk.HBox):
+class Edit(ltk.TableRow):
     """
     An `Edit` widget that displays an edit made by the user.
     """
@@ -277,15 +278,32 @@ class Edit(ltk.HBox):
         self.edit = edit
         description = edit.describe()
         if description:
-            ltk.HBox.__init__(self,
-                ltk.Div(description),
-                ltk.Button("undo", lambda event: self.undo()).addClass("undo-button"),
+            ltk.TableRow.__init__(self,
+                ltk.TableData(self.get_timestamp()),
+                ltk.TableData(
+                    ltk.Button("undo", lambda event: self.undo()).addClass("undo-button"),
+                ),
+                ltk.TableData(
+                    ltk.Span(description),
+                )
             )
+            self.attr("id", f"edit-{id(edit)}")
+    
+    def get_timestamp(self):
+        """
+        Get a human-readable timestamp for the edit.
+        """
+        try:
+            now = ltk.window.Date.new()
+            return f"{now.getHours()}:{now.getMinutes():02d}:{now.getSeconds():02d}"
+        except TypeError:
+            return "00:00:00"
 
     def undo(self):
         """
         Undoes the edit and removes it from the timeline.
         """
+        print("undo edit", self.edit.undo)
         self.edit.undo(state.SHEET)
         self.remove()
 
@@ -294,6 +312,8 @@ def add_edit(edit):
     """
     Adds an edit to the timeline view, so the user can inspect the edit history.
     """
+    if isinstance(edit, models.EmptyEdit):
+        return
     ltk.find(".timeline-container").prepend(
         Edit(edit).element
     )
@@ -310,3 +330,13 @@ def setup():
     """
     if 'unittest' not in sys.modules and hasattr(sys, "setprofile"):
         Profiler()
+
+
+def remove(edit):
+    """
+    Removes it from the timeline.
+    
+    Args:
+        edit (Edit): The edit to be undone.
+    """
+    ltk.find(f"#edit-{id(edit)}").remove()

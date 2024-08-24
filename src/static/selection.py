@@ -42,6 +42,20 @@ class MultiSelection(): # pylint: disable=too-many-instance-attributes
             "z": self.undo
         }
 
+    def skip(self, event):
+        """
+        Skips the current event.
+        
+        This method is a placeholder for event handlers that are not implemented. It does nothing and
+        simply returns without performing any actions.
+        """
+
+    def handle(self, event):
+        """
+        Handles keyboard shortcuts for the MultiSelection class. 
+        """
+        self.handler_by_shortcut.get(event.key, self.skip)(event)
+
     def select(self, cell):
         """
         Selects a single cell in the sheet and sets it as the start and end of the multi-selection.
@@ -116,10 +130,11 @@ class MultiSelection(): # pylint: disable=too-many-instance-attributes
         keys = ",".join([f"#{cell}" for cell in self.cells])
         ltk.find(keys).css(name, value)
         self.sheet.selection.css(name, value)
-        for model in [self.sheet.get_cell(key).model for key in self.cells]:
-            _style = model.style.copy()
-            model.style[name] = value
-            history.add(models.CellStyleChanged(model.key, _style, model.style))
+        with history.SingleEdit(f"Update '{name}' to '{value}' for {','.join(self.cells)}"):
+            for model in [self.sheet.get_cell(key).model for key in self.cells]:
+                _style = model.style.copy()
+                model.style[name] = value
+                history.add(models.CellStyleChanged(model.key, _style, model.style))
         self.draw()
 
     def undo(self, event):

@@ -116,6 +116,8 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                 ltk.window.document.title = new_name
                 ltk.find("#title").val(new_name)
                 history.add(models.NameChanged("", new_name).apply(self.model))
+        elif field_name == "style":
+            print("Change style", info)
         self.sheet_resized()
 
     def setup_window_listeners(self):
@@ -450,7 +452,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             .on("mousemove", ltk.proxy(mousemove)) \
             .on("mouseup", ltk.proxy(mouseup)) \
 
-    def navigate(self, event):
+    def keydown(self, event):
         """
         Handles navigation events for the spreadsheet application.
         
@@ -461,7 +463,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         target = ltk.find(event.target)
         if target.hasClass("selection"):
             self.navigate_selection(event)
-        elif target.hasClass("main"):
+        if target.hasClass("main"):
             self.navigate_main(event)
 
     def navigate_selection(self, event):
@@ -542,9 +544,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
 
         if len(event.key) == 1:
             if self.is_command_key(event):
-                handler = self.multi_selection.handler_by_shortcut.get(event.key)
-                if handler:
-                    handler(event)
+                self.multi_selection.handle(event)
             if event.metaKey or event.ctrlKey:
                 return
             self.selection_edited = True
@@ -978,7 +978,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         ltk.schedule(editor_and_tabs.layout, "layout editor")
         ltk.window.adjustSheetPosition()
         self.create_top()
-        ltk.find("#main").focus().on("keydown", ltk.proxy(lambda event: self.navigate(event))) # pylint: disable=unnecessary-lambda
+        ltk.find("body").focus().on("keydown", ltk.proxy(lambda event: self.keydown(event))) # pylint: disable=unnecessary-lambda
         ltk.find(".hidden").removeClass("hidden")
         state.set_title(self.model.name)
         current = self.model.selected or "A1"
@@ -1112,7 +1112,8 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
 
             ltk.Span(
                 ltk.ColorPicker()
-                    .on("input", ltk.proxy(set_background))
+                    .on("input", ltk.proxy(lambda event:
+                            ltk.schedule(lambda: set_background(event), "set color", 0.25)))
                     .val("#ffffff")
                     .attr("id", "cell-fill")
                     .addClass("cell-fill-colorpicker"),
@@ -1123,7 +1124,8 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
 
             ltk.Span(
                 ltk.ColorPicker()
-                    .on("input", ltk.proxy(set_color))
+                    .on("input", ltk.proxy(lambda event:
+                            ltk.schedule(lambda: set_color(event), "set color", 0.25)))
                     .val("#ffffff")
                     .attr("id", "cell-color")
                     .addClass("cell-color-colorpicker"),

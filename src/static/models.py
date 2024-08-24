@@ -386,6 +386,20 @@ class Sheet(Model):  # pylint: disable=too-many-instance-attributes
             self.previews[key] = Preview(key, **args)
         return self.previews[key]
 
+    def set_column_width(self, column, width):
+        """ 
+        Set the column width
+        """
+        self.columns[column] = width
+        self.notify_listeners({ "name": "columns", "column": column, "width": width })
+
+    def set_row_height(self, row, height):
+        """ 
+        Set the row height
+        """
+        self.rows[row] = height
+        self.notify_listeners({ "name": "rows", "row": row, "height": height })
+
     def __eq__(self, other):
         return isinstance(other, Sheet) and other.uid == self.uid
 
@@ -519,6 +533,47 @@ class Edit(SerializableDict):
         raise NotImplementedError(f"{self.__class__.__name__}.undo")
 
 
+class EditGroup(Edit):
+    """
+    Represents a group of edits that can be undone as one.
+    """
+    def __init__(self, description):
+        super().__init__()
+        self.description = description
+        self.edits = []
+
+    def apply(self, sheet):
+        for edit in self.edits:
+            edit.apply(sheet)
+
+    def undo(self, sheet):
+        for edit in self.edits:
+            edit.undo(sheet)
+
+    def describe(self):
+        return self.description
+
+    def add(self, edit):
+        """
+        Add an edit to the current edit group.
+        """
+        self.edits.append(edit)
+
+
+class EmptyEdit(Edit):
+    """
+    Represents an empty edit that does nothing.
+    """
+    def apply(self, sheet):
+        pass
+
+    def undo(self, sheet):
+        pass
+
+    def describe(self):
+        return "Empty Edit"
+
+
 class NameChanged(Edit):
     """
     Represents an edit to change the name of a Sheet.
@@ -575,7 +630,7 @@ class ScreenshotChanged(Edit):
         return False
 
     def describe(self):
-        return f"A new screenshot was saved"
+        return "A new screenshot was saved"
 
 
 class ColumnChanged(Edit):
@@ -584,19 +639,20 @@ class ColumnChanged(Edit):
     """
     def __init__(self, column: int=0, width: int=0):
         super().__init__()
-        self.column = column
-        self.width = width
+        self.column = str(column)
+        self._width = self.width = width
 
     def apply(self, sheet: Sheet):
-        sheet.columns[str(self.column)] = self.width
-        sheet.notify_listeners({ "name": "columns", "column": self.column, "width": self.width })
+        self._width = sheet.columns.get(self.column, constants.DEFAULT_COLUMN_WIDTH)
+        sheet.set_column_width(self.column, self.width)
         return self
 
     def undo(self, sheet: Sheet):
-        return False
+        sheet.set_column_width(self.column, self._width)
+        return True
 
     def describe(self):
-        return f"The width of column {self.column} was changed to {self.width}"
+        return f"Column {api.get_column_name(int(self.column))}: Change width to {self.width}"
 
 
 class RowChanged(Edit):
@@ -605,19 +661,20 @@ class RowChanged(Edit):
     """
     def __init__(self, row=0, height=0):
         super().__init__()
-        self.row = row
-        self.height = height
+        self.row = str(row)
+        self._height = self.height = height
 
     def apply(self, sheet: Sheet):
-        sheet.rows[str(self.row)] = self.height
-        sheet.notify_listeners({ "name": "rows", "row": self.row, "height": self.height })
+        self._height = sheet.rows.get(self.row, constants.DEFAULT_ROW_HEIGHT)
+        sheet.set_row_height(self.row, self.height)
         return self
 
     def undo(self, sheet: Sheet):
-        return False
+        sheet.set_row_height(self.row, self._height)
+        return True
 
     def describe(self):
-        return f"The height of row {self.row} was changed to {self.height}"
+        return f"Row {self.row}: Change height to {self.height}"
 
 
 class CellChanged(Edit):
@@ -656,7 +713,7 @@ class CellValueChanged(CellChanged):
         self.value = value
 
     def describe(self):
-        return f"The value for cell {self.key} was changed to '{self.value}'"
+        return f"{self.key}: change value to '{self.value}'"
 
 
 class CellScriptChanged(CellChanged):
@@ -669,7 +726,7 @@ class CellScriptChanged(CellChanged):
         self.script = script
 
     def describe(self):
-        return f"The script for cell {self.key} was changed to '{self.script}'"
+        return f"{self.key}: change script to '{self.script}'"
 
 
 class CellStyleChanged(CellChanged):
@@ -704,7 +761,8 @@ class CellStyleChanged(CellChanged):
         return style
 
     def describe(self):
-        return f"The style for cell {self.key} was changed"
+        return f"{self.key}: changed style to {self.style}"
+
 
 class PreviewChanged(Edit):
     """
@@ -747,20 +805,28 @@ class PreviewPositionChanged(PreviewChanged):
         return True
 
     def describe(self):
-        return f"The preview for cell {self.key} was moved to a new position"
+        return f"{self.key}: Move the preview to [{self.left},{self.top}]"
 
 
 class PreviewDimensionChanged(PreviewChanged):
     """
     Represents a change to the dimensions of a preview in a Sheet.
     """
-    def __init__(self, key="", width=0, height=0):
+    def __init__(self, key="", _width=0, _height=0, width=0, height=0):
         super().__init__(key)
+        self._width = _width
+        self._height = _height
         self.width = width
         self.height = height
 
+    def undo(self, sheet: Sheet):
+        preview = sheet.previews[self.key]
+        preview.width = self._width
+        preview.height = self._height
+        return True
+
     def describe(self):
-        return f"The preview for cell {self.key} was resized"
+        return f"{self.key}: Resize the preview to [{self.width},{self.height}]"
 
 
 class PreviewValueChanged(PreviewChanged):

@@ -8,7 +8,7 @@ for intercepting and modifying the last expression in a given script.
 import sys
 import unittest
 
-sys.path.append("..")
+sys.path.append("src")
 
 from tests import mocks # pylint: disable=wrong-import-position,unused-import
 from static import api # pylint: disable=wrong-import-position

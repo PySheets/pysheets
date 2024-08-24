@@ -67,7 +67,11 @@ class PreviewView(ltk.Div):
         """
         history.add(
             models.PreviewPositionChanged(
-                self.model.key, self.model.left, self.model.top, self.css("left"), self.css("top")
+                self.model.key,
+                self.model.left,
+                self.model.top,
+                self.css("left"),
+                self.css("top")
             ).apply(self.sheet.model)
         )
 
@@ -79,8 +83,14 @@ class PreviewView(ltk.Div):
             .find("img, iframe") \
             .css("width", "100%") \
             .css("height", f"calc(100% - {constants.PREVIEW_HEADER_HEIGHT})")
-        history.add(models.PreviewDimensionChanged(
-            self.model.key, self.css("width"), self.css("height")).apply(self.sheet.model)
+        history.add(
+            models.PreviewDimensionChanged(
+                self.model.key,
+                self.model.width,
+                self.model.height,
+                self.css("width"),
+                self.css("height")
+            ).apply(self.sheet.model)
         )
 
     def move(self):
