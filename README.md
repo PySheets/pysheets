@@ -45,10 +45,29 @@ To run PySheets locally on your own machine, storing all data in the browser, wi
 pysheets
 ```
 
-This should open http://localhost:8081/ in your browser and show a button to create a new sheet.
+Then open http://localhost:8081/ in your browser and create a new sheet.
 
-Things to try:
- - Change the sheet name
- - Add literal values in the sheet
- - Import a sheet from the web (see the AI section)
+Some basic things to try:
+ - Change the sheet name.
+ - Add literal values such as 4 in A1 and 5 in A2.
+ - Add an expression in cell D3, such as "=A1 + A2", and see it evaluate to 9.
+
+Produce an AI-driven data-science workflow without writing any Pandas or Matplotlib code:
+ - At cells A1 through C4 enter a table looking like this:
+    ```
+    Country	Import	Export
+    Canada	  34      10
+    USA       54      22
+    Germany   11      40
+    ```
+ - Select an empty cell, such as F5
+ - Click the "⭐ A1" button in the AI prompt section to turn the table into a dataframe
+ - Select another empty cell, such as E9
+ - Click the "⭐ F5" button to visualize the data
+ - You now have a Pandas dataframe and matplotlib Figure, with just a few clicks 🤯. 
+
+Import data from the web:
+ - Click the "load from web" button in the AI prompt section
+ - Turn it into a dataframe using the AI buttons
+ - Visualize it. Change the prompt to change colors or image size.
 
