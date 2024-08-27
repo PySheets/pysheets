@@ -124,7 +124,6 @@ def root():
     """
     Renders the main index page of the application.
     """
-    package_names = request.args.get(constants.PYTHON_PACKAGES, "").split()
     pyodide = request.args.get(constants.PYTHON_RUNTIME) == "py"
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
     interpreter = "/pyodide/pyodide.js" if pyodide else "/micropython/micropython.mjs"
@@ -136,9 +135,6 @@ def root():
         "pyscript": pyscript,
         "interpreter": interpreter if HOSTING == OFFLINE else "",
         "runtime": runtime,
-        "vm": "" if runtime == RUNTIME_MICROPYTHON else f" {', '.join(['Pyodide'] + package_names)}",
-        "packages": f"packages=[{','.join(repr(package) for package in package_names)}]" if pyodide else "",
-        "package_list": request.args.get(constants.PYTHON_PACKAGES, ""),
         "editor_width": 350,
         "path": PATH,
     })
