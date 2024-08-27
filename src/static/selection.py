@@ -223,7 +223,9 @@ class MultiSelection(): # pylint: disable=too-many-instance-attributes
                             f"[Paste] Pasting {len(text):,} bytes took {ltk.get_time() - start:.3f}s")
                 self.sheet.select(self.sheet.current)
 
-            find_cells(list(infos))
+            infos = list(infos)
+            with history.SingleEdit(f"Paste {len(infos)} cells"):
+                find_cells(infos)
             self.sheet.reselect()
 
         def process_clipboard(text):
