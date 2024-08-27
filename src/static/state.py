@@ -10,7 +10,6 @@ import builtins
 import ltk
 import constants
 
-from pyscript import window # type: ignore  pylint: disable=import-error
 from polyscript import XWorker # type: ignore   pylint: disable=import-error
 
 
@@ -29,7 +28,7 @@ def set_title(title):
         title (str): The title to set for the application window.
     """
     show_message(title)
-    window.document.title = f"{title} {'- ' if title else ''}PySheets"
+    ltk.window.document.title = f"{title} {'- ' if title else ''}PySheets"
 
 
 def show_message(message):
@@ -81,12 +80,12 @@ class Console():
     ignore_log = [ "[Debug]", "[Worker] Starting PyOdide" ]
 
     def __init__(self):
-        window.console.orig_log = window.console.log
-        window.console.orig_warn = window.console.warn
-        window.console.orig_error = window.console.error
-        window.console.log = self.console_log
-        window.console.warn = self.console_log
-        window.console.error = self.console_log
+        ltk.window.console.orig_log = ltk.window.console.log
+        ltk.window.console.orig_warn = ltk.window.console.warn
+        ltk.window.console.orig_error = ltk.window.console.error
+        ltk.window.console.log = self.console_log
+        ltk.window.console.warn = self.console_log
+        ltk.window.console.error = self.console_log
         if PYODIDE:
             import warnings # pylint: disable=import-outside-toplevel
             warnings.warn = self.console_log
@@ -159,7 +158,7 @@ class Console():
         message = " ".join(str(arg) for arg in args)
         if message.startswith("[Console] [Network]"):
             return
-        now = window.Date.new()
+        now = ltk.window.Date.new()
         ts = f"{now.getHours()}:{now.getMinutes():02d}:{now.getSeconds():02d}.{now.getMilliseconds():03d}"
         self.messages[key] = ts, f"{ts} {message}", action
         if "RuntimeError: pystack exhausted" in message:
@@ -268,7 +267,7 @@ class Console():
                 if py_error.length > 0:
                     text = py_error.text()
                     if self.contains_runtime_error(text):
-                        window.alert("\n".join([
+                        ltk.window.alert("\n".join([
                             "The Python runtime reported a programming error in PySheets.",
                             "This does not look like a problem with your scripts.",
                             "Please reload the sheet again, adding '&runtime=py' to the URL.",
@@ -322,7 +321,7 @@ def show_worker_status():
 
 def start_worker():
     """
-    Starts the PyOdide worker with the specified packages when we are editing a sheet.
+    Starts the PyOdide worker when we are editing a sheet.
     
     Args:
         None
@@ -333,14 +332,13 @@ def start_worker():
     if not UID:
         return
     show_worker_status()
-    url_packages = ltk.get_url_parameter(constants.PYTHON_PACKAGES)
-    packages = url_packages.split(" ") if url_packages else []
+    packages = SHEET.packages.split(" ") if SHEET.packages else []
     start_worker_with_packages(packages)
 
 
 def start_worker_with_packages(packages):
     """
-    Starts the PyOdide worker with the specified packages when editing a sheet.
+    Starts the PyOdide worker with the specified packages.
     
     Args:
         packages (List[str]): A list of additional packages to include in the PyOdide worker.
@@ -382,9 +380,9 @@ def check_worker(packages):
     """
     if WORKER_VERSION == constants.WORKER_LOADING:
         def fix_packages(event): # pylint: disable=unused-argument
-            protocol = window.document.location.protocol
-            host = window.document.location.host
-            window.location = f"{protocol}//{host}/?U=${UID}"
+            protocol = ltk.window.document.location.protocol
+            host = ltk.window.document.location.host
+            ltk.window.location = f"{protocol}//{host}/?U=${UID}"
 
         packages_note = "Note that only full-Python wheels are supported by PyScript." if packages else ""
 
