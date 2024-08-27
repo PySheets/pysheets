@@ -51,6 +51,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         self.fill_cache()
         self.create_ui()
         self.setup_pubsub()
+        ltk.window.addEventListener("beforeunload", ltk.proxy(lambda event: self.before_unload()))
 
     def no_notification(self):
         """ Do not notify any UI elements when models changes """
@@ -322,11 +323,17 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         ltk.schedule(self.find_pandas_data_frames, "find frames", 1)
         ltk.schedule(self.find_urls, "find urls", 1)
 
+    def before_unload(self):
+        """
+        The user exited the page, so sync all pending changes.
+        """
+        self.save_screenshot()
+
     def sync(self):
         """
         Schedules a task to save a screenshot of the spreadsheet after a 5 second delay.
         """
-        # ltk.schedule(self.save_screenshot, "check edits", 5)
+        ltk.schedule(self.save_screenshot, "check edits", 5)
 
     def find_pandas_data_frames(self):
         """
@@ -863,7 +870,6 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
 
         ltk.schedule(self.editor.refresh, "refresh editor", 3)
 
-        packages = ltk.get_url_parameter(constants.PYTHON_PACKAGES)
         console = ltk.VBox(
             ltk.HBox(
                 ltk.Input("")
@@ -926,7 +932,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                         .attr("id", "packages")
                         .css("width", 150)
                         .on("keyup", ltk.proxy(show_reload_button))
-                        .val(packages),
+                        .val(self.model.packages),
                     ltk.Button("Reload", ltk.proxy(lambda event: self.save_packages(event))) # pylint: disable=unnecessary-lambda
                         .attr("id", "reload-button")
                         .css("display", "none"),
@@ -1034,21 +1040,8 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         Saves the specified Python packages and reloads the spreadsheet page with those packages.
         """
         packages = " ".join(ltk.find("#packages").val().replace(",", " ").split())
-        self.reload_with_packages(packages)
-
-    def reload_with_packages(self, packages):
-        """
-        Reloads the spreadsheet page with the specified Python packages.
-        
-        Args:
-            packages (str): A space-separated string of Python package names to be loaded.
-        """
-        host = f"{ltk.window.location.protocol}//{ltk.window.location.host}"
-        args = [
-            f"{constants.PYTHON_PACKAGES}={packages}",
-            f"{constants.SHEET_ID}={state.UID}",
-        ]
-        ltk.window.location = f"{host}?{'&'.join(args)}"
+        history.add(models.PackagesChanged(packages=packages).apply(self.model))
+        ltk.schedule(ltk.window.location.reload, "reload with packages", 1)
 
     def set_name(self):
         """
