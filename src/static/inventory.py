@@ -38,14 +38,14 @@ def show_sheet_list(sheets):
     state.clear()
     ltk.find("#main").empty()
 
-    def create_card(uid, index, runtime, packages, *items):
+    def create_card(uid, index, runtime, *items):
         def select_doc(event):
             if event.keyCode == 13:
-                load_doc_with_packages(uid, runtime, packages)
+                load_sheet(uid, runtime)
 
         return (
             ltk.Card(*items)
-                .on("click", ltk.proxy(lambda event=None: load_doc_with_packages(uid, runtime, packages)))
+                .on("click", ltk.proxy(lambda event=None: load_sheet(uid, runtime)))
                 .on("keydown", ltk.proxy(select_doc))
                 .attr("tabindex", 1000 + index)
                 .addClass("document-card")
@@ -77,19 +77,16 @@ def show_sheet_list(sheets):
     state.show_message("Select a sheet below or create a new one...")
 
 
-def load_doc_with_packages(uid, runtime, packages):
+def load_sheet(uid, runtime):
     """
-    Loads a document with the specified packages.
+    Loads a sheet.
     
     Args:
         uid (str): The unique identifier of the document to load.
         runtime (str): The runtime environment to use for the document.
-        packages (str): A comma-separated list of Python packages to load with the document.
     
     Returns:
         None
     """
     url = f"/?{constants.SHEET_ID}={uid}&{constants.PYTHON_RUNTIME}={runtime}"
-    if packages:
-        url += f"&{constants.PYTHON_PACKAGES}={packages}"
     ltk.window.location = url
