@@ -823,16 +823,19 @@ td:hover .debug-info {
 }
 
 #reload-button {
-    background-color: rgb(105, 194, 105);
-    margin-top: 4px;
+    font-size: 12px;
+    background-color: rgb(78, 145, 78);
+    margin-top: 2px;
     min-width: 45px;
-    margin-right: 12px;
+    color: white;
+    margin-left: 12px;
 }
 
 #run-button, #generate-button {
     font-size: 12px;
     background-color: #1f77b4;
     color: white;
+    min-width: 58px;
 }
 
 #run-button:hover, #generate-button:hover {
@@ -851,6 +854,7 @@ td:hover .debug-info {
 #packages {
     background-color: white;
     width: 300px;
+    height: 21px;
 }
 
 .console-container {
