@@ -42,6 +42,7 @@ def load_ui():
     def load_sheet_with_model(model):
         state.SHEET = model
         SpreadsheetView(model)
+        state.start_worker()
 
     if state.UID:
         storage.load_sheet(state.UID, load_sheet_with_model)
@@ -66,7 +67,7 @@ def check_version():
         latest = latest.strip()
         message = f"You are using the latest version of PySheets: {latest} 👍."
         if latest != ltk.window.version:
-            message = f"⛔⛔⛔ You must upgrade to PySheets v{latest} ⛔⛔⛔ "
+            message = f"⛔⛔⛔ Please upgrade to v{latest} with 'pip install pysheets-app --upgrade' ⛔⛔⛔ "
         state.console.write("version", f"[Version] {message}")
 
     def report_error(xhr, status, error): # pylint: disable=unused-argument
@@ -84,7 +85,6 @@ def main():
     """
     check_version()
     write_startup_message()
-    state.start_worker()
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_PRINT, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_INFO, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_ERROR, print)
