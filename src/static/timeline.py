@@ -288,7 +288,7 @@ class Edit(ltk.TableRow):
                 )
             )
             self.attr("id", f"edit-{id(edit)}")
-    
+
     def get_timestamp(self):
         """
         Get a human-readable timestamp for the edit.
@@ -312,7 +312,7 @@ def add_edit(edit):
     """
     Adds an edit to the timeline view, so the user can inspect the edit history.
     """
-    if isinstance(edit, models.EmptyEdit):
+    if isinstance(edit, (models.EmptyEdit, models.ScreenshotChanged)):
         return
     ltk.find(".timeline-container").prepend(
         Edit(edit).element
