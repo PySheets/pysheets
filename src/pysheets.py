@@ -284,6 +284,21 @@ def load():
     return response # send regular string
 
 
+@app.route("/version", methods=["GET"])
+def version():
+    """
+    Retrieves the latest version of PySheets on PyPi.
+    """
+    try:
+        import re # pylint: disable=import-outside-toplevel
+        content = ssl_get("https://pypi.org/project/pysheets-app/").decode("utf-8")
+        info_lines = content.split("\n")
+        versions = [line for line in info_lines if re.search(r'^\d+\.\d+\.\d+', line.strip())]
+        return versions[0]
+    except Exception: # pylint: disable=broad-except
+        return "0.0.0"
+
+
 @app.route("/<path:path>")
 def send(path):
     """
