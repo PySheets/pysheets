@@ -33,8 +33,8 @@ def create_menu():
     
     The menu is animated to fade in when it is created.
     """
-    def landing(event): # pylint: disable=unused-argument
-        ltk.window.open("https://pysheets.app")
+    def about(event): # pylint: disable=unused-argument
+        ltk.window.open("/about")
 
     def feedback(event): # pylint: disable=unused-argument
         ltk.window.open("https://docs.google.com/forms/d/e/1FAIpQLScmeDuDr5fxKYhe04Jo"
@@ -54,20 +54,23 @@ def create_menu():
                 lambda result: ltk.find("#main").animate({
                     "opacity": 0,
                 },
-                constants.ANIMATION_DURATION_VERY_SLOW,
+                constants.ANIMATION_DURATION_SLOW,
                 ltk.proxy(go_home))
             )
 
     file_menu = ltk.Menu("File",
         ltk.MenuItem("➕", "New", "", lambda item: new_sheet()),
         ltk.MenuItem("📂", "Open", "Cmd+O", lambda item: go_home()),
-        ltk.MenuItem("🗑", "Delete", "", lambda item: delete_sheet()),
     )
+    if state.UID:
+        file_menu.popup.append(
+            ltk.MenuItem("🗑", "Delete", "", lambda item: delete_sheet()),
+        )
     view_menu = ltk.Menu("View",
-        ltk.MenuItem("◱", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),
+        ltk.MenuItem("⌞⌝", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),
     )
     help_menu = ltk.Menu("Help",
-        ltk.MenuItem("🅿️", "About", "", ltk.proxy(landing)),
+        ltk.MenuItem("🅿️", "About", "", ltk.proxy(about)),
         ltk.MenuItem("👏", "Feedback", "", ltk.proxy(feedback)),
         ltk.MenuItem("💬", "Discord", "", ltk.proxy(discord)),
     )

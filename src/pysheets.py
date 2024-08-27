@@ -140,6 +140,14 @@ def root():
     })
 
 
+@app.route("/about")
+def about():
+    """
+    Renders the about page of the application.
+    """
+    return render_template("about.html")
+
+
 @app.route("/ltk/ltk.css")
 def get_ltk_css():
     """
@@ -291,7 +299,7 @@ def send(path):
         The contents of the requested static file.
     """
     try:
-        return app.send_static_file(f"/icons/{path}")
+        return app.send_static_file(f"icons/{path}")
     except Exception: # pylint: disable=broad-except
         return app.send_static_file(path)
 

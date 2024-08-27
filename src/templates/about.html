@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PySheets - Spreadsheet UI for Python</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js" crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/themes/base/jquery-ui.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        .navbar {
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            border: 0 solid rgb(219, 219, 219);
+            border-bottom-width: 1px;
+        }
+
+        .navbar-brand {
+            display: fixed;
+            font-weight: bold;
+        }
+
+        .hero {
+            background-color: #f8f9fa;
+            padding: 5rem 0;
+        }
+
+        iframe {
+            border: 2px solid rgb(92, 165, 107);
+            background-color: white;
+            padding: 10px;
+            width: 500px;
+            height: 400px;
+        }
+
+        quote {
+            border: 1px solid lightgray;
+            padding: 4px;
+            display: block;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            max-width: 600px
+        }
+
+        quote:nth-child(odd) {
+            background-color: #cce6ff;
+        }
+
+        quote:nth-child(even) {
+            background-color: #fde9b3;
+        }
+
+        .pricing-table {
+            margin-top: 3rem;
+        }
+
+        .card-body {
+            width: calc(100% - 40px);
+            margin: 20px;
+        }
+
+        h1 {
+            color: #15aaf3;
+        }
+
+        h2 {
+            color: #cc9933;
+        }
+
+        h3 {
+            color: black;
+        }
+
+        .indent {
+            margin-left: 20px;
+        }
+
+        .border {
+            box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .note {
+            font-style: italic;
+            color: gray;
+        }
+
+        .btn-pysheets {
+            --bs-btn-color: #fff;
+            --bs-btn-bg: #15aaf3;
+            --bs-btn-border-color: #005c80;
+            --bs-btn-hover-color: #fff;
+            --bs-btn-hover-bg: #006699;
+            --bs-btn-hover-border-color: #3399cc;
+            --bs-btn-focus-shadow-rgb: 0, 102, 153;
+            --bs-btn-active-color: #fff;
+            --bs-btn-active-bg: #004d66;
+            --bs-btn-active-border-color: #00334d;
+            --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+            --bs-btn-disabled-color: #fff;
+            --bs-btn-disabled-bg: #80b3d2;
+            --bs-btn-disabled-border-color: #4d8099;
+        }
+
+  .btn-pysheets-secondary {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #28a745;
+    --bs-btn-border-color: #1e7e34;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #218838;
+    --bs-btn-hover-border-color: #1e7e34;
+    --bs-btn-focus-shadow-rgb: 40, 167, 69;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #1e7e34;
+    --bs-btn-active-border-color: #145523;
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --bs-btn-disabled-color: #fff;
+    --bs-btn-disabled-bg: #86efac;
+    --bs-btn-disabled-border-color: #4ade80;
+}
+
+.btn-pysheets-orange {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #cc9933;
+    --bs-btn-border-color: #b38929;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #b38929;
+    --bs-btn-hover-border-color: #9a7523;
+    --bs-btn-focus-shadow-rgb: 204, 153, 51;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #9a7523;
+    --bs-btn-active-border-color: #81611e;
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --bs-btn-disabled-color: #fff;
+    --bs-btn-disabled-bg: #e0c080;
+    --bs-btn-disabled-border-color: #d6b366;
+}
+
+
+        @media (max-width: 767px) {
+            .hero {
+                padding: 3rem 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <img referrerpolicy="no-referrer-when-downgrade" src="https://chrislaffra.com/piwik/matomo.php?idsite=2&amp;rec=1" style="border:0;position:absolute" alt="" />
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <img src="logo.png" width="25" style="margin-top: -5px">
+                PySheets</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#Features">Features</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#News">News</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#Traction">Traction</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#Feedback">Feedback</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#Pricing">Pricing</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#Team">Team</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        $(document).ready(function () {
+            $('.navbar-toggler, .nav-item').click(function () {
+                $('#navbarNav').toggleClass('collapse').toggleClass('navbar-collapse');
+            });
+            $('.navbar').css("position", "fixed");
+        });
+    </script>
+
+    <br><br>
+
+    <div class="hero">
+        <div class="container text-center">
+            <img src="logo.png" width="120">
+            <br><br>
+            <h1>PySheets</h1>
+            <h2>The Spreadsheet UI for Python</h2>
+            <p class="lead">Load data and use AI to generate Python code to perform data exploration</p>
+            <br>
+            <a target=_blank href="/" class="btn btn-pysheets btn-lg">Try</a>
+            &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
+            <a target=_blank href="https://github.com/PySheets/pysheets?tab=readme-ov-file#installation" class="btn btn-pysheets btn-lg btn-pysheets-orange">Install</a>
+            &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
+            <a target=_blank href="https://buy.stripe.com/00g1684SS2BZ9Es7st" class="btn btn-lg btn-pysheets-secondary">
+                Buy
+            </a>
+        </div>
+    </div>
+
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-md-6">
+                <h2>What is PySheets?</h2>
+                <p>PySheets is a spreadsheet UI for Python, allowing you to 
+                    import Excel sheets or copy cells from Google Sheets,
+                    perform exploratory data science,
+                    use Pandas and create charts with Matplotlib,
+                    and create reports.
+                </p>
+
+                <p>
+                    PySheets is local-first. All data is stored in the browser using IndexedDB.
+                    All your Python logic runs in the browser as well.
+                    PySheets is written in Python and runs inside the browser using PyScript.
+                </p>
+
+                <p>With PySheets, you can load any Python package and JS module to leverage the
+                    huge data-science ecosystem without needing to write much code.
+                </p>
+            </div>
+            <div class="col-md-6">
+                <img src="screenshot1.png" alt="Screenshot 1" class="img-fluid border">
+            </div>
+        </div>
+
+        <a name="Features"></a>
+        <br>
+        <div class="row mt-5">
+            <div class="col-md-6 order-md-2">
+                <h2 class="text-center mb-4">Powerful Features</h2>
+                <div class="indent">
+                    <ul>
+                        <li>Import and export Excel sheets quickly</li>
+                        <li>Explore and analyse data with Pandas</li>
+                        <li>Create Python code using AI prompts.</li>
+                        <li>Visualize your data with Matplotlib to use elsewhere.</li>
+                        <li>Get immediate results with minimal coding</li>
+                        <li>Collaborate with team members on shared sheets</li>
+                        <li>No setup, no kernels, no expensive cloud costs</li>
+                        <li>Leverage the entire Python and JS ecosystems</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <img src="screenshot2.png" alt="Screenshot 2" class="img-fluid border">
+            </div>
+        </div>
+
+        <a name="News"></a>
+        <br>
+        <div class="row mt-5">
+            <div class="col-md-6">
+                <h2 class="text-center mb-4">PySheets in the News</h2>
+                <div class="indent">
+                    <ul>
+                        <li>
+                            <a target=_blank href="https://news.ycombinator.com/item?id=40179566">HackerNews frontpage.</a>
+                        </li>
+                        <li>
+                            <a target=_blank href="https://www.linkedin.com/feed/update/urn:li:activity:7189669714971754496/">LinkedIn post.</a>
+                            &nbsp;&nbsp;|&nbsp;&nbsp;
+                            <a target=_blank href="https://www.google.com/search?q=site%3Alinkedin.com+pysheets">Search LinkedIn.</a>
+                        </li>
+                        <li>
+                            <a target=_blank href="https://twitter.com/laffra/status/1784198590690193595">Announcement on X.</a>
+                            &nbsp;&nbsp;|&nbsp;&nbsp;
+                            <a target=_blank href="https://twitter.com/search?q=pysheets">Search X.</a>
+                        </li>
+                        <li>
+                            <a target=_blank href="https://discu.eu/q/https://pysheets.app/">Discussions about PySheets.</a>
+                        </li>
+
+                        <li>
+                            <a target=_blank href="https://www.smalldatasf.com/2024/#speakers">PySheets at Small Data SF.</a>
+                        </li>
+                            
+                        <li>
+                             <a target=_blank href="mailto:chris@chrislaffra.com?Subject=PySheets%20in%20the%20news...">Contact us</a>
+                              if you want our help to write something about PySheets.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <img src="news.png" alt="PySheets in the news" class="img-fluid border">
+            </div>
+        </div>
+
+
+        <!--
+        <a name="Traction"></a>
+        <br>
+        <div class="row mt-5 hero">
+            <div class="col-md-12">
+                <h2 class="text-center mb-4">Traction</h2>
+
+                <center>
+                <iframe src="/embed?U=uXNuCGO2JU1E5aL7zcOh&k=E1" style="width: 588px; height: 500px;"></iframe>
+                <br>
+                <br>
+                This chart is served by PySheets using the "embed" feature 🔥.
+                <br>
+                </center>
+            </div>
+        </div>
+        -->
+
+        <a name="Feedback"></a>
+        <br>
+        <div class="row mt-5">        
+            <div class="col-md-12">
+                <h2 class="text-center mb-4">Feedback</h2>
+                <center>
+                    <quote>“Client-side spreasheeting, with built-In Python?? Yes please!” - JG</quote>
+                    <quote>“I love the flexibility of Python with the distinct recognisable spreadsheets interface and
+                        visualisation.” - *****@google.com</quote>
+                    <quote>“PySheets enables array based coding, which I like!” - FK</quote>
+                    <quote>“Anything that combines cells with python is awesome!” - FG</quote>
+                    <quote>“PySheets is easy to use and can be customized.” - IT</quote>
+                    <quote>“Unique fusion of Jupyter notebooks and spreadsheets.” - FE</quote>
+                    <quote>“I get a process flow diagram, spreadsheet, and scripts.” - B2</quote>
+                    <quote>“PySheets uses the open source LTK, which has me intrigued.” - AL</quote>
+                    <quote>“Interactivity + Excel + Never Leave Your Browser!” - PZ</quote>
+                    <quote>“PySheet bridges the gap between non-technical analysts and data scientists.” -
+                        *****@miracalml.com</quote>
+                    <quote>“Awesome work on PyScript. Pushing the platform to the fullest extent.” - *****@anaconda.com
+                    </quote>
+                    <quote>“PySheets is Excel for folks who are Python first coders.” - NA</quote>
+                </center>
+                <div class="row">
+                </div>
+            </div>
+        </div>
+
+       <a name="Team"></a>
+        <br>
+        <div class="hero row mt-5">     
+                <h2 class="text-center mb-4">The Team</h2>
+                <center>
+                <div class="col-md-4">
+                    <img src="chris.png" alt="Screenshot 1" class="img-fluid">
+                </div>
+                <p></p>
+                <div class="col-md-6">
+                    <p>PySheets was developed by
+                        <a target=_blank href="https://chrislaffra.com">
+                            Chris Laffra</a>, a Dutch software engineer.
+                </div>
+                </center>
+            </div>
+
+            <a name="Pricing"></a>
+            <br>
+            <div class="row mt-5">
+                <div class="col-md-12">
+                    <h2 class="text-center mb-4">Pricing</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="text-center card-body">
+                                    <h3 class="card-title">Personal Usage - Free</h3>
+                                    <p class="card-text">Unlimited personal usage. Any number of sheets and 
+                                        AI generations. 
+                                        All Python logic and data stays in the browser.
+                                    </p>
+                                    <a href="/" class="btn btn-pysheets">
+                                        Try
+                                    </a>
+                                    &nbsp;&nbsp; 
+                                    <a href="https://github.com/PySheets/pysheets?tab=readme-ov-file#installation" class="btn btn-pysheets btn-pysheets-orange">
+                                        Install
+                                    </a>
+                                    &nbsp;&nbsp; 
+                                    <a href="https://buy.stripe.com/00g1684SS2BZ9Es7st" class="btn btn-pysheets-secondary">
+                                        Sponsor
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="text-center card-body">
+                                    <h3 class="card-title">Commercial - €99</h3>
+                                    <p class="card-text">Lifetime one-person license. Future enhancements:
+                                        single sign-on, collaboration, and audit dashboards. Talk to us for details.
+                                    </p>
+                                    <a href="/" class="btn btn-pysheets">
+                                        Explore 
+                                    </a>
+                                    &nbsp;&nbsp; 
+                                    <a href="https://github.com/PySheets/pysheets?tab=readme-ov-file#installation" class="btn btn-pysheets btn-pysheets-orange">
+                                        Install
+                                    </a>
+                                    &nbsp;&nbsp; 
+                                    <a href="https://buy.stripe.com/00g1684SS2BZ9Es7st" class="btn btn-pysheets-secondary">
+                                        Buy
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <br><br>
+            <div class="hero">
+                <div class="container text-center">
+                    <h1>
+                        <img src="logo.png" width="50" style="margin-top: -5px">
+                        PySheets
+                    </h1>
+                    <h2>The Spreadsheet UI for Python</h2>
+                    <br>
+                    <a target=_blank href="mailto:chris@chrislaffra.com?Subject=PySheets%20question" class="btn btn-pysheets btn-lg">
+                        Email the Team
+                    </a>
+
+                </div>
+            </div>
+
+            <br> <br> <br> <br> <br> <br> <br> <br> <br> <br> <br> <br>
+
+            <script>
+                var maxHeight = -1;
+                $('.card-text').each(function () {
+                    if ($(this).height() > maxHeight) {
+                        maxHeight = $(this).height();
+                    }
+                });
+                $('.card-text').height(maxHeight);
+            </script>
+</body>
+
+</html>

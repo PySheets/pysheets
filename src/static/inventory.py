@@ -27,6 +27,7 @@ def list_sheets():
     ltk.find(".temporary").css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), 2000)
     storage.list_sheets(show_sheet_list)
     ltk.find("#main").animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
+    ltk.find("#menu").empty().append(menu.create_menu())
 
 
 def show_sheet_list(sheets):
@@ -73,7 +74,6 @@ def show_sheet_list(sheets):
         ).css("overflow", "auto").css("height", "100%")
     )
     ltk.find(".document-card").eq(0).focus()
-    ltk.find("#menu").empty()
     state.show_message("Select a sheet below or create a new one...")
 
 

@@ -20,7 +20,7 @@ import storage
 state.console.write("pysheets", f"[Main] Pysheets starting {constants.ICON_HOUR_GLASS}")
 state.console.write(
     "sponsor1",
-    "[License] PySheets, when you like it or when you use it commercially. 🌷",
+    "[License] Sponsor PySheets and support the PySheets team 🌷.",
     action=ltk.Link("https://buy.stripe.com/00g1684SS2BZ9Es7st",
         ltk.Button("Buy", click=lambda event: None)
             .addClass("buy-button")

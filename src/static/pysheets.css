@@ -105,9 +105,10 @@ html, body {
     margin-left: 61px;
 }
 
-.buy-button {
+.buy-button, .star-button {
     color: white;
     background-color: #1f77b4;
+    cursor: pointer;
 }
 
 .cell-row {
