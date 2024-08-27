@@ -5,6 +5,7 @@ certifi
 pyscript-ltk
 openai==0.28
 setuptools
+gunicorn
 wheel
 twine
 build
