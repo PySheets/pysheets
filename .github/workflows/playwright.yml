@@ -20,7 +20,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     - name: Run pysheets.py
-      run: python3 src/pysheets.py
+      run: python3 src/pysheets.py &
 
     - uses: actions/setup-node@v4
       with:
