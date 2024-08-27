@@ -28,8 +28,7 @@ def encode(model):
     """
     buffer = []
     model.encode(buffer)
-    s = "".join(buffer).replace("\n", "\\n").replace("\t", "\\t")
-    return s
+    return "".join(buffer)
 
 
 def decode(json_string):
@@ -90,7 +89,7 @@ def escape(value: str):
     """
     if not isinstance(value, str):
         return value
-    return value.replace('"', '\\"').replace("\n", "\\n").replace("\t", "\\t")
+    return json.dumps(value)
 
 
 def get_sheet(data, uid=None):
@@ -219,9 +218,11 @@ class Sheet(Model):  # pylint: disable=too-many-instance-attributes
     """
     def __init__(self, uid="", name="Untitled Sheet",    # pylint: disable=too-many-arguments
                  columns=None, rows=None, cells=None, previews=None,
-                 selected="A1", screenshot="/icons/screenshot.png",
+                 selected="A1", screenshot="/screenshot.png",
                  created_timestamp=0, updated_timestamp=0,
-                 column_count=constants.DEFAULT_COLUMN_COUNT, row_count=constants.DEFAULT_ROW_COUNT,
+                 column_count=constants.DEFAULT_COLUMN_COUNT,
+                 row_count=constants.DEFAULT_ROW_COUNT,
+                 packages="",
                  _class="Sheet", _="Sheet"):
         super().__init__()
         self.uid = uid
@@ -236,6 +237,7 @@ class Sheet(Model):  # pylint: disable=too-many-instance-attributes
         self.updated_timestamp = updated_timestamp
         self.column_count = column_count
         self.row_count = row_count
+        self.packages = packages
 
     def convert_cells(self, cells):
         """
@@ -270,6 +272,7 @@ class Sheet(Model):  # pylint: disable=too-many-instance-attributes
         buffer.append(f'"row_count":{json.dumps(self.row_count)},')
         buffer.append(f'"column_count":{json.dumps(self.column_count)},')
         buffer.append(f'"screenshot":{json.dumps(self.screenshot)},')
+        buffer.append(f'"packages":{json.dumps(self.packages)},')
         buffer.append(f'"selected":{json.dumps(self.selected)},')
         buffer.append(f'"uid":{json.dumps(self.uid)},')
         buffer.append(f'"name":{json.dumps(self.name)}')
@@ -288,7 +291,7 @@ class Sheet(Model):  # pylint: disable=too-many-instance-attributes
         buffer.append('"cells":{')
         needs_comma = False
         for cell in self.cells.values():
-            if isinstance(cell, str) or cell.script == "" and cell.value == "":
+            if isinstance(cell, str) or not cell.has_changes():
                 continue
             buffer.append(f"{',' if needs_comma else ''}{json.dumps(cell.key)}:")
             buffer.append("{")
@@ -453,6 +456,12 @@ class Cell(Model):
         self.prompt = prompt
         self.style = {} if style is None else style
 
+    def has_changes(self):
+        """ 
+        Checks if the cell has any changes.
+        """
+        return self.value or self.script or self.style
+
     def encode_fields(self, buffer: list):
         """
         Encodes the fields of the Cell model instance into a list of JSON-formatted strings.
@@ -461,12 +470,12 @@ class Cell(Model):
             buffer (list): A list to append the encoded fields to.
         """
         if self.value not in ["", self.script]:
-            buffer.append(f'"value":"{escape(self.value)}",')
+            buffer.append(f'"value":{escape(self.value)},')
         if self.prompt:
-            buffer.append(f'"prompt":"{escape(self.prompt)}",')
+            buffer.append(f'"prompt":{escape(self.prompt)},')
         buffer.append(f'"key":"{self.key}",')
         self.encode_style(buffer)
-        buffer.append(f'"s":"{escape(self.script)}"')
+        buffer.append(f'"s":{escape(self.script)}')
 
     def encode_style(self, buffer: list):
         """
@@ -478,7 +487,7 @@ class Cell(Model):
         styles = []
         for prop, value in self.style.items():
             if value != constants.DEFAULT_STYLE.get(prop):
-                styles.append(f'"{prop}":"{escape(value)}"')
+                styles.append(f'"{prop}":{escape(value)}')
         if styles:
             buffer.append('"style":{')
             buffer.append(f'{",".join(styles)}')
@@ -631,6 +640,25 @@ class ScreenshotChanged(Edit):
 
     def describe(self):
         return "A new screenshot was saved"
+
+
+class PackagesChanged(Edit):
+    """
+    Represents an edit to change the sheet's packages.
+    """
+    def __init__(self, packages=""):
+        super().__init__()
+        self.packages = packages
+
+    def apply(self, sheet: Sheet):
+        sheet.packages = self.packages
+        return self
+
+    def undo(self, sheet: Sheet):
+        return False
+
+    def describe(self):
+        return "The sheet's packages were changed"
 
 
 class ColumnChanged(Edit):
