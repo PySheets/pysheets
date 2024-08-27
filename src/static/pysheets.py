@@ -76,7 +76,7 @@ def check_version():
             f"[Main] Error getting the latest version of PySheets: {error}."
         )
 
-    if ltk.window.location.domain != "pysheets.app":
+    if ltk.window.location.host != "pysheets.app":
         ltk.window.ltk_get("https://pysheets.app/version", report_version, "text", report_error)
 
 
