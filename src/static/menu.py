@@ -11,8 +11,6 @@ import ltk
 import state
 import constants
 
-from pyscript import window # type: ignore    pylint: disable=import-error
-
 logger = logging.getLogger('root')
 
 
@@ -36,20 +34,20 @@ def create_menu():
     The menu is animated to fade in when it is created.
     """
     def landing(event): # pylint: disable=unused-argument
-        window.open("https://pysheets.app")
+        ltk.window.open("https://pysheets.app")
 
     def feedback(event): # pylint: disable=unused-argument
-        window.open("https://docs.google.com/forms/d/e/1FAIpQLScmeDuDr5fxKYhe04Jo"
+        ltk.window.open("https://docs.google.com/forms/d/e/1FAIpQLScmeDuDr5fxKYhe04Jo"
                     "-pNS73P4VF2m-i8X8EC9rfKl-jT84A/viewform")
 
     def discord(event): # pylint: disable=unused-argument
-        window.open("https://discord.gg/4wy23872th")
+        ltk.window.open("https://discord.gg/4wy23872th")
 
     def go_home():
-        window.document.location = "/"
+        ltk.window.document.location = "/"
 
     def delete_sheet():
-        if window.confirm("This will permanently delete the current sheet."):
+        if ltk.window.confirm("This will permanently delete the current sheet."):
             import storage # pylint: disable=import-outside-toplevel
             storage.delete(
                 state.UID,
@@ -87,8 +85,8 @@ def new_sheet():
     """
     import models # pylint: disable=import-outside-toplevel
     import storage # pylint: disable=import-outside-toplevel
-    uid = window.crypto.randomUUID()
-    sheet = models.Sheet(uid=window.crypto.randomUUID())
+    uid = ltk.window.crypto.randomUUID()
+    sheet = models.Sheet(uid=ltk.window.crypto.randomUUID())
     storage.save(sheet)
     load_doc(uid)
 
@@ -103,4 +101,4 @@ def load_doc(uid):
     Returns:
         None
     """
-    window.document.location = f"?{constants.SHEET_ID}={uid}"
+    ltk.window.document.location = f"?{constants.SHEET_ID}={uid}"

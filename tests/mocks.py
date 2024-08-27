@@ -6,6 +6,7 @@ This module provides a set of mocks and utility functions for testing purposes.
 
 import sys
 import time
+import unittest
 
 sys.path.append("src")
 sys.path.append("src/static")
@@ -14,6 +15,7 @@ sys.path.append(".")
 import ltk      # pylint: disable=wrong-import-position
 import state    # pylint: disable=wrong-import-position
 
+sys.modules["requests"] = unittest.mock.MagicMock()
 
 
 def schedule(function, key, duration=None): # pylint: disable=unused-argument

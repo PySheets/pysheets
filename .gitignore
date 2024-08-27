@@ -11,3 +11,7 @@ src/static/pyodide/*
 src/static/micropython/*
 src/static/ltk/*
 .venv
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

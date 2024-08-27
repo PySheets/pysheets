@@ -296,7 +296,7 @@ def send(path):
         return app.send_static_file(path)
 
 
-class TerminalColors:
+class TerminalColors: # pylint: disable=too-few-public-methods
     """
     Terminal color codes.
     """

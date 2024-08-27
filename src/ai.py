@@ -62,7 +62,7 @@ def complete(prompt):
     return complete_with_openai(prompt)
 
 
-def complete_with_ollama(prompt):
+def complete_with_ollama(prompt): # pylint: disable=unused-argument
     """
     Generates a code completion using Ollama with the llama3 language model.
     

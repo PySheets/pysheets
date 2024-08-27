@@ -1,0 +1,17 @@
+{
+  "name": "pysheets-src",
+  "version": "1.0.0",
+  "description": "PySheets is a spreadsheet UI for Python, implemented in Python, running logic and saving data in the browser, using PyScript and IndexedDB.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.46.1",
+    "@types/node": "^22.5.0"
+  }
+}

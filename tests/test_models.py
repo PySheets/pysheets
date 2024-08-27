@@ -142,8 +142,7 @@ class TestCell(unittest.TestCase):
         Tests that the `value` property of the `Cell` class is correctly decoded.
         """
         self.assertEqual(self.cell1.value, 32)
-        # In encoded models values are stored as a string to support JSON
-        self.assertEqual(self.cell2.value, '32')
+        self.assertEqual(self.cell2.value, 32)
         self.assertEqual(self.cell3.value, 32)
 
     def test_listener(self):
@@ -237,8 +236,8 @@ class TestSheet(unittest.TestCase):
         self.assertEqual(cell.column, 3)
         self.assertEqual(cell.row, 4)
         self.assertEqual(cell.key, "C4")
-        self.assertEqual(cell.script, '4')
-        self.assertEqual(cell, models.Cell(column=3, row=4, key="C4", script='4'))
+        self.assertEqual(cell.script, 4)
+        self.assertEqual(cell, models.Cell(column=3, row=4, key="C4", script=4))
 
     def test_equal(self):
         """

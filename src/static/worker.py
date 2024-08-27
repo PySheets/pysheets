@@ -23,8 +23,7 @@ import polyscript # type: ignore    pylint: disable=import-error
 import pyodide # type: ignore    pylint: disable=import-error
 import pyscript # type: ignore    pylint: disable=import-error
 
-window = pyscript.window
-get = window.get
+get = ltk.window.get
 cache = { }
 results = { }
 OriginalSession = requests.Session
@@ -82,7 +81,7 @@ class PyScriptSession(OriginalSession):
     """
 
     def request( self, method, url, data=None, headers=None, **vargs):  #pylint: disable=arguments-differ,unused-argument
-        xhr = window.XMLHttpRequest.new()
+        xhr = ltk.window.XMLHttpRequest.new()
         xhr.open(method, f"load?{constants.URL}={url}", False)
         xhr.setRequestHeader("Authorization", (headers or self.headers).get("Authorization"))
         xhr.send(data)
@@ -99,9 +98,9 @@ def setup():
     Sets up the worker.
     """
     import builtins # pylint: disable=import-outside-toplevel
-    if js.document is pyscript.document:
+    if js.document is ltk.window.document:
         return
-    js.document = pyscript.document  # patch for matplotlib inside workers
+    js.document = ltk.window.document  # patch for matplotlib inside workers
 
     def worker_print(*args, file=None, end=""): # pylint: disable=unused-argument
         polyscript.xworker.sync.publish(
@@ -217,7 +216,7 @@ def generate_completion(key, prompt):
     url = "complete"
 
     def success(response, status, xhr): # pylint: disable=unused-argument
-        data = json.loads(window.JSON.stringify(response))
+        data = json.loads(ltk.window.JSON.stringify(response))
         if data.get(constants.STATUS, "ok") == "error":
             text = data[constants.ERROR]
         else:
@@ -252,7 +251,7 @@ def generate_completion(key, prompt):
             ),
         )
 
-    window.ltk_post(
+    ltk.window.ltk_post(
         url,
         data,
         ltk.proxy(success),

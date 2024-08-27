@@ -8,3 +8,4 @@ setuptools
 wheel
 twine
 build
+pylint
