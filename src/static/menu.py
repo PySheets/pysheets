@@ -51,11 +51,8 @@ def create_menu():
             import storage # pylint: disable=import-outside-toplevel
             storage.delete(
                 state.UID,
-                lambda result: ltk.find("#main").animate({
-                    "opacity": 0,
-                },
-                constants.ANIMATION_DURATION_SLOW,
-                ltk.proxy(go_home))
+                ltk.proxy(lambda result: go_home()),
+                ltk.window.alert
             )
 
     file_menu = ltk.Menu("File",

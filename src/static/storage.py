@@ -106,7 +106,7 @@ class Database():
         request.onerror = ltk.proxy(onerror)
         request.onsuccess = ltk.proxy(handler)
 
-    def delete(self, store, uid, onsuccess):
+    def delete(self, store, uid, onsuccess, onerror):
         """
         Deletes an object from the specified object store in the IndexedDB database.
         
@@ -114,9 +114,11 @@ class Database():
             store (str): The name of the object store to delete the object from.
             uid (str): The unique identifier of the object to delete.
             onsuccess (callable): A callback function that will be called when the delete operation is successful.
+            onerror (callable): A callback function that will be called when the delete operation failed.
         """
         request = self.open(store).delete(uid)
         request.onsuccess = ltk.proxy(onsuccess)
+        request.onerror = ltk.proxy(onerror)
 
 
 class Sheets():
@@ -126,6 +128,7 @@ class Sheets():
 
     def __init__(self, db_loaded):
         self.db = Database("PySheets", 3, db_loaded)
+        self.deleted = []
 
     def list_sheets(self, found_all_sheets):
         """
@@ -145,6 +148,8 @@ class Sheets():
         Args:
             sheet (models.Sheet): The Sheet object to save.
         """
+        if sheet.uid in self.deleted:
+            return
         self.db.save("sheets", ltk.window.JSON.parse(models.encode(sheet))) # need jsProxy for storage
 
 
@@ -167,7 +172,7 @@ class Sheets():
         self.db.load("sheets", sheet_id, new_sheet, found_sheet)
 
 
-    def delete(self, sheet_id: str, oncomplete):
+    def delete(self, sheet_id: str, oncomplete, onerror):
         """
         Deletes the sheet with the given `sheet_id` from the "sheets" object store
         in the IndexedDB database.
@@ -176,8 +181,12 @@ class Sheets():
             sheet_id (str): The unique identifier of the sheet to delete.
             oncomplete (callable): A callback function that will be called
                 when the delete operation is complete.
+            onerror (callable): A callback function that will be called
+                when the delete operation failed.
         """
-        self.db.delete("sheets", sheet_id, oncomplete)
+        self.db.delete("sheets", sheet_id, oncomplete, onerror)
+        self.deleted.append(sheet_id)
+
 
 
 sheets = None # pylint: disable=invalid-name
@@ -218,17 +227,19 @@ def save(sheet: models.Sheet):
     sheets.save(sheet)
 
 
-def delete(sheet_id, oncomplete):
+def delete(sheet_id, onsuccess, onerror):
     """
     Deletes the sheet with the given `sheet_id` from the "sheets" object store
     in the IndexedDB database.
     
     Args:
         sheet_id (str): The unique identifier of the sheet to delete.
-        oncomplete (callable): A callback function that will be called
+        onsuccess (callable): A callback function that will be called
             when the delete operation is complete.
+        onerror (callable): A callback function that will be called
+            when the delete operation failed.
     """
-    sheets.delete(sheet_id, oncomplete)
+    sheets.delete(sheet_id, onsuccess, onerror)
 
 
 def list_sheets(found_all_sheets):
