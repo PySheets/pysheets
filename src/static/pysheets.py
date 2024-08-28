@@ -67,7 +67,7 @@ def check_version():
         latest = latest.strip()
         message = f"You are using the latest version of PySheets: {latest} 👍."
         if latest != ltk.window.version:
-            message = f"⛔⛔⛔ Please upgrade to v{latest} with 'pip install pysheets-app --upgrade' ⛔⛔⛔ "
+            message = f"Upgrade to v{latest} with 'pip install pysheets-app --upgrade' ⛔."
         state.console.write("version", f"[Version] {message}")
 
     def report_error(xhr, status, error): # pylint: disable=unused-argument

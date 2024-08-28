@@ -422,7 +422,7 @@ def show_support_message():
     )
     console.write(
         "star",
-        "[Github] Support the open-source PySheets project by giving it a star ⭐.",
+        "[Github] PySheets is open-source. Give it a star ⭐.",
         action=action
     )
 
