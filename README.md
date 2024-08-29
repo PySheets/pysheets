@@ -1,6 +1,6 @@
 # PySheets
 
-PySheets is a spreadsheet UI for Python, implemented in Python, running logic and saving data in the browser, using PyScript and IndexedDB.
+[PySheets](https://pysheets.app/aboout) is a spreadsheet UI for Python, implemented in Python, running logic and saving data in the browser, using PyScript and IndexedDB.
 
 # Licensing
 
@@ -71,3 +71,10 @@ Import data from the web:
  - Turn it into a dataframe using the AI buttons
  - Visualize it. Change the prompt to change colors or image size.
 
+
+# Find out more
+
+Information sources for PySheets:
+ - [pysheets.app/about](https://pysheets.app/about).
+ - [Discord server](https://discord.com/invite/4wy23872th).
+ - [Feedback form](https://docs.google.com/forms/d/e/1FAIpQLScmeDuDr5fxKYhe04Jo-pNS73P4VF2m-i8X8EC9rfKl-jT84A/viewform).
