@@ -1,6 +1,6 @@
 # PySheets
 
-[PySheets](https://pysheets.app/aboout) is a spreadsheet UI for Python, implemented in Python, running logic and saving data in the browser, using PyScript and IndexedDB.
+[PySheets](https://pysheets.app/about) is a spreadsheet UI for Python, implemented in Python, running logic and saving data in the browser, using PyScript and IndexedDB.
 
 # Licensing
 
