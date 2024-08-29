@@ -75,6 +75,6 @@ Import data from the web:
 # Find out more
 
 Information sources for PySheets:
- - [pysheets.app/about](https://pysheets.app/about).
- - [Discord server](https://discord.com/invite/4wy23872th).
- - [Feedback form](https://docs.google.com/forms/d/e/1FAIpQLScmeDuDr5fxKYhe04Jo-pNS73P4VF2m-i8X8EC9rfKl-jT84A/viewform).
+ - [pysheets.app/about](https://pysheets.app/about)
+ - [Discord server](https://discord.com/invite/4wy23872th)
+ - [Feedback form](https://docs.google.com/forms/d/e/1FAIpQLScmeDuDr5fxKYhe04Jo-pNS73P4VF2m-i8X8EC9rfKl-jT84A/viewform)
