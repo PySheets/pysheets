@@ -78,7 +78,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             with self.no_notification():
                 for key, value in cells.items():
                     cell = self.get_cell(key)
-                    cell.set(value, evaluate=False)
+                    cell.set(value)
 
     def fill_cache(self):
         """
