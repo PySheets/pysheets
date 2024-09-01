@@ -264,9 +264,10 @@ class MultiSelection(): # pylint: disable=too-many-instance-attributes
         """
         Clears the selected cells in the sheet.
         """
-        for key in self.cells:
-            if key in self.sheet.model.cells:
-                self.sheet.get_cell(key).clear()
+        with history.SingleEdit(f"Clear {len(self.cells)} cells"):
+            for key in self.cells:
+                if key in self.sheet.model.cells:
+                    self.sheet.get_cell(key).clear()
         self.draw()
 
     def start(self, cell):

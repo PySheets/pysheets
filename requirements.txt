@@ -9,4 +9,5 @@ gunicorn
 wheel
 twine
 build
+python-csv
 pylint

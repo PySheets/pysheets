@@ -74,10 +74,11 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         Handle a request from the worker to set a collection of cells.
         """
-        with self.no_notification():
-            for key, value in cells.items():
-                cell = self.get_cell(key)
-                cell.set(value)
+        with history.SingleEdit(f"Set {len(cells)} cells"):
+            with self.no_notification():
+                for key, value in cells.items():
+                    cell = self.get_cell(key)
+                    cell.set(value, evaluate=False)
 
     def fill_cache(self):
         """
@@ -943,7 +944,6 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             ),
             self.editor,
         ).addClass("editor-container").on("resize", ltk.proxy(resize_editor))
-
 
         ltk.inject_css(html_maker.make_css(self.model))
         left_panel = ltk.Div(

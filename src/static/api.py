@@ -8,6 +8,7 @@ import base64
 import functools
 import io
 import json
+import math
 import re
 import time
 
@@ -392,7 +393,7 @@ class PySheets():
         """
         return self._spreadsheet.get(key) if self._spreadsheet else ltk.window.jQuery(f"#{key}")
 
-    def set_cell(self, key, value):
+    def set_cell(self, key, value, flush=True):
         """
         Sets the value of a cell in the spreadsheet.
 
@@ -404,8 +405,9 @@ class PySheets():
             key (str): The key of the cell to set.
             value (object): The value to set the cell to.
         """
-        self._cells_to_set[key] = value
-        ltk.schedule(lambda: self.flush_set_cells(), "flushing cells to set", 0.1) # pylint: disable=unnecessary-lambda
+        self._cells_to_set[key] = value if isinstance(value, (int, float)) else str(value)
+        if flush:
+            ltk.schedule(lambda: self.flush_set_cells(), "flushing cells to set") # pylint: disable=unnecessary-lambda
 
     def flush_set_cells(self):
         """
@@ -467,14 +469,40 @@ class PySheets():
         except Exception as e: # pylint: disable=broad-except
             raise ValueError(f"Cannot load url: {e}") from e
         try:
-            return pd.read_excel(data, engine='openpyxl')
+            return pd.read_csv(io.StringIO(data.decode("utf-8")))
         except Exception as e1: # pylint: disable=broad-except
             try:
-                content = data.decode("utf-8")
-                return pd.read_csv(io.StringIO(content))
+                return pd.read_excel(data, engine='openpyxl')
             except Exception as e2:
                 print(e2, url, data)
                 raise ValueError(f"Cannot load as Excel ({e1}) or CSV ({e2})") from e2
+
+    def import_csv(self, url, key):
+        """
+        Imports CSV data from the provided URL and set the values in the spreadsheet.
+
+        Args:
+            url (str): The URL to load data from.
+            key (str): The starting cell to insert the data into.
+        """
+        start_col, start_row = get_col_row_from_key(key)
+        content = urlopen(url).read().decode("utf-8")
+        skip_row_id = False
+        for row, line in enumerate(content.split("\n")):
+            for col, value in enumerate(line.split(",")):
+                if col == 0:
+                    if value == "csvbase_row_id":
+                        skip_row_id = True
+                    if skip_row_id:
+                        continue
+                self.set_cell(
+                    f"{get_column_name(start_col + col - (1 if skip_row_id else 0))}{start_row + row}", 
+                    value,
+                    False
+                )
+        summary = f"[{len(self._cells_to_set)} cells]"
+        self.flush_set_cells()
+        return summary
 
 
 def get_dict_table(result):
