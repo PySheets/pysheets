@@ -73,7 +73,7 @@ class Editor(ltk.Div):
             value (str): The new value to set for the editor.
         """
         if self.editor and self.editor.hasFocus():
-            return
+            return self
         self.create_editor()
         self.editor.setValue(str(value))
         return self
