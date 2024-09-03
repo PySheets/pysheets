@@ -358,8 +358,8 @@ class PySheets():
         Returns:
             pandas.DataFrame: A Pandas DataFrame containing the data from the specified spreadsheet selection.
         """
-        assert isinstance(selection, str), f"Parameter selection must be a string, not {type(selection)}"
-        assert isinstance(headers, bool), f"Parameter headers must be a boolean, not {type(headers)}"
+        assert isinstance(selection, str), f"Parameter selection must be a str, not {type(selection)}"
+        assert isinstance(headers, bool), f"Parameter headers must be a bool, not {type(headers)}"
         import pandas as pd # pylint: disable=import-outside-toplevel,import-error
 
         try:
@@ -395,7 +395,7 @@ class PySheets():
         Returns:
             object: The cell object for the given key.
         """
-        assert isinstance(key, str), f"Parameter key must be a string, not {type(key)}"
+        assert isinstance(key, str), f"Parameter key must be a str, not {type(key)}"
         return self._spreadsheet.get(key) if self._spreadsheet else ltk.window.jQuery(f"#{key}")
 
     def set_cell(self, key, value, flush=True):
@@ -410,8 +410,8 @@ class PySheets():
             key (str): The key of the cell to set.
             value (object): The value to set the cell to.
         """
-        assert isinstance(key, str), f"Parameter key must be a string, not {type(key)}"
-        assert isinstance(value, (int, float, str)), f"Parameter value must be a string or int or float, not {type(key)}"
+        assert isinstance(key, str), f"Parameter key must be a str, not {type(key)}"
+        assert isinstance(value, (int, float, str)), f"Parameter value must be a str/int/float, not {type(key)}"
         self._cells_to_set[key] = value if isinstance(value, (int, float)) else str(value)
         if flush:
             ltk.schedule(lambda: self._flush_set_cells(), "flushing cells to set") # pylint: disable=unnecessary-lambda
@@ -438,7 +438,7 @@ class PySheets():
         Returns:
             tuple: A tuple containing the column and row for the given key.
         """
-        assert isinstance(key, str), f"Parameter key must be a string, not {type(key)}"
+        assert isinstance(key, str), f"Parameter key must be a str, not {type(key)}"
         return get_col_row_from_key(key)
 
     def get_key(self, column:int, row:int):
@@ -469,7 +469,7 @@ class PySheets():
         Returns:
             object: The loaded data, or the result of calling the handler function.
         """
-        assert isinstance(url, str), f"Parameter url must be a string, not {type(url)}"
+        assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
         if handler:
             return ltk.get(url, handler)
         return urlopen(url)
@@ -487,7 +487,7 @@ class PySheets():
         Raises:
             ValueError: If the URL cannot be loaded or the data cannot be parsed as an Excel or CSV file.
         """
-        assert isinstance(url, str), f"Parameter url must be a string, not {type(url)}"
+        assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
         import pandas as pd # pylint: disable=import-outside-toplevel,import-error
         try:
             data = urlopen(url).read()
@@ -510,8 +510,8 @@ class PySheets():
             url (str): The URL to load data from.
             start_key (str): The key for thw starting cell to insert the data into.
         """
-        assert isinstance(url, str), f"Parameter url must be a string, not {type(url)}"
-        assert isinstance(start_key, str), f"Parameter start_key must be a string, not {type(start_key)}"
+        assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
+        assert isinstance(start_key, str), f"Parameter start_key must be a str, not {type(start_key)}"
         start_col, start_row = get_col_row_from_key(start_key)
         content = urlopen(url).read().decode("utf-8")
         skip_row_id = False
