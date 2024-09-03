@@ -323,7 +323,8 @@ h3 {
     min-width: 50px;
     border: 0 solid gray;
     border-bottom-width: 1px;
-    font-size: 12px;
+    font-size: 14px;
+    font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -1024,6 +1025,10 @@ input[type="checkbox"] {
 
   .editor-error {
     background-color: rgb(254, 227, 227);
+  }
+
+  .editor {
+    position: relative;
   }
 
   .ltk-button {

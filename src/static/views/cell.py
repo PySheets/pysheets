@@ -95,6 +95,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             script (str): The new script to set for the cell.
             evaluate (bool, optional): When false does evaluate the new script.
         """
+        self.remove_preview()
         if self.model.script != script:
             history.add(
                 models.CellScriptChanged(self.model.key, self.model.script, script)
@@ -105,7 +106,6 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             self.sheet.editor.set(self.model.script)
             self.sheet.select(self)
         if not self.is_formula():
-            self.remove_preview()
             self.sheet.cache[self.model.key] = api.convert(script)
         if evaluate:
             ltk.schedule(self.evaluate, f"eval-{self.model.key}")

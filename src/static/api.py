@@ -347,7 +347,7 @@ class PySheets():
         self._inputs = inputs or []
         self._cells_to_set = {}
 
-    def sheet(self, selection, headers=True):   # pylint: disable=too-many-locals
+    def get_sheet(self, selection:str, headers:bool=True):   # pylint: disable=too-many-locals
         """
         Generates a Pandas DataFrame from a spreadsheet selection.
         
@@ -358,11 +358,16 @@ class PySheets():
         Returns:
             pandas.DataFrame: A Pandas DataFrame containing the data from the specified spreadsheet selection.
         """
+        assert isinstance(selection, str), f"Parameter selection must be a string, not {type(selection)}"
+        assert isinstance(headers, bool), f"Parameter headers must be a boolean, not {type(headers)}"
         import pandas as pd # pylint: disable=import-outside-toplevel,import-error
 
-        start, end = selection.split(":")
-        start_col, start_row = get_col_row_from_key(start)
-        end_col, end_row = get_col_row_from_key(end)
+        try:
+            start, end = selection.split(":")
+            start_col, start_row = get_col_row_from_key(start)
+            end_col, end_row = get_col_row_from_key(end)
+        except Exception as exc: # pylint: disable=broad-except
+            raise ValueError(f"Parameter selection must be a range like 'A1:F14', not {selection}") from exc
 
         data = {}
         for col in range(start_col, end_col + 1):
@@ -377,7 +382,7 @@ class PySheets():
             return "Error: Incomplete Data"
         return df
 
-    def cell(self, key):
+    def get_cell(self, key:str):
         """
         Returns the cell object for the given key.
         
@@ -390,6 +395,7 @@ class PySheets():
         Returns:
             object: The cell object for the given key.
         """
+        assert isinstance(key, str), f"Parameter key must be a string, not {type(key)}"
         return self._spreadsheet.get(key) if self._spreadsheet else ltk.window.jQuery(f"#{key}")
 
     def set_cell(self, key, value, flush=True):
@@ -404,11 +410,13 @@ class PySheets():
             key (str): The key of the cell to set.
             value (object): The value to set the cell to.
         """
+        assert isinstance(key, str), f"Parameter key must be a string, not {type(key)}"
+        assert isinstance(value, (int, float, str)), f"Parameter value must be a string or int or float, not {type(key)}"
         self._cells_to_set[key] = value if isinstance(value, (int, float)) else str(value)
         if flush:
-            ltk.schedule(lambda: self.flush_set_cells(), "flushing cells to set") # pylint: disable=unnecessary-lambda
+            ltk.schedule(lambda: self._flush_set_cells(), "flushing cells to set") # pylint: disable=unnecessary-lambda
 
-    def flush_set_cells(self):
+    def _flush_set_cells(self):
         """
         Sets the value of a cell in the spreadsheet.
         """
@@ -420,7 +428,20 @@ class PySheets():
         )
         self._cells_to_set.clear()
 
-    def get_key(self, column, row):
+    def get_col_row_from_key(self, key:str):
+        """
+        Returns the column and row for the given key.
+
+        Args:
+            key (str): The key to get the column and row for.
+
+        Returns:
+            tuple: A tuple containing the column and row for the given key.
+        """
+        assert isinstance(key, str), f"Parameter key must be a string, not {type(key)}"
+        return get_col_row_from_key(key)
+
+    def get_key(self, column:int, row:int):
         """
         Returns the key for the given column and row.
         
@@ -431,11 +452,14 @@ class PySheets():
         Returns:
             str: The key for the given column and row.
         """
+        assert isinstance(column, int), f"Parameter column must be an integer, not {type(column)}"
+        assert isinstance(row, int), f"Parameter row must be an integer, not {type(row)}"
         return ltk.window.getKeyFromColumnRow(column, row)
 
-    def load(self, url, handler=None):
+    def load_url(self, url:str, handler:callable=None):
         """
-        Loads data from the provided URL and optionally passes it to a handler function.
+        Loads data from the provided URL synchronously. To make the call asynchronous,
+        pass a handler function to be called when the data is available.
         
         Args:
             url (str): The URL to load data from.
@@ -445,11 +469,12 @@ class PySheets():
         Returns:
             object: The loaded data, or the result of calling the handler function.
         """
+        assert isinstance(url, str), f"Parameter url must be a string, not {type(url)}"
         if handler:
             return ltk.get(url, handler)
         return urlopen(url)
 
-    def load_sheet(self, url):
+    def load_sheet(self, url:str):
         """
         Loads data from the provided URL and attempts to read it as an Excel or CSV file.
         
@@ -462,6 +487,7 @@ class PySheets():
         Raises:
             ValueError: If the URL cannot be loaded or the data cannot be parsed as an Excel or CSV file.
         """
+        assert isinstance(url, str), f"Parameter url must be a string, not {type(url)}"
         import pandas as pd # pylint: disable=import-outside-toplevel,import-error
         try:
             data = urlopen(url).read()
@@ -476,15 +502,17 @@ class PySheets():
                 print(e2, url, data)
                 raise ValueError(f"Cannot load as Excel ({e1}) or CSV ({e2})") from e2
 
-    def import_csv(self, url, key):
+    def import_csv(self, url:str, start_key:str):
         """
         Imports CSV data from the provided URL and set the values in the spreadsheet.
 
         Args:
             url (str): The URL to load data from.
-            key (str): The starting cell to insert the data into.
+            start_key (str): The key for thw starting cell to insert the data into.
         """
-        start_col, start_row = get_col_row_from_key(key)
+        assert isinstance(url, str), f"Parameter url must be a string, not {type(url)}"
+        assert isinstance(start_key, str), f"Parameter start_key must be a string, not {type(start_key)}"
+        start_col, start_row = get_col_row_from_key(start_key)
         content = urlopen(url).read().decode("utf-8")
         skip_row_id = False
         for row, line in enumerate(content.split("\n")):
@@ -500,7 +528,7 @@ class PySheets():
                     False
                 )
         summary = f"[{len(self._cells_to_set)} cells]"
-        self.flush_set_cells()
+        self._flush_set_cells()
         return summary
 
 

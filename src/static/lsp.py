@@ -100,7 +100,7 @@ class CodeCompletor():
             event (Event): The click event on the selected completion.
         """
         self.insert(ltk.find(event.target).text())
-        ltk.find(".completions").remove()
+        hide_completions()
         event.preventDefault()
 
     def pick_selected(self, event):
@@ -112,7 +112,7 @@ class CodeCompletor():
             event (Event): The click event on the selected completion.
         """
         self.insert(ltk.find(".completions .selected").text())
-        ltk.find(".completions").remove()
+        hide_completions()
         event.preventDefault()
 
     def select(self, choice):
@@ -148,13 +148,14 @@ class CodeCompletor():
         if key in ["Enter", "Tab"]:
             self.pick_selected(event)
         elif key == "Escape":
-            ltk.find(".completions").remove()
+            hide_completions()
             self.editor.focus()
         elif key == "ArrowUp":
             self.select(ltk.find(".completions .selected").prev())
         elif key == "ArrowDown":
             self.select(ltk.find(".completions .selected").next())
         else:
+            hide_completions()
             return
         event.preventDefault()
 
@@ -188,11 +189,14 @@ class CodeCompletor():
         token = self.get_token()
         if not completions or token.string in [" ", ":", ";"]:
             return
-        ltk.find(".completions").remove()
-        ltk.find(".CodeMirror-code").append(
+
+        cursor_left = ltk.window.parseInt(ltk.find(".CodeMirror-cursor").css("left"))
+        gutter_width = ltk.find(".CodeMirror-gutters").width()
+        hide_completions()
+        ltk.find(".editor").append(
             ltk.create("<div>")
                 .addClass("completions")
-                .css("left", ltk.find(".CodeMirror-cursor").css("left"))
+                .css("left", cursor_left + gutter_width)
                 .css("top", ltk.window.parseFloat(ltk.find(".CodeMirror-cursor").css("top")) + 24)
         )
         for choice in self.completions:
@@ -200,7 +204,7 @@ class CodeCompletor():
                 ltk.create("<div>")
                     .addClass("choice")
                     .text(choice)
-                    .on("click", ltk.proxy(lambda event: self.pick(event))) # pylint: disable=unnecessary-lambda
+                    .on("mousedown", ltk.proxy(lambda event: self.pick(event))) # pylint: disable=unnecessary-lambda
                 )
         ltk.find(".completions").find(".choice").eq(0).addClass("selected")
 
@@ -244,6 +248,12 @@ def fuzzy_parse(text):
                 traceback.print_exc()
     return None, None
 
+
+def hide_completions():
+    """
+    Removes the code completion popup.
+    """
+    ltk.find(".completions").remove()
 
 
 def complete_python(text, line, ch, cache, results):  # pylint: disable=too-many-statements
@@ -338,7 +348,7 @@ def complete_python(text, line, ch, cache, results):  # pylint: disable=too-many
                 parameters = []
                 for param in signature.parameters.values():
                     param_name = param.name
-                    param_type = param.annotation if param.annotation != inspect.Parameter.empty else None
+                    param_type = param.annotation.__name__ if param.annotation != inspect.Parameter.empty else None
                     parameters.append(f"{param_name}:{param_type or 'Any'}")
                 return ", ".join(parameters)
 

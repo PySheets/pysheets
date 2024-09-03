@@ -298,12 +298,14 @@ def handle_run(data): # pylint: disable=too-many-locals
         tb = traceback.format_exc()
         try:
             lines = tb.strip().split("\n")
-            line = [line for line in lines if "<unknown>" in line][0]
+            line = [line for line in lines if "<module>" in line][0]
             lineno = int(re.sub("[^0-9]", "", line))
-            error = f"At line {lineno + 1}: {lines[-1]} - {tb}"
+            error = f"Line {lineno}: {lines[-1]} - {tb}"
         except Exception as formatting_error: # pylint: disable=broad-except
             error = str(formatting_error)
             lineno = 1
+
+        ltk.window.console.orig_log("error", lineno, error, tb)
 
         polyscript.xworker.sync.publish(
             "Worker",
@@ -445,14 +447,17 @@ def handle_request(sender, topic, request): # pylint: disable=unused-argument
                     ),
                 )
         elif topic == constants.TOPIC_WORKER_CODE_COMPLETE:
-            text, line, ch = data
-            completions = lsp.complete_python(text, line, ch, cache, results)
-            polyscript.xworker.sync.publish(
-                "Worker",
-                "Application",
-                constants.TOPIC_WORKER_CODE_COMPLETION,
-                json.dumps(completions),
-            )
+            try:
+                text, line, ch = data
+                completions = lsp.complete_python(text, line, ch, cache, results)
+                polyscript.xworker.sync.publish(
+                    "Worker",
+                    "Application",
+                    constants.TOPIC_WORKER_CODE_COMPLETION,
+                    json.dumps(completions),
+                )
+            except Exception: # pylint: disable=broad-exception-caught
+                pass
         elif topic == ltk.pubsub.TOPIC_WORKER_RUN:
             handle_run(data)
         elif topic == constants.TOPIC_API_SET_CELLS:

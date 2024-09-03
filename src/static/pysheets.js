@@ -285,11 +285,13 @@
 
     window.editorMarkLine = (lineno) => {
         window.editorClearLine();
-        window.editorMarker = window.editor.getDoc().markText(
-            { line: lineno, ch: 0},
-            { line: lineno, ch: 200},
-            { className: "editor-error" }
-        );
+        setTimeout(() => {
+            window.editorMarker = window.editor.getDoc().markText(
+                { line: lineno, ch: 0},
+                { line: lineno, ch: 200},
+                { className: "editor-error" }
+            );
+        }, 500);
     }
 
     window.fixFont = (font) => {
