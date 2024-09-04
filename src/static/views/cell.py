@@ -23,14 +23,24 @@ class CycleError(Exception):
     """
 
 
+
 class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
     """
     Represents a cell view in the sheet, managing the display and behavior of a single cell.
     """
 
+    observer = ltk.window.MutationObserver.new(ltk.proxy(lambda records, _: CellView.cellview_mutated(records))) # pylint: disable=unnecessary-lambda
+    observer_config = ltk.to_js({
+        "childList": True,
+        "characterData": True,
+        "attributes": True,
+        "subtree": True
+    })
+    sheet = None
+
     def __init__(self, sheet, key: str, model: models.Cell, td=None):
         super().__init__()
-        self.sheet= sheet
+        CellView.sheet= sheet
         self.model = model
         if not key:
             raise ValueError("Missing key for cell")
@@ -48,7 +58,16 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             self.set(self.model.script, evaluate=False)
         self.on("mouseenter", ltk.proxy(lambda event: self.enter()))
         self.model.listen(self.model_changed)
-        self.element.on("DOMSubtreeModified", ltk.proxy(lambda event: self.ui_changed()))
+        self.observer.observe(self.element[0], self.observer_config)
+        
+    @classmethod
+    def cellview_mutated(cls, mutation_records):
+        """
+        One or more cellviews were mutated.
+        """
+        for key in set(record.target.id for record in mutation_records):
+            if key:
+                cls.sheet.cell_views[key].ui_changed()
 
     def ui_changed(self):
         """

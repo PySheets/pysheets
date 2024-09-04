@@ -105,22 +105,23 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         
         This method updates the UI.
         """
-        field_name = info["name"]
-        if field_name == "rows":
-            ltk.find(f".row-{info['row']}").css("height", info['height'])
-            self.reselect()
-        elif field_name == "columns":
-            ltk.find(f".col-{info['column']}").css("width", info['width'])
-            self.reselect()
-        elif field_name == "name":
-            new_name = sheet.name
-            if ltk.window.document.title != new_name:
-                ltk.window.document.title = new_name
-                ltk.find("#title").val(new_name)
-                history.add(models.NameChanged("", new_name).apply(self.model))
-        elif field_name == "style":
-            print("Change style", info)
-        self.sheet_resized()
+        with self.no_notification():
+            field_name = info["name"]
+            if field_name == "rows":
+                ltk.find(f".row-{info['row']}").css("height", info['height'])
+                self.reselect()
+            elif field_name == "columns":
+                ltk.find(f".col-{info['column']}").css("width", info['width'])
+                self.reselect()
+            elif field_name == "name":
+                new_name = sheet.name
+                if ltk.window.document.title != new_name:
+                    ltk.window.document.title = new_name
+                    ltk.find("#title").val(new_name)
+                    history.add(models.NameChanged("", new_name).apply(self.model))
+            elif field_name == "style":
+                print("Change style", info)
+            self.sheet_resized()
 
     def setup_window_listeners(self):
         """
