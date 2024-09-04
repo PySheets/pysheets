@@ -4,6 +4,7 @@ test.use({
     browserName: 'firefox',
 });
 
+
 test('has title', async ({ page }) => {
   await page.goto('http://127.0.0.1:8081/');
   // Make sure we have the right title

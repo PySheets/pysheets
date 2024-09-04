@@ -885,7 +885,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
 
         tabs = ltk.Tabs(
             console,
-            ltk.VBox().addClass("timeline-container").attr("name", "Timeline"),
+            ltk.Div().addClass("timeline-container").attr("name", "Timeline"),
         ).addClass("internals")
 
         def set_plot_kind(index, option): # pylint: disable=unused-argument
