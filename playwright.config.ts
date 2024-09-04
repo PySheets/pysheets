@@ -73,6 +73,6 @@ export default defineConfig({
   webServer: {
        command: 'python3 src/pysheets.py',
        url: 'http://127.0.0.1:8081',
-       reuseExistingServer: !process.env.CI,
+       reuseExistingServer: false,
   },
 });
