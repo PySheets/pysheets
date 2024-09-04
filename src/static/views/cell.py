@@ -59,7 +59,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         self.on("mouseenter", ltk.proxy(lambda event: self.enter()))
         self.model.listen(self.model_changed)
         self.observer.observe(self.element[0], self.observer_config)
-        
+
     @classmethod
     def cellview_mutated(cls, mutation_records):
         """
