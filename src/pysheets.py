@@ -111,8 +111,8 @@ PYSCRIPT_OFFLINE = """
     <script type="module" src="pyscript/core.js"></script>
 """
 PYSCRIPT_ONLINE = """
-    <link rel="stylesheet" href="https://pyscript.net/releases/2024.8.1/core.css">
-    <script type="module" src="https://pyscript.net/releases/2024.8.1/core.js"></script>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.6.2/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.6.2/core.js"></script>
 """
 ONLINE = "online"
 OFFLINE = "offline"
