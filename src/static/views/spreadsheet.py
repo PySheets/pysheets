@@ -369,7 +369,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                     other_key = api.get_key_from_col_row(col, row)
                     visited.add(other_key)
             prompt = f"Convert the spreadsheet cells in range '{cell_model.key}:{other_key}'" \
-                     f"by calling 'pysheets.sheet(range)'."
+                     f"by calling 'pysheets.get_sheet(range)'."
             self.add_completion_button(cell_model.key, prompt)
 
         cell = self.get_cell("A1")
