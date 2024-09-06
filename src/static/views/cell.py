@@ -236,11 +236,19 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         """
         self.remove_arrows()
         self.sheet.editor.set(self.model.script)
-        ltk.find("#ai-prompt").val(self.model.prompt)
         ltk.find("#selection").text(f"Cell: {self.model.key}")
         ltk.find("#cell-attributes-container").css("display", "block")
+        self.set_prompt()
         self.set_css_editors()
         selection.scroll(self)
+
+    def set_prompt(self):
+        """
+        Sets the cell's prompt.
+        """
+        prompt_editor = ltk.find("#ai-prompt")
+        if not prompt_editor.hasFocus():
+            prompt_editor.val(self.model.prompt)
 
     def set_css_editors(self):
         """
