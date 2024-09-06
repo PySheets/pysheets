@@ -462,4 +462,7 @@
 
     window.isUndefined = (value) => value === undefined;
 
+    $.fn.hasFocus = function() {
+        return $(this).is(':focus');
+    };
 })();
