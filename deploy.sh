@@ -1,7 +1,7 @@
 cp -r src/static/lib ../pysheets-prod/static
 cp -r src/static/ltk ../pysheets-prod/static
 cp -r src/static/views ../pysheets-prod/static
-cp -r src/static/icons/format* ../pysheets-prod/static/icons
+cp -r src/static/icons ../pysheets-prod/static
 cp src/static/*.py ../pysheets-prod/static
 cp src/static/*.png ../pysheets-prod/static
 cp src/static/*.ico ../pysheets-prod/static
