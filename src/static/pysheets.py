@@ -42,7 +42,7 @@ def load_ui():
     def load_sheet_with_model(model):
         state.SHEET = model
         SpreadsheetView(model)
-        ltk.schedule(state.start_worker, "Start worker", 0.1)
+        state.start_worker()
 
     if state.UID:
         storage.load_sheet(state.UID, load_sheet_with_model)
