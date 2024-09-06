@@ -203,7 +203,7 @@ class Profiler():
         Adds a toggle switch to the timeline container that enables or disables the timeline profiling functionality.
         """
         ltk.find(".timeline-container").append(
-            ltk.Switch("enabled", self.enabled())
+            ltk.Switch("profile", self.enabled())
                 .addClass("timeline-switch")
                 .on("change", ltk.proxy(lambda event: self.toggle(ltk.find(event.target))))
         )
