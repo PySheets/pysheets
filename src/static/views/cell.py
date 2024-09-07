@@ -66,7 +66,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         One or more cellviews were mutated.
         """
         for key in set(record.target.id for record in mutation_records):
-            if key:
+            if key and key in cls.sheet.cell_views:
                 cls.sheet.cell_views[key].ui_changed()
 
     def ui_changed(self):
