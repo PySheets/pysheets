@@ -4,7 +4,23 @@
  * This file is part of the PySheets projects and contains "native" methods for performance.
  */
 
+
 (async function pysheets() {
+
+    (function checkChromiumVersion() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        const match = userAgent.match(/chrome\/([0-9]+)/);
+        if (match && match.length >= 2) {
+            version = parseInt(match[1]);
+            if (version == 128) {
+                alert(
+                    " Chromium 128 (in Chrome, Brave, and Edge) broke PyScript. " +
+                    "You may see 'Aw. Snap!' browser crashes. In that case, please use Chrome 129 or later. " +
+                    "As a workaround, you can try Safari, Firefox, or Chrome Canary."
+                )
+            }
+        }
+    })()
 
     window.start = new Date().getTime();
 
@@ -465,4 +481,5 @@
     $.fn.hasFocus = function() {
         return $(this).is(':focus');
     };
+
 })();
