@@ -4,6 +4,7 @@ CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
 This module contains the global state and utility functions for the PySheets application.
 """
 
+import re
 import sys
 
 import builtins
@@ -321,6 +322,23 @@ def show_worker_status():
         )
 
 
+def chrome_version():
+    """
+    Determines the version of Chrome used by the browser.
+
+    Args:
+        None
+
+    Returns:
+        str: The version of Chrome used by the browser.
+    """
+    user_agent = ltk.window.navigator.userAgent
+    match = re.search(r"Chrome/(\d+)\.(\d+)\.(\d+)\.(\d+)", user_agent)
+    if match:
+        return int(f"{match.group(1)}")
+    return 0
+
+
 def start_worker():
     """
     Starts the PyOdide worker when we are editing a sheet.
@@ -333,6 +351,13 @@ def start_worker():
     """
     if not UID:
         return
+    version = chrome_version()
+    if version and version == 128:
+        ltk.window.alert(
+            "Sadly, Chromium 128 (in Chrome, Brave, and Edge) broke PyScript. "
+            "You may see 'Aw. Snap!' browser crashes. In that case, please use Chrome 129 or later. "
+            "As a workaround, you can try Safari, Firefox, or Chrome Canary."
+        )
     show_worker_status()
     packages = SHEET.packages.split(" ") if SHEET.packages else []
     start_worker_with_packages(packages)
