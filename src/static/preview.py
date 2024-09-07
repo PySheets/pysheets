@@ -36,8 +36,8 @@ class PreviewView(ltk.Div):
             .css("position", "absolute")
             .css("left", self.model.left or left + self.width() + dx)
             .css("top", self.model.top or top)
-            .css("width", self.model.width or "fit-content")
-            .css("height", self.model.height or "fit-content")
+            .css("width", self.model.width or "")
+            .css("height", self.model.height or "")
             .on("click", ltk.proxy(lambda event: self.click()))
             .on("mousemove", ltk.proxy(lambda event: self.move()))
             .on("mouseleave", ltk.proxy(lambda event: selection.remove_arrows(0)))
@@ -110,8 +110,8 @@ class PreviewView(ltk.Div):
         Event handler for when the user toggles the size of the preview widget between a minimized and expanded state.
         """
         minimize = self.height() > constants.PREVIEW_HEADER_HEIGHT
-        height = constants.PREVIEW_HEADER_HEIGHT if minimize else "fit-content"
-        width = constants.PREVIEW_HEADER_WIDTH if minimize else "fit-content"
+        width = constants.PREVIEW_HEADER_WIDTH if minimize else ""
+        height = constants.PREVIEW_HEADER_HEIGHT if minimize else ""
         self \
             .attr("minimized", minimize) \
             .height(height) \
