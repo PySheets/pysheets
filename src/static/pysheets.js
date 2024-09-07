@@ -7,21 +7,6 @@
 
 (async function pysheets() {
 
-    (function checkChromiumVersion() {
-        const userAgent = navigator.userAgent.toLowerCase();
-        const match = userAgent.match(/chrome\/([0-9]+)/);
-        if (match && match.length >= 2) {
-            version = parseInt(match[1]);
-            if (version == 128) {
-                alert(
-                    "Chromium v128 broke PyScript. This impacts the following browsers: Chrome, Brave, and Edge." +
-                    "You may see 'Aw. Snap!' browser crashes. In that case, please use Chrome v129 or later. " +
-                    "As a temporary workaround, you can try Safari, Firefox, or Chrome Canary."
-                )
-            }
-        }
-    })()
-
     window.start = new Date().getTime();
 
     window.time = () => {
