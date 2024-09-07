@@ -14,9 +14,9 @@
             version = parseInt(match[1]);
             if (version == 128) {
                 alert(
-                    " Chromium 128 (in Chrome, Brave, and Edge) broke PyScript. " +
-                    "You may see 'Aw. Snap!' browser crashes. In that case, please use Chrome 129 or later. " +
-                    "As a workaround, you can try Safari, Firefox, or Chrome Canary."
+                    "Chromium v128 broke PyScript. This impacts the following browsers: Chrome, Brave, and Edge." +
+                    "You may see 'Aw. Snap!' browser crashes. In that case, please use Chrome v129 or later. " +
+                    "As a temporary workaround, you can try Safari, Firefox, or Chrome Canary."
                 )
             }
         }
