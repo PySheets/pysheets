@@ -60,11 +60,16 @@ def complete(prompt):
         dict: A dictionary containing the generated text completion.
     """
     return complete_with_openai(prompt)
+    # return complete_with_ollama(prompt)
 
 
 def complete_with_ollama(prompt): # pylint: disable=unused-argument
     """
     Generates a code completion using Ollama with the llama3 language model.
+    Installation:
+     - Install ollama from https://ollama.com/download
+     - Run the installer
+     - In the shell that pops up, enter "ollama run codellama:python"
     
     Args:
         prompt (str): The input prompt to generate the completion from.
@@ -73,9 +78,9 @@ def complete_with_ollama(prompt): # pylint: disable=unused-argument
         dict: A dictionary containing the generated text completion.
     """
     response = requests.post("http://127.0.0.1:11434/api/generate", json={
-        "model": "llama3.1",
-        "prompt": "What is the meaning of life?",
-    }, timeout=10)
+        "model": "gemma2:2b",
+        "prompt": prompt
+    }, timeout=5)
     response.raise_for_status()
     for line in response.iter_lines():
         body = json.loads(line)
