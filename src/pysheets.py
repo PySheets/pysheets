@@ -26,7 +26,7 @@ try:
     command = ["pip", "show", "pysheets-app"]
     lines = subprocess.check_output(command).decode("utf-8").split("\n")
     version_lines = [line for line in lines if line.startswith("Version:")]
-    VERSION = version_lines[0].split(" ")[1]
+    VERSION = version_lines[0].split(" ")[1].strip()
 except Exception as e:   # pylint: disable=broad-except
     VERSION = str(e)
 
@@ -96,8 +96,6 @@ FILES = """
     "static/html_maker.py" = "html_maker.py"
     "static/views/spreadsheet.py" = "views/spreadsheet.py"
     "static/views/cell.py" = "views/cell.py"
-"""
-FILES_LTK = """
     "static/ltk/jquery.py" = "ltk/jquery.py"
     "static/ltk/widgets.py" = "ltk/widgets.py"
     "static/ltk/pubsub.py" = "ltk/pubsub.py"
@@ -130,9 +128,10 @@ def root():
     pyscript = PYSCRIPT_OFFLINE if HOSTING == OFFLINE else PYSCRIPT_ONLINE
     return render_template("index.html", **{
         "loading": "Loading...",
-        "files": FILES + FILES_LTK,
+        "files": FILES,
         "version": VERSION,
         "pyscript": pyscript,
+        "packages": '["pyscript-ltk"]',
         "interpreter": interpreter if HOSTING == OFFLINE else "",
         "runtime": runtime,
         "editor_width": 350,

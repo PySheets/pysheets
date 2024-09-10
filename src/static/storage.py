@@ -10,6 +10,10 @@ import ltk
 import models
 
 
+DB_VERSION = "4"
+STORE_NAME = "pysheets-1"
+
+
 class Database():
     """
     Provides an implementation of an IndexedDB database interface for
@@ -38,6 +42,7 @@ class Database():
         Returns:
             object: The object store transaction.
         """
+        ltk.window.console.orig_log("Open store", name)
         return self.db.transaction(name, "readwrite").objectStore(name)
 
     def upgrade(self, db):
@@ -46,12 +51,14 @@ class Database():
         
         This method is called during the initialization of the Database class
         to ensure the necessary object store exists in the database. It checks
-        if the 'sheets' object store already exists, and if not, it creates
+        if the object store already exists, and if not, it creates
         it with the specified key path.
         """
         self.db = db
-        if not self.db.objectStoreNames.contains('sheets'):
-            self.db.createObjectStore('sheets', { "keyPath": 'uid' })
+        ltk.window.console.orig_log("upgrade", self.db.objectStoreNames)
+        if not self.db.objectStoreNames.contains(STORE_NAME):
+            ltk.window.console.orig_log("Create store")
+            self.db.createObjectStore(STORE_NAME, { "keyPath": 'uid' })
 
     def get_all(self, store, found_all):
         """
@@ -127,7 +134,7 @@ class Sheets():
     """
 
     def __init__(self, db_loaded):
-        self.db = Database("PySheets", 3, db_loaded)
+        self.db = Database("PySheets", DB_VERSION, db_loaded)
         self.deleted = []
 
     def list_sheets(self, found_all_sheets):
@@ -138,19 +145,19 @@ class Sheets():
             found_all_sheets (callable): A callback function that will be called with a
             list of all the sheets stored in the database.
         """
-        self.db.get_all("sheets", found_all_sheets)
+        self.db.get_all(STORE_NAME, found_all_sheets)
 
 
     def save(self, sheet: models.Sheet):
         """
-        Saves the provided Sheet object to the "sheets" object store in the IndexedDB database.
+        Saves the provided Sheet object to the STORE_NAME object store in the IndexedDB database.
         
         Args:
             sheet (models.Sheet): The Sheet object to save.
         """
         if sheet.uid in self.deleted:
             return
-        self.db.save("sheets", ltk.window.JSON.parse(models.encode(sheet))) # need jsProxy for storage
+        self.db.save(STORE_NAME, ltk.window.JSON.parse(models.encode(sheet))) # need jsProxy for storage
 
 
     def load_sheet(self, sheet_id: str, onsuccess):
@@ -169,12 +176,12 @@ class Sheets():
         def new_sheet(event): # pylint: disable=unused-argument
             onsuccess(models.Sheet(uid=sheet_id))
 
-        self.db.load("sheets", sheet_id, new_sheet, found_sheet)
+        self.db.load(STORE_NAME, sheet_id, new_sheet, found_sheet)
 
 
     def delete(self, sheet_id: str, oncomplete, onerror):
         """
-        Deletes the sheet with the given `sheet_id` from the "sheets" object store
+        Deletes the sheet with the given `sheet_id` from the STORE_NAME object store
         in the IndexedDB database.
         
         Args:
@@ -184,7 +191,7 @@ class Sheets():
             onerror (callable): A callback function that will be called
                 when the delete operation failed.
         """
-        self.db.delete("sheets", sheet_id, oncomplete, onerror)
+        self.db.delete(STORE_NAME, sheet_id, oncomplete, onerror)
         self.deleted.append(sheet_id)
 
 
@@ -229,7 +236,7 @@ def save(sheet: models.Sheet):
 
 def delete(sheet_id, onsuccess, onerror):
     """
-    Deletes the sheet with the given `sheet_id` from the "sheets" object store
+    Deletes the sheet with the given `sheet_id` from the STORE_NAME object store
     in the IndexedDB database.
     
     Args:
