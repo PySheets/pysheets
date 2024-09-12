@@ -4,7 +4,6 @@ CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
 This module contains the global state and utility functions for the PySheets application.
 """
 
-import re
 import sys
 
 import builtins
