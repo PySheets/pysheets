@@ -19,8 +19,10 @@
             if (match && match.length >= 2) {
                 version = parseInt(match[1]);
                 if (version == 128) {
+                    if (localStorage["chromium-128-checked"]) return;
+                    localStorage["chromium-128-checked"] = "yes";
                     alert(
-                        "Chromium v128 broke PyScript. This impacts the following browsers: Chrome, Brave, and Edge." +
+                        "Chromium v128 broke PyScript. This impacts the following browsers: Chrome, Brave, and Edge. " +
                         "You may see 'Aw. Snap!' browser crashes. In that case, please use Chrome v129 or later. " +
                         "As a temporary workaround, you can try Safari, Firefox, or Chrome Canary."
                     )
