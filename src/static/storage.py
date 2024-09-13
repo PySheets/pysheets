@@ -42,7 +42,6 @@ class Database():
         Returns:
             object: The object store transaction.
         """
-        ltk.window.console.orig_log("Open store", name)
         return self.db.transaction(name, "readwrite").objectStore(name)
 
     def upgrade(self, db):
@@ -55,9 +54,7 @@ class Database():
         it with the specified key path.
         """
         self.db = db
-        ltk.window.console.orig_log("upgrade", self.db.objectStoreNames)
         if not self.db.objectStoreNames.contains(STORE_NAME):
-            ltk.window.console.orig_log("Create store")
             self.db.createObjectStore(STORE_NAME, { "keyPath": 'uid' })
 
     def get_all(self, store, found_all):
