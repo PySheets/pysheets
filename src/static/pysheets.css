@@ -929,12 +929,20 @@ td:hover .debug-info {
     color: rgb(46, 158, 178);
 }
 
+.console .ui td {
+    color: rgb(36, 170, 60);
+}
+
+.console .version td {
+    color: rgb(192, 51, 227);
+}
+
 .console .dag td {
     color: rgb(51, 74, 227);
 }
 
 .console .worker td {
-    color: rgb(123, 36, 149);
+    color: rgb(219, 92, 0);
 }
 
 .console .warning td {
