@@ -85,7 +85,6 @@ def new_sheet():
     """
     import models # pylint: disable=import-outside-toplevel
     import storage # pylint: disable=import-outside-toplevel
-    uid = ltk.window.crypto.randomUUID()
     sheet = models.Sheet(uid=ltk.window.crypto.randomUUID())
     storage.save(sheet)
     load_doc(sheet.uid)

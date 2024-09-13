@@ -1038,7 +1038,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             self.get_cell(key).set(value)
             set_background(key, "lightyellow")
 
-        with history.SingleEdit(f"Insert sample data"):
+        with history.SingleEdit("Insert sample data"):
             set_header("A1", "Country")
             set_cell("A2", "United States")
             set_cell("A3", "Germany")

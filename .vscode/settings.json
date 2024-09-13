@@ -7,6 +7,7 @@
         "-p",
         "test_*.py"
     ],
+    "python.languageServer": "Default",
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
 }
