@@ -1023,15 +1023,20 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         Load sample data into the sheet.
         """
-        def set_header(key, value):
+        def set_background(key, color):
             cell = self.get_cell(key)
-            style = { "background": "lightgreen" }
+            style = { "background": color }
             cell.model.style = style
             cell.css(style)
+
+        def set_header(key, value):
+            cell = self.get_cell(key)
             cell.set(value)
+            set_background(key, "lightgreen")
 
         def set_cell(key, value):
             self.get_cell(key).set(value)
+            set_background(key, "lightyellow")
 
         with history.SingleEdit(f"Insert sample data"):
             set_header("A1", "Country")
