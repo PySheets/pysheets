@@ -66,8 +66,13 @@ Produce an AI-driven data-science workflow without writing any Pandas or Matplot
  - Click the "⭐ F5" button to visualize the data
  - You now have a Pandas dataframe and matplotlib Figure, with just a few clicks 🤯. 
 
-Import data from the web:
- - Click the "load from web" button in the AI prompt section
+Import sample data from the web:
+ - Click the "⭐ WEB" button in the AI prompt section
+ - Turn it into a dataframe using the AI buttons
+ - Visualize it. Change the prompt to change colors or image size.
+
+Import sample data into the sheet:
+ - Click the "⭐ DATA" button in the AI prompt section
  - Turn it into a dataframe using the AI buttons
  - Visualize it. Change the prompt to change colors or image size.
 

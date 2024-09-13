@@ -912,9 +912,14 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                 ltk.Button("generate code", ltk.proxy(lambda event: self.complete_prompt(event))) # pylint: disable=unnecessary-lambda
                     .addClass("small-button")
                     .attr("id", "generate-button"),
-                ltk.Button("load from web", ltk.proxy(lambda event: self.load_from_web(event))) # pylint: disable=unnecessary-lambda
+                ltk.Button(f"{constants.ICON_STAR} WEB", ltk.proxy(lambda event: self.load_from_web(event))) # pylint: disable=unnecessary-lambda
                     .addClass("small-button")
+                    .attr("title", "Load sample data from the web as Pandas DataFrame")
                     .attr("id", "load-from-web-button"),
+                ltk.Button(f"{constants.ICON_STAR} DATA", ltk.proxy(lambda event: self.load_sample_data(event))) # pylint: disable=unnecessary-lambda
+                    .addClass("small-button")
+                    .attr("title", "Load sample data into the sheet")
+                    .attr("id", "load-from-data-button"),
                 ltk.HBox().addClass("ai-button-container"),
                 ltk.Text().text("Chart type:"),
                 chart_type,
@@ -1013,6 +1018,34 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             "https://raw.githubusercontent.com/PySheets/pysheets/main/src/datafiles/forbes-ai-50.csv " \
             "by calling 'pysheets.load_sheet(url)'.".strip()
         )
+
+    def load_sample_data(self, event=None): # pylint: disable=unused-argument
+        """
+        Load sample data into the sheet.
+        """
+        def set_header(key, value):
+            cell = self.get_cell(key)
+            style = { "background": "lightgreen" }
+            cell.model.style = style
+            cell.css(style)
+            cell.set(value)
+
+        def set_cell(key, value):
+            self.get_cell(key).set(value)
+
+        with history.SingleEdit(f"Insert sample data"):
+            set_header("A1", "Country")
+            set_cell("A2", "United States")
+            set_cell("A3", "Germany")
+            set_cell("A4", "Canada")
+            set_header("B1", "Import")
+            set_cell("B2", "1000")
+            set_cell("B3", "750")
+            set_cell("B4", "1200")
+            set_header("C1", "Export")
+            set_cell("C2", "250")
+            set_cell("C3", "500")
+            set_cell("C4", "600")
 
     def set_cells(self, cells):
         """
