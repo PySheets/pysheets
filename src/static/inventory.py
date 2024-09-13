@@ -66,6 +66,7 @@ def show_sheet_list(sheets):
                     ),
                 )
                 for index, sheet in enumerate(sheets)
+                if sheet.uid
             ]
         ).prepend(
             ltk.Button("New Sheet", ltk.proxy(lambda event: menu.new_sheet())).addClass(

@@ -88,7 +88,7 @@ def new_sheet():
     uid = ltk.window.crypto.randomUUID()
     sheet = models.Sheet(uid=ltk.window.crypto.randomUUID())
     storage.save(sheet)
-    load_doc(uid)
+    load_doc(sheet.uid)
 
 
 def load_doc(uid):
