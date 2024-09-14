@@ -511,9 +511,12 @@ class PySheets():
             start_key (str): The key for thw starting cell to insert the data into.
         """
         assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
+        content = urlopen(url).read().decode("utf-8")
+        self._import_csv_content(content, start_key)
+    
+    def _import_csv_content(self, content, start_key):
         assert isinstance(start_key, str), f"Parameter start_key must be a str, not {type(start_key)}"
         start_col, start_row = get_col_row_from_key(start_key)
-        content = urlopen(url).read().decode("utf-8")
         skip_row_id = False
         for row, line in enumerate(content.split("\n")):
             for col, value in enumerate(line.split(",")):
@@ -531,6 +534,19 @@ class PySheets():
         self._flush_set_cells()
         return summary
 
+    def import_excel(self, url:str, start_key:str):
+        """
+        Imports Excel data from the provided URL and set the values in the spreadsheet.
+
+        Args:
+            url (str): The URL to load data from.
+            start_key (str): The key for thw starting cell to insert the data into.
+        """
+        assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
+        assert isinstance(start_key, str), f"Parameter start_key must be a str, not {type(start_key)}"
+        buffer = io.StringIO()
+        self.load_sheet(url).to_csv(buffer)
+        self._import_csv_content(buffer.getvalue(), start_key)
 
 def get_dict_table(result):
     """
