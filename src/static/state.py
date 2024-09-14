@@ -354,6 +354,7 @@ def start_worker_with_packages(packages):
             "pandas",
             "matplotlib",
             "numpy",
+            "openpyxl",
             "requests"
         ] + packages,
         "files": {
