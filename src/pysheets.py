@@ -162,7 +162,7 @@ def pypi():
     """
     Reroutes to the pypi package.
     """
-    return '<html><meta http-equiv="refresh" content="0; URL=https://github.com/pysheets/pysheets" /></html>'
+    return '<html><meta http-equiv="refresh" content="0; URL=https://pypi.org/project/pysheets-app" /></html>'
 
 
 @app.route("/ltk/ltk.css")
