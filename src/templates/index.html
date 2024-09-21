@@ -29,32 +29,6 @@
                 }
             }
         })()
-    </script>
-
-    {{pyscript|safe}}
-
-    <script src="lib/jquery.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="lib/jqueryui.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <link rel="stylesheet" href="lib/jqueryui.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-    <script src="lib/codemirror.js"></script>
-    <script src="lib/python.min.js"></script>
-    <link rel="stylesheet" href="lib/codemirror.min.css">
-
-    <script defer src="lib/leader-line.min.js"></script>
-    <script defer src="lib/html2canvas.min.js"></script>
-
-    <script src="pysheets.js" type="module"></script>
-
-    <script>
-        window.version_pyscript = '{{version_pyscript}}';
-        window.version_interpreter = '{{version_interpreter}}';
-        window.runtime = '{{runtime}}';
-        window.version = '{{version}}';
-        window.editor_width = parseFloat('{{editor_width}}');
-        window.timestamp = parseFloat('{{timestamp|safe}}');
-        window.path = '{{path}}';
-        window.isUndefined = (value) => value === undefined;
            window.start = new Date().getTime();
 
     window.time = () => {
@@ -515,6 +489,31 @@
         return $(this).is(':focus');
     };
 
+    </script>
+
+    {{pyscript|safe}}
+
+    <script src="lib/jquery.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="lib/jqueryui.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="lib/jqueryui.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <script src="lib/codemirror.js"></script>
+    <script src="lib/python.min.js"></script>
+    <link rel="stylesheet" href="lib/codemirror.min.css">
+
+    <script defer src="lib/leader-line.min.js"></script>
+    <script defer src="lib/html2canvas.min.js"></script>
+
+    <script src="pysheets.js" type="module"></script>
+
+    <script>
+        window.version_pyscript = '{{version_pyscript}}';
+        window.version_interpreter = '{{version_interpreter}}';
+        window.runtime = '{{runtime}}';
+        window.version = '{{version}}';
+        window.editor_width = parseFloat('{{editor_width}}');
+        window.timestamp = parseFloat('{{timestamp|safe}}');
+        window.path = '{{path}}';
     </script>
     <link defer rel="stylesheet" href="pysheets.css">
 
