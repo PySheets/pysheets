@@ -912,14 +912,10 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                 ltk.Button("generate code", ltk.proxy(lambda event: self.complete_prompt(event))) # pylint: disable=unnecessary-lambda
                     .addClass("small-button")
                     .attr("id", "generate-button"),
-                ltk.Button(f"{constants.ICON_STAR} WEB", ltk.proxy(lambda event: self.load_from_web(event))) # pylint: disable=unnecessary-lambda
+                ltk.Button(f"Import...", ltk.proxy(lambda event: menu.import_sheet())) # pylint: disable=unnecessary-lambda
                     .addClass("small-button")
                     .attr("title", "Load sample data from the web as Pandas DataFrame")
                     .attr("id", "load-from-web-button"),
-                ltk.Button(f"{constants.ICON_STAR} DATA", ltk.proxy(lambda event: self.load_sample_data(event))) # pylint: disable=unnecessary-lambda
-                    .addClass("small-button")
-                    .attr("title", "Load sample data into the sheet")
-                    .attr("id", "load-from-data-button"),
                 ltk.HBox().addClass("ai-button-container"),
                 ltk.Text().text("Chart type:"),
                 chart_type,

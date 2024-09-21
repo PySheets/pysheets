@@ -71,6 +71,11 @@ TOPIC_WORKER_FIND_INPUTS = "worker.find.inputs"
 TOPIC_WORKER_INPUTS = "worker.inputs"
 TOPIC_API_SET_CELLS = "api.set_cells"
 
+TOPIC_WORKER_PREVIEW_IMPORT_WEB = "worker.preview.import.web"
+TOPIC_WORKER_PREVIEW_IMPORTED_WEB = "worker.preview.imported.web"
+TOPIC_WORKER_IMPORT_WEB = "worker.import.web"
+TOPIC_WORKER_IMPORTED_WEB = "worker.imported.web"
+
 URL = "url"
 PROMPT = "prompt"
 PYTHON_RUNTIME = "runtime"

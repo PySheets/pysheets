@@ -16,7 +16,6 @@ from views.spreadsheet import SpreadsheetView
 import storage
 
 
-
 state.console.write("pysheets", f"[Main] Pysheets starting {constants.ICON_HOUR_GLASS}")
 state.console.write(
     "sponsor1",
@@ -41,7 +40,7 @@ def load_ui():
 
     def load_sheet_with_model(model):
         state.SHEET = model
-        SpreadsheetView(model)
+        state.UI = SpreadsheetView(model)
         state.start_worker()
 
     if state.UID:

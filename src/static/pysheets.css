@@ -425,6 +425,64 @@ h3 {
     font-weight: bold;
 }
 
+.import-web-url-label {
+    width: 50%;
+    font-size: 17px;
+    margin-top: 2px;
+    margin-right: 4px;
+}
+
+.import-dialog input {
+    border: 1px solid gray;
+    margin-right: 6px;
+    width: 190px;
+}
+
+.import-dialog .ltk-td {
+    border-width: 0px;
+}
+
+.import-data-preview {
+    width: 425px;
+    height: 200px;
+    overflow: scroll;
+    background: rgb(237, 237, 237);
+}
+
+.import-dialog .ltk-tr {
+    border: 14px solid transparent;
+}
+
+.load-button, .import-final-button {
+    color: white;
+    background-color: #1f77b4;
+    padding: 3px 6px;
+    cursor: pointer;
+}
+
+.import-cancel-button {
+    margin-left: 24px;
+    float: right;
+}
+
+.import-dialog-button-bar {
+    margin-top: 36px;
+    justify-content: end;
+}
+
+.import-dialog-button {
+    color: white;
+    padding: 4px;
+    margin: auto;
+    margin-left: 12px;
+    margin-right: 0;
+}
+
+.import-dialog button:disabled {
+    background-color:  #929ea8;
+    color: white;
+}
+
 .ltk-input {
     border-color: transparent;
     height: 23px;
