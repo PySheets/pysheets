@@ -67,7 +67,6 @@ def import_sheet():
         return ltk.window.alert("Please select an empty cell and press 'import' again.")
 
     def load_from_web(event):
-        ltk.find("#import-web-url-load-button").attr("disabled", True)
         ltk.publish(
             "Importer",
             "Worker",
@@ -100,62 +99,43 @@ pysheets.load_sheet("{url}")
         """)
         ltk.find("#import-dialog").remove()
 
+    def upload_file(event):
+        ltk.publish(
+            "Application",
+            "Worker",
+            constants.TOPIC_WORKER_UPLOAD,
+            {
+                "id": "import-file",
+            },
+        )
 
     (ltk.Div(
-        ltk.Table(
-            ltk.TableRow(
-                ltk.TableData(
-                    ltk.Label("Import from web:")
-                        .addClass("import-web-url-label"),
-                ),
-                ltk.TableData(
-                    ltk.Input("")
-                        .addClass("import-web-url-input")
-                        .attr("id", "import-web-url")
-                        .on("input", ltk.proxy(web_url_changed))
-                        .attr("placeholder", "Enter a web url..."),
-                    ltk.Button("Load", load_from_web)
-                        .addClass("load-button")
-                        .attr("id", "import-web-url-load-button")
-                        .attr("disabled", True)
-                ),
+        ltk.VBox(
+            ltk.HBox(
+                ltk.Input("")
+                    .addClass("import-web-url-input")
+                    .attr("id", "import-web-url")
+                    .on("input", ltk.proxy(load_from_web))
+                    .attr("placeholder", "Enter a web url..."),
             ),
-            ltk.TableRow(
-                ltk.TableData(
-                    ltk.Label("Import local file:")
-                        .addClass("import-web-url-label"),
-                ),
-                ltk.TableData(
-                    ltk.Button("Upload file...", lambda event: None)
-                        .addClass("load-button")
-                        .attr("placeholder", "Enter a web url..."),
-                ),
+            ltk.HBox(
+                ltk.Div()
+                    .addClass("import-data-preview")
+                    .attr("id", "import-data-preview")
             ),
-            ltk.TableRow(
-                ltk.TableData(
-                    ltk.Div()
-                        .addClass("import-data-preview")
-                        .attr("id", "import-data-preview")
-                )
-                .attr("colspan", 2),
-            ),
-            ltk.TableRow(
-                ltk.TableData(
-                    ltk.Button("Import into Sheet", import_into_sheet)
-                        .addClass("import-into-sheet-button")
-                        .addClass("import-final-button")
-                        .attr("disabled", True)
-                ),
-                ltk.TableData(
-                    ltk.Button("Load as Dataframe", load_dataframe)
-                        .addClass("import-load-dataframe-button")
-                        .addClass("import-final-button")
-                        .attr("disabled", True),
-                    ltk.Button("Cancel", handle_import_done)
-                        .addClass("import-cancel-button")
-                        .addClass("import-final-button")
-                )
-            ),
+            ltk.HBox(
+                ltk.Button("Import into Sheet", import_into_sheet)
+                    .addClass("import-into-sheet-button")
+                    .addClass("import-final-button")
+                    .attr("disabled", True),
+                ltk.Button("Load as Dataframe", load_dataframe)
+                    .addClass("import-load-dataframe-button")
+                    .addClass("import-final-button")
+                    .attr("disabled", True),
+                ltk.Button("Cancel", handle_import_done)
+                    .addClass("import-cancel-button")
+                    .addClass("import-final-button")
+            )
         )
     )
     .addClass("import-dialog")

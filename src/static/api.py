@@ -489,18 +489,20 @@ class PySheets():
             ValueError: If the URL cannot be loaded or the data cannot be parsed as an Excel or CSV file.
         """
         assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
-        import pandas as pd # pylint: disable=import-outside-toplevel,import-error
         try:
             data = urlopen(url).read()
         except Exception as e: # pylint: disable=broad-except
             raise ValueError(f"Cannot load url: {e}") from e
+        return self.load_sheet_from_data(data)
+        
+    def load_sheet_from_data(self, data):
+        import pandas as pd # pylint: disable=import-outside-toplevel,import-error
         try:
             return pd.read_csv(io.StringIO(data.decode("utf-8")))
         except Exception as e1: # pylint: disable=broad-except
             try:
                 return pd.read_excel(data, engine='openpyxl')
             except Exception as e2:
-                print(e2, url, data)
                 raise ValueError(f"Cannot load as Excel ({e1}) or CSV ({e2})") from e2
 
     def import_sheet(self, url:str, start_key:str):

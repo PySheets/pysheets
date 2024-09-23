@@ -419,6 +419,29 @@ def handle_preview_import_web(data):
     )
 
 
+def handle_upload(data):
+    """
+    Handle a request from the UI to upload a local CSV or Excel
+    """
+    def send_preview(event):
+        print("send preview", len(event.target.result))
+        sheet = pysheets.load_sheet_from_data(event.target.result)
+        preview = create_preview(sheet)
+        polyscript.xworker.sync.publish(
+            "Worker",
+            "Application",
+            constants.TOPIC_WORKER_PREVIEW_IMPORTED_WEB,
+            json.dumps({
+                "preview": preview,
+            }),
+        )
+    reader = ltk.window.FileReader.new()
+    reader.onload = ltk.proxy(send_preview)
+    file = ltk.window.document.getElementById(data["id"])
+    print("Load", file, file.name)
+    reader.readAsArrayBuffer(file)
+
+
 def handle_import_web(data):
     """
     Handle a request from the UI to import a CSV or Excel from the web
@@ -501,6 +524,8 @@ def handle_request(sender, topic, request): # pylint: disable=unused-argument
             handle_set_cells(data)
         elif topic == constants.TOPIC_WORKER_IMPORT_WEB:
             handle_import_web(data)
+        elif topic == constants.TOPIC_WORKER_UPLOAD:
+            handle_upload(data)
         elif topic == constants.TOPIC_WORKER_PREVIEW_IMPORT_WEB:
             handle_preview_import_web(data)
         else:
@@ -522,6 +547,9 @@ polyscript.xworker.sync.subscribe(
 )
 polyscript.xworker.sync.subscribe(
     "Worker", constants.TOPIC_WORKER_IMPORT_WEB, "pyodide-worker"
+)
+polyscript.xworker.sync.subscribe(
+    "Worker", constants.TOPIC_WORKER_UPLOAD, "pyodide-worker"
 )
 polyscript.xworker.sync.subscribe(
     "Worker", constants.TOPIC_WORKER_PREVIEW_IMPORT_WEB, "pyodide-worker"

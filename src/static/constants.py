@@ -75,6 +75,8 @@ TOPIC_WORKER_PREVIEW_IMPORT_WEB = "worker.preview.import.web"
 TOPIC_WORKER_PREVIEW_IMPORTED_WEB = "worker.preview.imported.web"
 TOPIC_WORKER_IMPORT_WEB = "worker.import.web"
 TOPIC_WORKER_IMPORTED_WEB = "worker.imported.web"
+TOPIC_WORKER_UPLOAD = "worker.import.upload"
+TOPIC_WORKER_UPLOADED = "worker.imported.uploaded"
 
 URL = "url"
 PROMPT = "prompt"
