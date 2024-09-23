@@ -889,22 +889,6 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             ltk.Div().addClass("timeline-container").attr("name", "Timeline"),
         ).addClass("internals")
 
-        def set_plot_kind(index, option): # pylint: disable=unused-argument
-            self.add_prompt(f"When you create the plot, make it {list(chart_options.values())[index]}.")
-
-        chart_options = {
-            "bar": "a bar graph",
-            "barh": "a horizontal bar graph",
-            "line": "a line plot",
-            "pie": "a pie chart",
-            "stem": "a stem plot",
-            "stairs": "a stairs graph",
-            "scatter": "a scatter plot",
-            "stack": "a stack plot",
-            "fill": "a fill between graph",
-        }
-        chart_type = ltk.Select([ltk.Option(kind) for kind in chart_options], 0, ltk.proxy(set_plot_kind))
-
         ai = ltk.VBox(
             ltk.HBox(
                 ltk.Text().text("LLM Prompt")
@@ -917,8 +901,6 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                     .attr("title", "Load sample data from the web as Pandas DataFrame")
                     .attr("id", "load-from-web-button"),
                 ltk.HBox().addClass("ai-button-container"),
-                ltk.Text().text("Chart type:"),
-                chart_type,
             ).addClass("ai-header"),
             ltk.TextArea(
             ).attr("id", "ai-prompt").addClass("ai-prompt").attr("placeholder", "Enter your prompt here..."),
