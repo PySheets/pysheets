@@ -363,8 +363,6 @@ class PySheets():
         assert isinstance(headers, bool), f"Parameter headers must be a bool, not {type(headers)}"
         import pandas as pd # pylint: disable=import-outside-toplevel,import-error
 
-        print("get_sheet", selection, self._inputs)
-
         try:
             start, end = selection.split(":")
             start_col, start_row = get_col_row_from_key(start)
