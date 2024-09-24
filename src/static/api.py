@@ -342,9 +342,10 @@ class PySheets():
     The `PySheets` class provides methods for loading, accessing, and modifying spreadsheet data.
     It supports loading data from URLs and provides a convenient way to work with the data as a Pandas DataFrame.
     """
-    def __init__(self, spreadsheet=None, inputs=None):
+    def __init__(self, spreadsheet, inputs):
         self._spreadsheet = spreadsheet
-        self._inputs = inputs or []
+        assert inputs is not None, "PySheets api needs valid inputs"
+        self._inputs = inputs or {}
         self._cells_to_set = {}
 
     def get_sheet(self, selection:str, headers:bool=True):   # pylint: disable=too-many-locals
@@ -488,19 +489,37 @@ class PySheets():
             ValueError: If the URL cannot be loaded or the data cannot be parsed as an Excel or CSV file.
         """
         assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
-        import pandas as pd # pylint: disable=import-outside-toplevel,import-error
         try:
             data = urlopen(url).read()
         except Exception as e: # pylint: disable=broad-except
             raise ValueError(f"Cannot load url: {e}") from e
+        return self.load_sheet_from_data(data)
+        
+    def load_sheet_from_data(self, data):
+        import pandas as pd # pylint: disable=import-outside-toplevel,import-error
         try:
             return pd.read_csv(io.StringIO(data.decode("utf-8")))
         except Exception as e1: # pylint: disable=broad-except
             try:
                 return pd.read_excel(data, engine='openpyxl')
             except Exception as e2:
-                print(e2, url, data)
                 raise ValueError(f"Cannot load as Excel ({e1}) or CSV ({e2})") from e2
+
+    def import_sheet(self, url:str, start_key:str):
+        """
+        Loads data from the provided URL, attempts to read it as an Excel or CSV file,
+        and then imports the data into the current sheet.
+        
+        Args:
+            url (str): The URL to load data from.
+        
+        Raises:
+            ValueError: If the URL cannot be loaded or the data cannot be parsed as an Excel or CSV file.
+        """
+        try:
+            self.import_csv(url, start_key)
+        except:
+            self.import_excel(url, start_key)
 
     def import_csv(self, url:str, start_key:str):
         """
@@ -512,8 +531,12 @@ class PySheets():
         """
         assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
         assert isinstance(start_key, str), f"Parameter start_key must be a str, not {type(start_key)}"
-        start_col, start_row = get_col_row_from_key(start_key)
         content = urlopen(url).read().decode("utf-8")
+        self._import_csv_content(content, start_key)
+
+    def _import_csv_content(self, content, start_key):
+        assert isinstance(start_key, str), f"Parameter start_key must be a str, not {type(start_key)}"
+        start_col, start_row = get_col_row_from_key(start_key)
         skip_row_id = False
         for row, line in enumerate(content.split("\n")):
             for col, value in enumerate(line.split(",")):
@@ -531,6 +554,19 @@ class PySheets():
         self._flush_set_cells()
         return summary
 
+    def import_excel(self, url:str, start_key:str):
+        """
+        Imports Excel data from the provided URL and set the values in the spreadsheet.
+
+        Args:
+            url (str): The URL to load data from.
+            start_key (str): The key for thw starting cell to insert the data into.
+        """
+        assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
+        assert isinstance(start_key, str), f"Parameter start_key must be a str, not {type(start_key)}"
+        buffer = io.StringIO()
+        self.load_sheet(url).to_csv(buffer)
+        self._import_csv_content(buffer.getvalue(), start_key)
 
 def get_dict_table(result):
     """

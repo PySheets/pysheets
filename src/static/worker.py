@@ -5,6 +5,8 @@ This module provides a worker for a PyScript-based application to run Python
 code, find dependencies, and perform code completion.
 """
 
+import ltk
+
 import json
 import sys
 import time
@@ -16,7 +18,6 @@ import requests
 import api
 import lsp
 import constants
-import ltk
 
 import js # type: ignore    pylint: disable=import-error
 import polyscript # type: ignore    pylint: disable=import-error
@@ -24,10 +25,13 @@ import pyodide # type: ignore    pylint: disable=import-error
 import pyscript # type: ignore    pylint: disable=import-error
 
 get = ltk.window.get
-cache = { }
-results = { }
+cache = {}
+results = {}
 OriginalSession = requests.Session
 inputs_cache = {}
+pysheets = api.PySheets(None, cache)
+
+ltk.inject_css("pysheets.css")
 
 
 class PyScriptResponse():
@@ -276,10 +280,10 @@ def run_in_worker(script):
     _globals.update(results)
     _globals["pyodide"] = pyodide
     _globals["pyscript"] = pyscript
-    _globals["pysheets"] = sys.modules["pysheets"] = api.PySheets(None, cache)
+    _globals["pysheets"] = sys.modules["pysheets"] = pysheets
     _locals = _globals
+    pysheets._inputs = cache
     script = api.intercept_last_expression(script)
-    # print("Executing script:", script)
     exec(script, _globals, _locals) # pylint: disable=exec-used
     return _locals["_"]
 
@@ -395,6 +399,62 @@ def handle_run(data): # pylint: disable=too-many-locals
         )
 
 
+def handle_preview_import_web(data):
+    """
+    Handle a request from the UI to import a CSV or Excel from the web
+    """
+    url = data["url"]
+    preview = "<b>Could not load as CSV or Excel</b><br>"
+    try:
+        preview = create_preview(pysheets.load_sheet(url))
+    except Exception as e:
+        preview += f"Error: {e}"
+    polyscript.xworker.sync.publish(
+        "Worker",
+        "Application",
+        constants.TOPIC_WORKER_PREVIEW_IMPORTED_WEB,
+        json.dumps({
+            "preview": preview,
+        }),
+    )
+
+
+def handle_upload(data):
+    """
+    Handle a request from the UI to upload a local CSV or Excel
+    """
+    def send_preview(event):
+        print("send preview", len(event.target.result))
+        sheet = pysheets.load_sheet_from_data(event.target.result)
+        preview = create_preview(sheet)
+        polyscript.xworker.sync.publish(
+            "Worker",
+            "Application",
+            constants.TOPIC_WORKER_PREVIEW_IMPORTED_WEB,
+            json.dumps({
+                "preview": preview,
+            }),
+        )
+    reader = ltk.window.FileReader.new()
+    reader.onload = ltk.proxy(send_preview)
+    file = ltk.window.document.getElementById(data["id"])
+    print("Load", file, file.name)
+    reader.readAsArrayBuffer(file)
+
+
+def handle_import_web(data):
+    """
+    Handle a request from the UI to import a CSV or Excel from the web
+    """
+    pysheets.import_sheet(data["url"], data["start_key"])
+    polyscript.xworker.sync.publish(
+        "Worker",
+        "Application",
+        constants.TOPIC_WORKER_IMPORTED_WEB,
+        json.dumps({ }),
+    )
+
+
 def handle_set_cells(cells):
     """
     Handle a request from the api to set a collection of cells
@@ -462,6 +522,12 @@ def handle_request(sender, topic, request): # pylint: disable=unused-argument
             handle_run(data)
         elif topic == constants.TOPIC_API_SET_CELLS:
             handle_set_cells(data)
+        elif topic == constants.TOPIC_WORKER_IMPORT_WEB:
+            handle_import_web(data)
+        elif topic == constants.TOPIC_WORKER_UPLOAD:
+            handle_upload(data)
+        elif topic == constants.TOPIC_WORKER_PREVIEW_IMPORT_WEB:
+            handle_preview_import_web(data)
         else:
             print("Error: Unexpected topic request", topic)
     except Exception as e: # pylint: disable=broad-exception-caught
@@ -478,6 +544,15 @@ polyscript.xworker.sync.subscribe(
 )
 polyscript.xworker.sync.subscribe(
     "Worker", constants.TOPIC_WORKER_FIND_INPUTS, "pyodide-worker"
+)
+polyscript.xworker.sync.subscribe(
+    "Worker", constants.TOPIC_WORKER_IMPORT_WEB, "pyodide-worker"
+)
+polyscript.xworker.sync.subscribe(
+    "Worker", constants.TOPIC_WORKER_UPLOAD, "pyodide-worker"
+)
+polyscript.xworker.sync.subscribe(
+    "Worker", constants.TOPIC_WORKER_PREVIEW_IMPORT_WEB, "pyodide-worker"
 )
 polyscript.xworker.sync.subscribe(
     "Worker", constants.TOPIC_WORKER_CODE_COMPLETE, "pyodide-worker"

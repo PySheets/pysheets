@@ -33,6 +33,160 @@ def create_menu():
     
     The menu is animated to fade in when it is created.
     """
+    def go_home():
+        ltk.window.document.location = "/"
+
+    ltk.find(".logo").on("click", ltk.proxy(lambda event: go_home()))
+
+    return ltk.MenuBar([
+        create_file_menu(),
+        create_view_menu(),
+        create_help_menu()
+    ]).css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
+
+
+def handle_import_preview(data):
+    ltk.find("#import-data-preview").html(data["preview"])
+    ltk.find(".import-final-button").attr("disabled", False)
+
+
+def handle_import_done(data):
+    ltk.find("#import-dialog").remove()
+
+
+ltk.subscribe("Importer", constants.TOPIC_WORKER_PREVIEW_IMPORTED_WEB, handle_import_preview)
+ltk.subscribe("Importer", constants.TOPIC_WORKER_IMPORTED_WEB, handle_import_done)
+
+
+def import_sheet():
+    """
+    Show a dialog to let the user import a sheet.
+    """
+
+    if state.UI.editor.get():
+        return ltk.window.alert("Please select an empty cell and press 'import' again.")
+
+    def load_from_web(event):
+        ltk.publish(
+            "Importer",
+            "Worker",
+            constants.TOPIC_WORKER_PREVIEW_IMPORT_WEB,
+            {
+                "url": ltk.find("#import-web-url").val()
+            },
+        )
+        # result will arrive in handle_import
+
+    def web_url_changed(event):
+        ltk.find("#import-web-url-load-button").attr("disabled", False)
+
+    def import_into_sheet(event):
+        ltk.publish(
+            "Application",
+            "Worker",
+            constants.TOPIC_WORKER_IMPORT_WEB,
+            {
+                "url": ltk.find("#import-web-url").val(),
+                "start_key": state.UI.current.model.key,
+            },
+        )
+        # result will arrive in handle_import_done
+
+    def load_dataframe(event):
+        url = ltk.find("#import-web-url").val()
+        state.UI.current.set(f"""=
+pysheets.load_sheet("{url}")
+        """)
+        ltk.find("#import-dialog").remove()
+
+    def upload_file(event):
+        ltk.publish(
+            "Application",
+            "Worker",
+            constants.TOPIC_WORKER_UPLOAD,
+            {
+                "id": "import-file",
+            },
+        )
+
+    (ltk.Div(
+        ltk.VBox(
+            ltk.HBox(
+                ltk.Input("")
+                    .addClass("import-web-url-input")
+                    .attr("id", "import-web-url")
+                    .on("input", ltk.proxy(load_from_web))
+                    .attr("placeholder", "Enter a web url..."),
+            ),
+            ltk.HBox(
+                ltk.Div()
+                    .addClass("import-data-preview")
+                    .attr("id", "import-data-preview")
+            ),
+            ltk.HBox(
+                ltk.Button("Import into Sheet", import_into_sheet)
+                    .addClass("import-into-sheet-button")
+                    .addClass("import-final-button")
+                    .attr("disabled", True),
+                ltk.Button("Load as Dataframe", load_dataframe)
+                    .addClass("import-load-dataframe-button")
+                    .addClass("import-final-button")
+                    .attr("disabled", True),
+                ltk.Button("Cancel", handle_import_done)
+                    .addClass("import-cancel-button")
+                    .addClass("import-final-button")
+            )
+        )
+    )
+    .addClass("import-dialog")
+    .attr("id", "import-dialog")
+    .attr("title", "Import Data")
+    .dialog({
+        "modal": True,
+        "width": 530,
+        "height": "auto"
+    }))
+
+
+def create_file_menu():
+    """
+    Create a file menu.
+    """
+    def go_home(event): # pylint: disable=unused-argument
+        ltk.window.document.location = "/"
+
+    def delete_sheet(event): # pylint: disable=unused-argument
+        if ltk.window.confirm("This will permanently delete the current sheet."):
+            import storage # pylint: disable=import-outside-toplevel
+            storage.delete(
+                state.UID,
+                ltk.proxy(go_home),
+                ltk.window.alert
+            )
+
+    items = [
+        ltk.MenuItem("➕", "New", "", ltk.proxy(new_sheet)),
+        ltk.MenuItem("📂", "Open", "Cmd+O", ltk.proxy(go_home)),
+    ] + ([
+        ltk.MenuItem("📥", "Import ...", "", ltk.proxy(lambda event: import_sheet())),
+        ltk.MenuItem("🗑️", "Delete", "", ltk.proxy(delete_sheet)),
+    ] if state.UID else [])
+    return ltk.Menu("File", items)
+
+
+def create_view_menu():
+    """
+    Create a view menu.
+    """
+    return ltk.Menu("View",
+        ltk.MenuItem("⌞⌝", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),
+    )
+
+
+def create_help_menu():
+    """
+    Create a help menu.
+    """
     def about(event): # pylint: disable=unused-argument
         ltk.window.open("/about")
 
@@ -43,40 +197,11 @@ def create_menu():
     def discord(event): # pylint: disable=unused-argument
         ltk.window.open("https://discord.gg/4wy23872th")
 
-    def go_home():
-        ltk.window.document.location = "/"
-
-    def delete_sheet():
-        if ltk.window.confirm("This will permanently delete the current sheet."):
-            import storage # pylint: disable=import-outside-toplevel
-            storage.delete(
-                state.UID,
-                ltk.proxy(lambda result: go_home()),
-                ltk.window.alert
-            )
-
-    file_menu = ltk.Menu("File",
-        ltk.MenuItem("➕", "New", "", lambda item: new_sheet()),
-        ltk.MenuItem("📂", "Open", "Cmd+O", lambda item: go_home()),
-    )
-    if state.UID:
-        file_menu.popup.append(
-            ltk.MenuItem("🗑", "Delete", "", lambda item: delete_sheet()),
-        )
-    view_menu = ltk.Menu("View",
-        ltk.MenuItem("⌞⌝", "Full Screen", "", lambda event: ltk.document.body.requestFullscreen()),
-    )
-    help_menu = ltk.Menu("Help",
+    return ltk.Menu("Help",
         ltk.MenuItem("🅿️", "About", "", ltk.proxy(about)),
         ltk.MenuItem("👏", "Feedback", "", ltk.proxy(feedback)),
         ltk.MenuItem("💬", "Discord", "", ltk.proxy(discord)),
     )
-    ltk.find(".logo").on("click", ltk.proxy(lambda event: go_home()))
-    return ltk.MenuBar([
-        file_menu,
-        view_menu,
-        help_menu
-    ]).css("opacity", 0).animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
 
 
 def new_sheet():

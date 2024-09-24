@@ -149,6 +149,22 @@ def about():
     return render_template("about.html")
 
 
+@app.route("/git")
+def git():
+    """
+    Reroutes to the github repo.
+    """
+    return '<html><meta http-equiv="refresh" content="0; URL=https://github.com/pysheets/pysheets" /></html>'
+
+
+@app.route("/pypi")
+def pypi():
+    """
+    Reroutes to the pypi package.
+    """
+    return '<html><meta http-equiv="refresh" content="0; URL=https://pypi.org/project/pysheets-app" /></html>'
+
+
 @app.route("/ltk/ltk.css")
 def get_ltk_css():
     """

@@ -12,12 +12,14 @@ import constants
 
 from polyscript import XWorker # type: ignore   pylint: disable=import-error
 
+ltk.inject_css("pysheets.css")
 
 PYODIDE = "Clang" in sys.version
 WORKER_VERSION = constants.WORKER_LOADING
 WORKER_DOTS = ""
 UID = ltk.get_url_parameter(constants.SHEET_ID)
 SHEET = None
+UI = None
 
 
 def set_title(title):

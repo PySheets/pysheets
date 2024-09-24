@@ -425,9 +425,72 @@ h3 {
     font-weight: bold;
 }
 
+.import-web-url-label {
+    width: 50%;
+    font-size: 17px;
+    margin-top: 2px;
+    margin-right: 4px;
+}
+
+.import-dialog input {
+    border: 1px solid gray;
+    margin-right: 6px;
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.import-dialog .ltk-td {
+    border-width: 0px;
+}
+
+.import-data-preview {
+    width: 100%;
+    height: 60vh;
+    min-height: 250px;
+    overflow: scroll;
+    background: rgb(237, 237, 237);
+    margin-bottom: 12px;
+}
+
+.import-dialog .ltk-tr {
+    border: 14px solid transparent;
+}
+
+.load-button, .import-final-button {
+    color: white;
+    background-color: #1f77b4;
+    padding: 3px 6px;
+    cursor: pointer;
+    min-width: 125px;
+    margin-right: 24px;
+}
+
+.import-cancel-button {
+    margin-left: 75px;
+}
+
+.import-dialog-button-bar {
+    margin-top: 36px;
+    justify-content: end;
+}
+
+.import-dialog-button {
+    color: white;
+    padding: 4px;
+    margin: auto;
+    margin-left: 12px;
+    margin-right: 0;
+}
+
+.import-dialog button:disabled {
+    background-color:  #929ea8;
+    color: white;
+}
+
 .ltk-input {
     border-color: transparent;
     height: 23px;
+    width: 200px;
 }
 
 #completion-dialog .ltk-textarea, #completion-dialog pre {

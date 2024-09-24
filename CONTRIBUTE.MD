@@ -6,7 +6,7 @@ The get started with PySheets, create an virtualenv and then run the following:
 git clone https://github.com/PySheets/pysheets.git
 cd pysheets
 pip install -r requirements.txt
-python3 main.py
+python src/pysheets.py
 ```
 
 # Setup in VS Code

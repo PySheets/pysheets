@@ -889,22 +889,6 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             ltk.Div().addClass("timeline-container").attr("name", "Timeline"),
         ).addClass("internals")
 
-        def set_plot_kind(index, option): # pylint: disable=unused-argument
-            self.add_prompt(f"When you create the plot, make it {list(chart_options.values())[index]}.")
-
-        chart_options = {
-            "bar": "a bar graph",
-            "barh": "a horizontal bar graph",
-            "line": "a line plot",
-            "pie": "a pie chart",
-            "stem": "a stem plot",
-            "stairs": "a stairs graph",
-            "scatter": "a scatter plot",
-            "stack": "a stack plot",
-            "fill": "a fill between graph",
-        }
-        chart_type = ltk.Select([ltk.Option(kind) for kind in chart_options], 0, ltk.proxy(set_plot_kind))
-
         ai = ltk.VBox(
             ltk.HBox(
                 ltk.Text().text("LLM Prompt")
@@ -912,17 +896,11 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                 ltk.Button("generate code", ltk.proxy(lambda event: self.complete_prompt(event))) # pylint: disable=unnecessary-lambda
                     .addClass("small-button")
                     .attr("id", "generate-button"),
-                ltk.Button(f"{constants.ICON_STAR} WEB", ltk.proxy(lambda event: self.load_from_web(event))) # pylint: disable=unnecessary-lambda
+                ltk.Button(f"Import...", ltk.proxy(lambda event: menu.import_sheet())) # pylint: disable=unnecessary-lambda
                     .addClass("small-button")
                     .attr("title", "Load sample data from the web as Pandas DataFrame")
                     .attr("id", "load-from-web-button"),
-                ltk.Button(f"{constants.ICON_STAR} DATA", ltk.proxy(lambda event: self.load_sample_data(event))) # pylint: disable=unnecessary-lambda
-                    .addClass("small-button")
-                    .attr("title", "Load sample data into the sheet")
-                    .attr("id", "load-from-data-button"),
                 ltk.HBox().addClass("ai-button-container"),
-                ltk.Text().text("Chart type:"),
-                chart_type,
             ).addClass("ai-header"),
             ltk.TextArea(
             ).attr("id", "ai-prompt").addClass("ai-prompt").attr("placeholder", "Enter your prompt here..."),
