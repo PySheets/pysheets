@@ -58,6 +58,7 @@ def write_startup_message():
     message = f"[UI] Running {vm_type}; Python {vm_version}; UI startup took {ltk.get_time():.3f}s."
     state.console.write("pysheets", message)
 
+
 def check_version():
     """
     Checks the latest version of the PySheets application.
