@@ -494,8 +494,17 @@ class PySheets():
         except Exception as e: # pylint: disable=broad-except
             raise ValueError(f"Cannot load url: {e}") from e
         return self.load_sheet_from_data(data)
-        
+
     def load_sheet_from_data(self, data):
+        """
+        Convert an Excel or CSV file into a Pandas Dataframe.
+        
+        Args:
+            data (str): The data.
+        
+        Returns:
+            pandas.DataFrame: The loaded data as a pandas DataFrame.
+        """
         import pandas as pd # pylint: disable=import-outside-toplevel,import-error
         try:
             return pd.read_csv(io.StringIO(data.decode("utf-8")))
@@ -518,7 +527,7 @@ class PySheets():
         """
         try:
             self.import_csv(url, start_key)
-        except:
+        except Exception: #   pylint: disable=broad-exception-caught
             self.import_excel(url, start_key)
 
     def import_csv(self, url:str, start_key:str):
