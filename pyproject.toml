@@ -16,7 +16,12 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 keywords = ["spreadsheets", "pyscript", "local-first"]
-dependencies = [ ]
+dependencies = [ 
+    "Werkzeug >= 2.2.2",
+    "requests >= 2.28.2",
+    "flask >= 2.1.0",
+    "openai >= 0.28"
+]
 requires-python = ">=3.10"
 
 [project.scripts]
