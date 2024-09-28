@@ -42,7 +42,7 @@ class Widget(object):
             self.element: The jQuery element representing this widget.
         """
         self.element = (
-            jQuery(f"<{self.tag}>")
+            window.jQuery(f"<{self.tag}>")
                 .addClass(" ".join(self.classes))
                 .append(*self._flatten(args))
         )
@@ -880,9 +880,9 @@ class Popup(Widget):
     def show(self, element):
         _close_all_menus()
         (self
-            .appendTo(jQuery(window.document.body))
+            .appendTo(window.jQuery(window.document.body))
             .css("top", element.offset().top + 28)
-            .css("left", min(element.offset().left + 2, jQuery(window.document.body).width() - self.width() - 12))
+            .css("left", min(element.offset().left + 2, window.jQuery(window.document.body).width() - self.width() - 12))
         )
         ltk.schedule(proxy(lambda: self.css("display", "block")), "ltk-menupopup")
         return self
@@ -1216,12 +1216,12 @@ class Canvas(Widget):
 
 
 def _close_all_menus(event=None):
-    if event and jQuery(event.target).hasClass("ltk-menulabel"):
+    if event and window.jQuery(event.target).hasClass("ltk-menulabel"):
         return
     find(".ltk-menupopup-open").removeClass("ltk-menupopup-open")
     find(".ltk-menupopup, .ltk-popup").css("display", "none")
 
-jQuery(window.document.body).on("click", proxy(_close_all_menus))
+window.jQuery(window.document.body).on("click", proxy(_close_all_menus))
 
 def _handle_shortcuts():
     def handle_keydown(event):
@@ -1232,7 +1232,7 @@ def _handle_shortcuts():
         if shortcut in shortcuts:
             event.preventDefault()
             shortcuts[shortcut].select(event)
-    jQuery(window.document).on("keydown", proxy(handle_keydown))
+    window.jQuery(window.document).on("keydown", proxy(handle_keydown))
 
 
 _handle_shortcuts()
