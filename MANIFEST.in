@@ -6,6 +6,10 @@ include src/static/*.js
 include src/static/icons/*.png
 include src/static/icons/*.ico
 
+include src/static/ltk/*.py
+include src/static/ltk/*.css
+include src/static/ltk/*.js
+
 include src/datafiles/*.csv
 include src/templates/*.html
 include CONTRIBUTE.MD
