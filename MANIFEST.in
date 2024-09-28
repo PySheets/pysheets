@@ -6,6 +6,11 @@ include src/static/*.js
 include src/static/icons/*.png
 include src/static/icons/*.ico
 
+include src/static/lib/*.js
+include src/static/lib/*.json
+include src/static/lib/*.css
+include src/static/lib/images/*.png
+
 include src/static/ltk/*.py
 include src/static/ltk/*.css
 include src/static/ltk/*.js
