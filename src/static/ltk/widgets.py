@@ -1116,6 +1116,9 @@ class Tutorial():
 
     def show(self):
         logger.info(f"[Tutorial] Run step {self.index + 1} of {len(self.steps)}")
+        if self.index >= len(self.steps):
+            print("Cannot run tutorial step", self.index, ". Tutorial has", len(self.steps), "steps.")
+            return
         selector, event, content = self.steps[self.index]
         buttons = ltk.HBox(
             ltk.Text("⟸").on("click", ltk.proxy(lambda *args: self.previous())),

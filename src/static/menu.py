@@ -10,6 +10,7 @@ import logging
 import ltk
 import state
 import constants
+import tutorial
 
 logger = logging.getLogger('root')
 
@@ -197,8 +198,12 @@ def create_help_menu():
     def discord(event): # pylint: disable=unused-argument
         ltk.window.open("https://discord.gg/4wy23872th")
 
+    def show_tutorial(event): # pylint: disable=unused-argument
+        tutorial.show()
+
     return ltk.Menu("Help",
         ltk.MenuItem("🅿️", "About", "", ltk.proxy(about)),
+        ltk.MenuItem("🎓️", "Tutorial", "", ltk.proxy(show_tutorial)),
         ltk.MenuItem("👏", "Feedback", "", ltk.proxy(feedback)),
         ltk.MenuItem("💬", "Discord", "", ltk.proxy(discord)),
     )
