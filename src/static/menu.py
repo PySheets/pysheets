@@ -166,7 +166,7 @@ def create_file_menu():
             )
 
     items = [
-        ltk.MenuItem("➕", "New", "", ltk.proxy(new_sheet)),
+        ltk.MenuItem("➕", "New", "", ltk.proxy(lambda event: new_sheet())),
         ltk.MenuItem("📂", "Open", "Cmd+O", ltk.proxy(go_home)),
     ] + ([
         ltk.MenuItem("📥", "Import ...", "", ltk.proxy(lambda event: import_sheet())),

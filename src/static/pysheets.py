@@ -10,6 +10,7 @@ import ltk
 import constants
 import inventory
 import state
+import tutorial
 
 from views.spreadsheet import SpreadsheetView
 
@@ -25,6 +26,13 @@ state.console.write(
             .addClass("buy-button")
             .css("min-width", 45)
     )
+)
+state.console.write(
+    "help",
+    "[Help] Learn more about PySheets using the Help menu 🎓.",
+    action=ltk.Button("Learn", lambda event: tutorial.show())
+            .addClass("learn-button")
+            .css("min-width", 45)
 )
 
 

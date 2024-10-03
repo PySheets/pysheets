@@ -105,7 +105,7 @@ html, body {
     margin-left: 61px;
 }
 
-.buy-button, .star-button {
+.buy-button, .star-button, .learn-button {
     color: white;
     background-color: #1f77b4;
     cursor: pointer;

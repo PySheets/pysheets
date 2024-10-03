@@ -5,6 +5,7 @@ This module provides functions for creating and managing the application menu.
 
 """
 
+import constants
 import state
 import ltk
 
@@ -414,6 +415,8 @@ def show():
     """
     Launch the tutorial selector.
     """
+    if not state.UID:
+        return ltk.window.alert("Please create an empty sheet and try the tutorial again.")
     ltk.find("#tutorial-dialog").remove()
     (
         ltk.Div(
@@ -430,3 +433,7 @@ def show():
         .css("min-height", 0)
         .dialog()
     )
+
+if not ltk.window.localStorage[constants.TUTORIAL_SHOWN]:
+    ltk.window.localStorage[constants.TUTORIAL_SHOWN] = True
+    show()
