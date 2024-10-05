@@ -935,7 +935,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         ltk.inject_css(html_maker.make_css(self.model))
         left_panel = ltk.Div(
             ltk.Div(
-                ltk.jQuery(html_maker.make_html(self.model))
+                ltk.window.jQuery(html_maker.make_html(self.model))
             ).attr("id", "sheet-scrollable")
         ).attr("id", "sheet-container")
 
@@ -1130,7 +1130,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                     .val("#ffffff")
                     .attr("id", "cell-fill")
                     .addClass("cell-fill-colorpicker"),
-                ltk.jQuery('<img src="/icons/format-color-fill.png">')
+                ltk.window.jQuery('<img src="/icons/format-color-fill.png">')
                     .on("click", ltk.proxy(activate_fill_colorpicker))
                     .addClass("cell-fill-icon"),
             ).addClass("cell-fill-container"),
@@ -1142,7 +1142,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                     .val("#ffffff")
                     .attr("id", "cell-color")
                     .addClass("cell-color-colorpicker"),
-                ltk.jQuery('<img src="/icons/format-color-text.png">')
+                ltk.window.jQuery('<img src="/icons/format-color-text.png">')
                     .on("click", ltk.proxy(activate_color_colorpicker))
                     .addClass("cell-color-icon"),
             ).addClass("cell-color-container"),

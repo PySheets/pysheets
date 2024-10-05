@@ -10,7 +10,6 @@ dist/*
 src/static/pyscript/*
 src/static/pyodide/*
 src/static/micropython/*
-src/static/ltk/*
 .venv
 /test-results/
 /playwright-report/

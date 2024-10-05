@@ -9,8 +9,26 @@
 
 <head>
     <title>PySheets</title>
+    <script>
+        addEventListener('py:progress', ({ detail }) => {
+            const [action, what] = detail.split(/\s+/);
+            if (action === 'Loading') console.time(what);
+            else console.timeEnd(what);
+        });
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+
+    <script src="lib/jquery.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="lib/jqueryui.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="lib/jqueryui.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <script src="lib/codemirror.js"></script>
+    <script src="lib/python.min.js"></script>
+    <link rel="stylesheet" href="lib/codemirror.min.css">
+
+    <script defer src="lib/leader-line.min.js"></script>
+    <script defer src="lib/html2canvas.min.js"></script>
 
     <script>
         (function checkChromiumVersion() {
@@ -492,19 +510,6 @@
     </script>
 
     {{pyscript|safe}}
-
-    <script src="lib/jquery.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="lib/jqueryui.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <link rel="stylesheet" href="lib/jqueryui.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-    <script src="lib/codemirror.js"></script>
-    <script src="lib/python.min.js"></script>
-    <link rel="stylesheet" href="lib/codemirror.min.css">
-
-    <script defer src="lib/leader-line.min.js"></script>
-    <script defer src="lib/html2canvas.min.js"></script>
-
-    <script src="pysheets.js" type="module"></script>
 
     <script>
         window.version_pyscript = '{{version_pyscript}}';

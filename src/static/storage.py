@@ -28,7 +28,7 @@ class Database():
             db_loaded()
 
         idb = ltk.window.indexedDB.open(name, version)
-        idb.onerror = ltk.proxy(lambda event: ltk.window.alert(f"Cannot connect to storage: {event}"))
+        idb.onerror = ltk.proxy(lambda event: ltk.window.alert(f"Cannot connect to storage: {ltk.to_py(event)}"))
         idb.onsuccess = ltk.proxy(lambda event: init(event.target.result))
         idb.onupgradeneeded = ltk.proxy(lambda event: self.upgrade(event.target.result))
 
