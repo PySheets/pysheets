@@ -126,49 +126,61 @@ import chess, chess.svg
 # Enjoy the game!
 # 
 
-board = chess.Board()
+class PySheetsChess:
+    def __init__(self):
+        self.board = None
+        self.init_board()
 
-def set_piece(cell):
-    cell.css("color", "transparent").find(".piece").remove()
-    if cell.attr("piece") != " ":
-        svg = chess.svg.piece(chess.Piece.from_symbol(cell.attr("piece")))
-        cell.append(
-            ltk.create(svg)
-                .addClass("piece")
-                .css("position", "absolute")
-                .css("margin", 2)
-                .css("z-index", 100)
-                .css("width", 64)
-                .css("top", 0)
-                .css("left", 0)
+    def set_piece(self, cell):
+        cell.css("color", "transparent").find(".piece").remove()
+        if cell.attr("piece") != " ":
+            svg = chess.svg.piece(chess.Piece.from_symbol(cell.attr("piece")))
+            cell.append(
+                ltk.create(svg)
+                    .addClass("piece")
+                    .css("position", "absolute")
+                    .css("margin", 2)
+                    .css("z-index", 100)
+                    .css("width", 64)
+                    .css("top", 0)
+                    .css("left", 0)
+            )
+
+    def init_tile(self, col, row, piece):
+        color = "#f0d9b6" if (row + col) % 2 == 0 else "#b58863"
+        cell = ltk.find(f"#{' ABCDEFGH'[col]}{row}")
+        (
+            cell.attr("position", f"{' abcdefgh'[col]}{9 - row}")
+                .css("padding", 0)
+                .attr("piece", piece)
+                .addClass("tile")
+                .css("background", color)
+                .css("border-color", color)
         )
+        self.set_piece(cell)
 
-def init_tile(col, row, piece):
-    color = "#f0d9b6" if (row + col) % 2 == 0 else "#b58863"
-    cell = ltk.find(f"#{' ABCDEFGH'[col]}{row}")
-    (
-        cell.attr("position", f"{' abcdefgh'[col]}{9 - row}")
-            .css("padding", 0)
-            .attr("piece", piece)
-            .addClass("tile")
-            .css("background", color)
-            .css("border-color", color)
-    )
-    set_piece(cell)
+    def init_board(self):
+        self.board = chess.Board()
+        lines = str(self.board).replace(" ", "").replace(".", " ")
+        for row, pieces in enumerate(lines.split("\\n"), 1):
+            ltk.find(f".row-{row}").css("height", 64)
+            for col, piece in enumerate(pieces, 1):
+                ltk.find(f".col-{col}").css("width", 64).css("padding-right", 0).css("padding-left", 0)
+                key = f"#{' ABCDEFGH'[col]}{row}"
+                self.init_tile(col, row, piece)
+        print("Board ready")
+    
+    def reset_board(self):
+        self.init_board()
+        self.board.selected = None
+    
+    def __str__(self):
+        return f"({self.board})"
+    
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.board.fen()!r})"
 
-def init_board():
-    lines = str(board).replace(" ", "").replace(".", " ")
-    for row, pieces in enumerate(lines.split("\\n"), 1):
-        ltk.find(f".row-{row}").css("height", 64)
-        for col, piece in enumerate(pieces, 1):
-            ltk.find(f".col-{col}").css("width", 64).css("padding-right", 0).css("padding-left", 0)
-            key = f"#{' ABCDEFGH'[col]}{row}"
-            init_tile(col, row, piece)
-    print("Board ready")
-
-init_board()
-
-board  # return the board, so that we can set up a game
+PySheetsChess() # return the chess_board, so that we can set up a game
 """.strip()
 
 
@@ -178,7 +190,7 @@ import chess
 import ltk
 import random
 
-board = I1
+pySheetsChess = I1
 
 values = {
     # black pieces
@@ -195,6 +207,13 @@ values = {
     "N": -2,
     "R": -3,
     "P": -1,
+}
+
+castling_moves = {
+    "e1g1": "h1f1",
+    "e1c1": "a1d1",
+    "e8g8": "h8f8",
+    "e8c8": "a8d8",
 }
 
 def set_piece(cell):
@@ -216,16 +235,16 @@ def set_piece(cell):
 
 def score(move, depth):
     try:
-        board.push(move)
+        pySheetsChess.board.push(move)
         move.score = sum([values.get(piece, 0) for piece in str(board)])
         if depth > 0:
             move.score += best_move(depth - 1, chess.WHITE).score
         return move
     finally:
-        board.pop()
+        pySheetsChess.board.pop()
 
 def best_move(depth, side):
-    moves = list(map(lambda move: score(move, depth), board.legal_moves))
+    moves = list(map(lambda move: score(move, depth), pySheetsChess.board.legal_moves))
     fn = max if side == chess.BLACK else min
     best_score = fn(moves, key=lambda move: move.score).score
     best_moves = list(filter(lambda move: move.score == best_score, moves))
@@ -236,7 +255,7 @@ def respond():
         response = best_move(2, chess.BLACK)
     except:
         try:
-            response = random.choice(list(board.legal_moves))
+            response = random.choice(list(pySheetsChess.board.legal_moves))
         except:
             return
     uci = str(response)
@@ -246,18 +265,41 @@ def respond():
     move_if_legal(start, end)
     highlight(end)
 
+def castle(move):
+    uci = castling_moves[move.uci()]    
+    start, end = ltk.find(f'[position="{uci[:2]}"]'), ltk.find(
+        f'[position="{uci[2:]}"]'
+    )
+    end.find(".piece").remove()
+    end.attr("piece", start.attr("piece"))
+    start.attr("piece", " ")
+    set_piece(start)
+    set_piece(end)
+    
 def move_if_legal(start, end):
     uci = f"{start.attr('position')}{end.attr('position')}"
     move = chess.Move.from_uci(uci)
-    if move in board.legal_moves:
+    if move in pySheetsChess.board.legal_moves:
         end.find(".piece").remove()
         end.attr("piece", start.attr("piece"))
         start.attr("piece", " ")
         set_piece(start)
         set_piece(end)
-        board.push(move)
-        if board.turn == chess.BLACK:
-            ltk.schedule(respond, "white moved, black is next", 0.1)
+        
+        if pySheetsChess.board.is_castling(move):
+            castle(move)
+        pySheetsChess.board.push(move)
+        
+        if pySheetsChess.board.is_checkmate():
+            winner = f"{'White' if pySheetsChess.board.turn == chess.BLACK else 'Black'}"
+            ltk.schedule(pySheetsChess.reset_board, "checkmate - {winner} wins", 5) 
+            print(f"Checkmate! {winner} wins!")
+        elif pySheetsChess.board.is_stalemate():
+            print("Stalemate! The game is a draw.")
+            ltk.schedule(pySheetsChess.reset_board, "stalemate - draw", 5)
+        else:
+            if pySheetsChess.board.turn == chess.BLACK:
+                ltk.schedule(respond, "white moved, black is next", 0.1)            
     else:
         print("This is not a legal move")
 
@@ -269,11 +311,11 @@ def highlight(tile):
 def select(event):
     tile = ltk.find(event.target).parent()
     highlight(tile)
-    if board.selected:
-        move_if_legal(board.selected, tile)
-        board.selected = None
+    if pySheetsChess.board.selected:
+        move_if_legal(pySheetsChess.board.selected, tile)
+        pySheetsChess.board.selected = None
     elif tile.attr("piece") != " ":
-        board.selected = tile
+        pySheetsChess.board.selected = tile
     event.preventDefault()
 
 def add_squares():
@@ -294,8 +336,8 @@ def create_square():
         .on("mousedown", ltk.proxy(select))
     )
 
-if not hasattr(board, "selected"):
-    board.selected = None
+if not hasattr(pySheetsChess.board, "selected"):
+    pySheetsChess.board.selected = None
     ltk.schedule(add_squares, "run later", 1)
     print("Game ready")
 else:
