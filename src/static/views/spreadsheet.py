@@ -312,6 +312,8 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         script = self.editor.get()
         cell = self.current
+        if not cell:
+            return
         cell.model.prompt = ltk.find("#ai-prompt").val()
         if cell and cell.model.script != script:
             cell.set(script)

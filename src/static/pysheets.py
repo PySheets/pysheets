@@ -4,6 +4,7 @@ CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
 Initializes the PySheets application and sets up the necessary components.
 """
 
+import json
 import sys
 
 import ltk
@@ -88,12 +89,27 @@ def check_version():
         ltk.window.ltk_get("https://pysheets.app/version", report_version, "text", report_error)
 
 
+def handle_buffered_dom_operations(data):
+    """
+    Handles the DOM operations buffered by the worker to play in the main UI thread.
+    
+    Args:
+        data (str): A dict with a list containing DOM operations
+    """
+    for operation in data["operations"]:
+        selector, function = operation[:2]
+        args = operation[2:]
+        widget = ltk.find(selector)
+        getattr(widget, function)(*args)
+
+
 def main():
     """
     The main entry point for the PySheets application. 
     """
     check_version()
     write_startup_message()
+    ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_WIDGET_PROXY, handle_buffered_dom_operations)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_PRINT, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_INFO, print)
     ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_ERROR, print)
