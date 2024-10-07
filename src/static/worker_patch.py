@@ -258,6 +258,7 @@ def _patch_print():
 
 
 def patch():
+    """ Patch Python modules for compatibility or performance """
     _patch_request()
     _patch_print()
     _patch_document()

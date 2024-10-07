@@ -4,7 +4,6 @@ CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
 Initializes the PySheets application and sets up the necessary components.
 """
 
-import json
 import sys
 
 import ltk
