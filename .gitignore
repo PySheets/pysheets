@@ -3,6 +3,7 @@ node_modules/*
 pysheets.db
 openai.json
 .DS_Store
+.python-version
 src/pysheets_app.egg-info/*
 dist/*
 .do/app.yaml

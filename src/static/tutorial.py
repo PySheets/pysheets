@@ -121,6 +121,14 @@ import chess, chess.svg
 
 def create_board():
     board = chess.Board()
+    reset_board(board)
+    
+    return board
+        
+def reset_board(board):
+    board.clear()
+    board.set_fen(chess.STARTING_FEN)
+    
     board.selected = None
     board.highlighted = None
     
@@ -152,9 +160,15 @@ def create_board():
                 .css("color", "transparent") \\
                 .html(chess.svg.piece(chess.Piece.from_symbol(piece)) if piece.strip() else "") \\
                 .on("mousedown", ltk.proxy(select))
-    return board
-
+    
 board = create_board()
+
+castling_moves = {
+    "e1g1": "h1f1",
+    "e1c1": "a1d1",
+    "e8g8": "h8f8",
+    "e8c8": "a8d8",
+}
 
 def set_piece(cell):
     piece = cell.attr("piece")
@@ -177,6 +191,20 @@ def respond():
     )
     move_if_legal(start, end)
 
+def castle(move):
+    uci = castling_moves[move.uci()]    
+    start, end = ltk.find(f'[position="{uci[:2]}"]'), ltk.find(
+        f'[position="{uci[2:]}"]'
+    )
+    end.find(".piece").remove()
+    end.attr("piece", start.attr("piece"))
+    start.attr("piece", " ")
+    set_piece(start)
+    set_piece(end)
+
+def reset_game():
+    reset_board(board) 
+    
 def move_if_legal(start, end):
     uci = f"{start.attr('position')}{end.attr('position')}"
     move = chess.Move.from_uci(uci)
@@ -186,12 +214,24 @@ def move_if_legal(start, end):
         highlight(end)
         set_piece(start)
         set_piece(end)
+        if board.is_castling(move):
+            castle(move)
         board.push(move)
-        if board.turn == chess.BLACK:
-            ltk.schedule(respond, "white moved, black is next", 0.1)
+        
+        if board.is_checkmate():
+            winner = f"{'White' if board.turn == chess.BLACK else 'Black'}"
+            ltk.schedule(reset_game, "checkmate - {winner} wins", 5)
+            ltk.window.alert(f"Checkmate! {winner} wins!") 
+        elif board.is_stalemate():
+            print("Stalemate! The game is a draw.")
+            ltk.schedule(reset_game, "stalemate - draw", 5)
+            ltk.window.alert(f"Stalemate! draw") 
+        else:
+            if board.turn == chess.BLACK:
+                ltk.schedule(respond, "white moved, black is next", 0.1)
     else:
         print("This is not a legal move")
-
+   
 "Ready to play Chess!" 
 """.strip()
 
