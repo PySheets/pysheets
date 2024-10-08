@@ -363,6 +363,7 @@ def start_worker_with_packages(packages):
             "static/api.py": "./api.py",
             "static/constants.py": "./constants.py",
             "static/lsp.py": "./lsp.py",
+            "static/worker_patch.py": "./worker_patch.py",
             "static/ltk/jquery.py": "ltk/jquery.py",
             "static/ltk/widgets.py": "ltk/widgets.py",
             "static/ltk/pubsub.py": "ltk/pubsub.py",

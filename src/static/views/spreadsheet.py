@@ -312,6 +312,8 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         script = self.editor.get()
         cell = self.current
+        if not cell:
+            return
         cell.model.prompt = ltk.find("#ai-prompt").val()
         if cell and cell.model.script != script:
             cell.set(script)
@@ -899,7 +901,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                 ltk.Button("generate code", ltk.proxy(lambda event: self.complete_prompt(event))) # pylint: disable=unnecessary-lambda
                     .addClass("small-button")
                     .attr("id", "generate-button"),
-                ltk.Button(f"Import...", ltk.proxy(lambda event: menu.import_sheet())) # pylint: disable=unnecessary-lambda
+                ltk.Button("Import...", ltk.proxy(lambda event: menu.import_sheet())) # pylint: disable=unnecessary-lambda
                     .addClass("small-button")
                     .attr("title", "Load sample data from the web as Pandas DataFrame")
                     .attr("id", "load-from-web-button"),

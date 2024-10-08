@@ -580,7 +580,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             if self.sheet.current.model.key == self.model.key:
                 self.sheet.editor.mark_line(lineno)
             last_tb_lines = "\n".join(tb.split("\n")[-2:])
-            state.console.write(self.model.key, f"[Error] {self.model.key}: Line {lineno}: {last_tb_lines}")
+            state.console.write(self.model.key, f"[Error] {self.model.key}: Line {lineno}: {last_tb_lines} {tb}")
             ltk.window.console.orig_log(tb)
             return
         value = result["value"]

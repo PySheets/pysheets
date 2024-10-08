@@ -10,4 +10,6 @@
     "python.languageServer": "Default",
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 500
 }

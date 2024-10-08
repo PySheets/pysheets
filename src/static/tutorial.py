@@ -113,101 +113,55 @@ def charts():
         )
     ]
 
-CHESS_BOARD = """
+CHESS = """
 =
-import ltk  # Pysheets itself is written using LTK, see https://github.com/laffra/ltk
-import chess, chess.svg
-
-# 
-# Below, we use the chess module to draw a chess board.
-# Once the board finishes drawing, click a white piece to select it.
-# Then click another valid spot to make a move for white.
-# The cell function in I2 will then come up with a reply.
-# Enjoy the game!
-# 
-
-class PySheetsChess:
-    def __init__(self):
-        self.board = None
-        self.init_board()
-
-    def set_piece(self, cell):
-        cell.css("color", "transparent").find(".piece").remove()
-        if cell.attr("piece") != " ":
-            svg = chess.svg.piece(chess.Piece.from_symbol(cell.attr("piece")))
-            cell.append(
-                ltk.create(svg)
-                    .addClass("piece")
-                    .css("position", "absolute")
-                    .css("margin", 2)
-                    .css("z-index", 100)
-                    .css("width", 64)
-                    .css("top", 0)
-                    .css("left", 0)
-            )
-
-    def init_tile(self, col, row, piece):
-        color = "#f0d9b6" if (row + col) % 2 == 0 else "#b58863"
-        cell = ltk.find(f"#{' ABCDEFGH'[col]}{row}")
-        (
-            cell.attr("position", f"{' abcdefgh'[col]}{9 - row}")
-                .css("padding", 0)
-                .attr("piece", piece)
-                .addClass("tile")
-                .css("background", color)
-                .css("border-color", color)
-        )
-        self.set_piece(cell)
-
-    def init_board(self):
-        self.board = chess.Board()
-        lines = str(self.board).replace(" ", "").replace(".", " ")
-        for row, pieces in enumerate(lines.split("\\n"), 1):
-            ltk.find(f".row-{row}").css("height", 64)
-            for col, piece in enumerate(pieces, 1):
-                ltk.find(f".col-{col}").css("width", 64).css("padding-right", 0).css("padding-left", 0)
-                key = f"#{' ABCDEFGH'[col]}{row}"
-                self.init_tile(col, row, piece)
-        print("Board ready")
-    
-    def reset_board(self):
-        self.init_board()
-        self.board.selected = None
-    
-    def __str__(self):
-        return f"({self.board})"
-    
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.board.fen()!r})"
-
-PySheetsChess() # return the chess_board, so that we can set up a game
-""".strip()
-
-
-CHESS_GAME = """
-=
-import chess
 import ltk
 import random
+import chess, chess.svg
 
-pySheetsChess = I1
-
-values = {
-    # black pieces
-    "k": 100,
-    "q": 5,
-    "b": 2,
-    "n": 2,
-    "r": 3,
-    "p": 1,
-    # white pieces
-    "K": -100,
-    "Q": -5,
-    "B": -2,
-    "N": -2,
-    "R": -3,
-    "P": -1,
-}
+def create_board():
+    board = chess.Board()
+    reset_board(board)
+    
+    return board
+        
+def reset_board(board):
+    board.clear()
+    board.set_fen(chess.STARTING_FEN)
+    
+    board.selected = None
+    board.highlighted = None
+    
+    def select(event):
+        ltk.find(".selection").remove()
+        tile = ltk.find(event.target).closest("div")
+        if board.selected:
+            move_if_legal(board.selected, tile)
+            board.selected = None
+        else:
+            piece = tile.attr("piece")
+            if piece != " ":
+                board.selected = tile
+                highlight(tile)
+        
+    lines = str(board).replace(" ", "").replace(".", " ")
+    for row, pieces in enumerate(lines.split("\\n"), 1):
+        ltk.find(f".row-{row}").css("height", 64)
+        for col, piece in enumerate(pieces, 1):
+            ltk.find(f".col-{col}").css("width", 64).css("padding-right", 0).css("padding-left", 0)
+            color = "#f0d9b6" if (row + col) % 2 == 0 else "#b58863"
+            ltk.find(f"#{' ABCDEFGH'[col]}{row}") \\
+                .attr("position", f"{' abcdefgh'[col]}{9 - row}") \\
+                .css("padding", 0) \\
+                .attr("piece", piece) \\
+                .addClass("tile") \\
+                .attr("background", color) \\
+                .css("background", color) \\
+                .css("color", "transparent") \\
+                .html(chess.svg.piece(chess.Piece.from_symbol(piece)) if piece.strip() else "") \\
+                .on("mousedown", ltk.proxy(select))
+    
+board = create_board()
 
 castling_moves = {
     "e1g1": "h1f1",
@@ -217,53 +171,23 @@ castling_moves = {
 }
 
 def set_piece(cell):
-    cell.find(".piece").remove()
-    if cell.attr("piece").strip():
-        svg = chess.svg.piece(chess.Piece.from_symbol(cell.attr("piece")))
-        cell.append(
-            ltk.create(svg)
-            .addClass("piece")
-            .css("position", "absolute")
-            .css("margin", 2)
-            .css("z-index", 100)
-            .css("width", 64)
-            .css("top", 0)
-            .css("left", 0),
-            create_square(),
-        )
-        highlight(cell)
+    piece = cell.attr("piece")
+    cell.html(chess.svg.piece(chess.Piece.from_symbol(piece)) if piece.strip() else "")
 
-def score(move, depth):
-    try:
-        pySheetsChess.board.push(move)
-        move.score = sum([values.get(piece, 0) for piece in str(board)])
-        if depth > 0:
-            move.score += best_move(depth - 1, chess.WHITE).score
-        return move
-    finally:
-        pySheetsChess.board.pop()
-
-def best_move(depth, side):
-    moves = list(map(lambda move: score(move, depth), pySheetsChess.board.legal_moves))
-    fn = max if side == chess.BLACK else min
-    best_score = fn(moves, key=lambda move: move.score).score
-    best_moves = list(filter(lambda move: move.score == best_score, moves))
-    return random.choice(best_moves)
+def highlight(cell):
+    if board.highlighted:
+        board.highlighted.css("background", board.highlighted.attr("background"))
+    cell.css("background", "yellow")
+    board.highlighted = cell
 
 def respond():
-    try:
-        response = best_move(2, chess.BLACK)
-    except:
-        try:
-            response = random.choice(list(pySheetsChess.board.legal_moves))
-        except:
-            return
+    moves = list(board.legal_moves)
+    response = random.choice(moves)
     uci = str(response)
     start, end = ltk.find(f'[position="{uci[:2]}"]'), ltk.find(
         f'[position="{uci[2:]}"]'
     )
     move_if_legal(start, end)
-    highlight(end)
 
 def castle(move):
     uci = castling_moves[move.uci()]    
@@ -275,75 +199,38 @@ def castle(move):
     start.attr("piece", " ")
     set_piece(start)
     set_piece(end)
+
+def reset_game():
+    reset_board(board) 
     
 def move_if_legal(start, end):
     uci = f"{start.attr('position')}{end.attr('position')}"
     move = chess.Move.from_uci(uci)
-    if move in pySheetsChess.board.legal_moves:
-        end.find(".piece").remove()
+    if move in board.legal_moves:
         end.attr("piece", start.attr("piece"))
         start.attr("piece", " ")
+        highlight(end)
         set_piece(start)
         set_piece(end)
-        
-        if pySheetsChess.board.is_castling(move):
+        if board.is_castling(move):
             castle(move)
-        pySheetsChess.board.push(move)
+        board.push(move)
         
-        if pySheetsChess.board.is_checkmate():
-            winner = f"{'White' if pySheetsChess.board.turn == chess.BLACK else 'Black'}"
-            ltk.schedule(pySheetsChess.reset_board, "checkmate - {winner} wins", 5) 
-            print(f"Checkmate! {winner} wins!")
-        elif pySheetsChess.board.is_stalemate():
+        if board.is_checkmate():
+            winner = f"{'White' if board.turn == chess.BLACK else 'Black'}"
+            ltk.schedule(reset_game, "checkmate - {winner} wins", 5)
+            ltk.window.alert(f"Checkmate! {winner} wins!") 
+        elif board.is_stalemate():
             print("Stalemate! The game is a draw.")
-            ltk.schedule(pySheetsChess.reset_board, "stalemate - draw", 5)
+            ltk.schedule(reset_game, "stalemate - draw", 5)
+            ltk.window.alert(f"Stalemate! draw") 
         else:
-            if pySheetsChess.board.turn == chess.BLACK:
-                ltk.schedule(respond, "white moved, black is next", 0.1)            
+            if board.turn == chess.BLACK:
+                ltk.schedule(respond, "white moved, black is next", 0.1)
     else:
         print("This is not a legal move")
-
-def highlight(tile):
-    ltk.find(".square").css("background", "transparent")
-    tile.find(".square").css("background", "yellow")
-    ltk.schedule(lambda: tile.find("input").css("width", 0).css("left", -8), "hide input")
-
-def select(event):
-    tile = ltk.find(event.target).parent()
-    highlight(tile)
-    if pySheetsChess.board.selected:
-        move_if_legal(pySheetsChess.board.selected, tile)
-        pySheetsChess.board.selected = None
-    elif tile.attr("piece") != " ":
-        pySheetsChess.board.selected = tile
-    event.preventDefault()
-
-def add_squares():
-    ltk.find(".tile").append(create_square())
-
-def create_square():
-    return (
-        ltk.Div()
-        .addClass("square")
-        .css("width", 68)
-        .css("height", 68)
-        .css("position", "absolute")
-        .css("top", -1)
-        .css("left", -1)
-        .css("border", "1px solid transparent")
-        .css("opacity", 0.3)
-        .css("z-index", 101)
-        .on("mousedown", ltk.proxy(select))
-    )
-
-if not hasattr(pySheetsChess.board, "selected"):
-    pySheetsChess.board.selected = None
-    ltk.schedule(add_squares, "run later", 1)
-    print("Game ready")
-else:
-    print("Game already running")
-
-"Game"
+   
+"Ready to play Chess!" 
 """.strip()
 
 
@@ -364,47 +251,19 @@ def chess():
     """
     return [
         {
-            "I1": [ CHESS_BOARD, green],
-            "I2": [ CHESS_GAME, green],
+            "I1": [ CHESS, green],
         },
         install_chess,
         ltk.Tutorial(
             [(
-                "#C4",
+                "#I1",
                 "click",
                 ltk.VBox(
-                    ltk.Strong("Tutorial: Charts"),
-                    ltk.Text("In this example, the sheet contains sample data."),
-                    ltk.Text("Click on C4 to start the tutorial."),
+                    ltk.Strong("Tutorial: Chess"),
+                    ltk.Text("A cell function can change the sheet UI."),
+                    ltk.Text("Click on a white piece and click where to move it."),
+                    ltk.Text("Cell I1 imports 'chess', draws a board, and handles events."),
                 ),
-            ),(
-                "#B8",
-                "click",
-                ltk.VBox(
-                    ltk.Text("""
-                        Cell B8 turns the sheet data into a Pandas DataFrame.
-                        Notice the ⭐A1 button in the top right.
-                        If you select an empty cell and press ⭐A1, PySheets
-                        will recognize the data in the frame, generate an AI prompt,
-                        and auto-generate the needed Python code for you.
-                        Click on B8 to see the Python code in the editor.
-                    """).width(400)
-                )
-            ),(
-                "#D7",
-                "click",
-                ltk.VBox(
-                    ltk.Text("""
-                        Cell D7 turns the DataFrame into a chart.
-                        Notice the ⭐B8 button in the top right.
-                        If you select an empty cell and press ⭐B8, PySheets
-                        will generate an AI prompt, and auto-generate the needed
-                        Python code for you.
-                        Hover the generated graphs and dataframe previews to
-                        see the dependency graphs.
-                        Click on D7 to see the Python code in the editor.
-                    """).width(300)
-                )
             )],
         )
     ]
