@@ -169,7 +169,7 @@ def highlight(cell):
 def respond():
     moves = list(board.legal_moves)
     if not moves:
-        return ltk.window.alert("CHESS MATE!")
+        return ltk.window.alert("CHECKMATE!")
     response = random.choice(moves)
     uci = str(response)
     start, end = ltk.find(f'[position="{uci[:2]}"]'), ltk.find(
