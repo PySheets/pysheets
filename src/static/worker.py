@@ -27,8 +27,6 @@ results = {}
 inputs_cache = {}
 pysheets = api.PySheets(None, cache)
 
-ltk.inject_css("pysheets.css")
-
 completion_cache = {}
 
 def get_image_data(figure):
