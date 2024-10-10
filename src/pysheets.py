@@ -75,7 +75,7 @@ def handle_404(error): # pylint: disable=unused-argument
     return "Nothing here"
 
 
-VERSION_PYSCRIPT = "2024.9.1"
+VERSION_PYSCRIPT = "2024.10.1"
 PATH = os.path.join(os.path.dirname(__file__), "static")
 RUNTIME_PYODIDE = "py"
 RUNTIME_MICROPYTHON = "mpy"
@@ -115,9 +115,10 @@ PYSCRIPT_ONLINE = f"""
     <script type="module" src="https://pyscript.net/releases/{VERSION_PYSCRIPT}/core.js"></script>
 """
 PYSCRIPT_ONLINE = f"""
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@pyscript/core@0.6.0/dist/core.css">
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@pyscript/core@0.6.0/dist/core.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@pyscript/core@0.6.4/dist/core.css">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@pyscript/core@0.6.4/dist/core.js"></script>
 """
+
 ONLINE = "online"
 OFFLINE = "offline"
 HOSTING = ONLINE
