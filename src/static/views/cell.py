@@ -114,7 +114,6 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             script (str): The new script to set for the cell.
             evaluate (bool, optional): When false does evaluate the new script.
         """
-        self.dependents.clear()
         self.inputs.clear()
         self.remove_preview()
         if self.model.script != script:
