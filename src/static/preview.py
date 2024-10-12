@@ -47,6 +47,7 @@ class PreviewView(ltk.Div):
         )
         self.model.listen(self.model_changed)
         self.set_html(self.model.html)
+        self.fix_images()
 
     def model_changed(self, preview, info): # pylint: disable=unused-argument
         """
@@ -145,7 +146,6 @@ class PreviewView(ltk.Div):
         )
         self.make_resizable()
         self.draw_arrows()
-        self.fix_images()
 
     def fix_html(self, html):
         """
@@ -160,21 +160,8 @@ class PreviewView(ltk.Div):
         html = html.replace("script src=", "script crossorigin='anonymous' src=")
         if not html.startswith("<"):
             html = f"<div>{html}</div>"
-        return html
 
-    def fix_images(self):
-        """
-        Fixes the `src` attribute of all `img` elements in the preview content
-        to include the `crossorigin="anonymous"` attribute.
-        """
-        script = """
-            $("img").each(function () {
-                $(this).attr("crossorigin", "anonymous").attr("src", $(this).attr("src"))
-            });
-        """
-        self.find("iframe").contents().find("body").append(
-            ltk.create("<script>").html(script)
-        )
+        return html
 
     def make_resizable(self):
         """
@@ -189,6 +176,15 @@ class PreviewView(ltk.Div):
         preview.find(".ui-resizable-handle") \
             .css("display", display)
 
+    def fix_images(self):
+        """
+        Fix images by setting the `crossorigin` attribute of all `img` elements to `anonymous`.
+        """
+        def fix():
+            self.find("iframe").contents() \
+                .find("img") \
+                .each(lambda index, img: ltk.find(img).attr("crossorigin", "anonymous"))
+        ltk.repeat(fix, f"fix images in {self.model.key}", 1)
 
 def load(sheet):
     """
