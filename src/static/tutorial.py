@@ -236,17 +236,6 @@ def move_if_legal(start, end):
 """.strip()
 
 
-def install_chess():
-    """
-    Install the chess package from PyPI.
-    """
-    state.UI.select(state.UI.get_cell("I1"))
-    packages = ltk.find("#packages")
-    if not packages.val():
-        packages.val("chess")
-        ltk.window.alert("PySheets will now reload and then load a chess board...")
-        ltk.find("#reload-button").click()
-
 def chess():
     """
     Create a chess game.
@@ -255,7 +244,7 @@ def chess():
         {
             "I1": [ CHESS, green],
         },
-        install_chess,
+        lambda: install_package("chess"),
         ltk.Tutorial(
             [(
                 "#I1",
@@ -271,16 +260,90 @@ def chess():
     ]
 
 
+AIRPORTS_LOAD = """
+=
+pysheets.load_sheet("https://query.data.world/s/7igxggw6iudndynzusfisrfcclo6rs")
+""".strip()
+
+AIRPORTS_SCATTER = """
+=
+A1.plot(kind='scatter', x='longitude', y='latitude')
+""".strip()
+
+AIRPORTS_MAP = """
+=
+import folium
+map = folium.Map(location=[A1['latitude'].mean(), A1['longitude'].mean()], zoom_start=4)
+for index, row in A1.iterrows():
+    folium.Marker([row['latitude'], row['longitude']]).add_to(map)
+map
+""".strip()
+
+
+def airports():
+    """
+    Create a US map with airport locations.
+    """
+    return [
+        {
+            "A1": [ AIRPORTS_LOAD, green],
+            "F4": [ AIRPORTS_SCATTER, green],
+            "B29": [ AIRPORTS_MAP, green],
+        },
+        lambda: install_package("folium"),
+        ltk.Tutorial(
+            [(
+                "#A1",
+                "click",
+                ltk.VBox(
+                    ltk.Strong("Tutorial: Airports"),
+                    ltk.Text("In cell A1, we load a dataset from a URL."),
+                    ltk.Text("Click inside cell A1 to see the Python code."),
+                ),
+            ),(
+                "#F4",
+                "click",
+                ltk.VBox(
+                    ltk.Text("In cell F4, we visualize the dataset as a scatter plot."),
+                    ltk.Text("This already look surpringly like a map."),
+                    ltk.Text("Click inside F4 to see the Python code."),
+                ),
+            ),(
+                "#B29",
+                "click",
+                ltk.VBox(
+                    ltk.Text("In cell B29, we load folium, create a map, and add markers."),
+                    ltk.Text("The preview shows the map, you can resize it."),
+                    ltk.Text("A folium map can be panned and you can zoom in and out."),
+                    ltk.Text("Click inside B29 to see the Python code."),
+                ),
+            )],
+        )
+    ]
+
+
+def install_package(name):
+    """
+    Install a package from PyPI.
+    """
+    state.UI.select(state.UI.get_cell("I1"))
+    packages = ltk.find("#packages")
+    if not name in packages.val():
+        packages.val(name)
+        ltk.window.alert(f"PySheets will now reload to install package '{name}' and then continue the tutorial...")
+        ltk.find("#reload-button").click()
+
+
 def clear():
     """
     Clear the current sheet.
     """
     sheet = state.UI
-    a1 = sheet.get_cell("A1")
-    m10 = sheet.get_cell("M10")
+    start = sheet.get_cell("A1")
+    end = sheet.get_cell("M30")
     selection = sheet.multi_selection
-    selection.start(a1)
-    selection.extend(m10)
+    selection.start(start)
+    selection.extend(end)
     selection.clear()
     ltk.find(".ltk-step, .ltk-step-marker").remove()
 
@@ -329,6 +392,7 @@ def show():
             tutorial_button("1️⃣ Basics", basics),
             tutorial_button("2️⃣ Charts", charts),
             tutorial_button("3️⃣ Chess", chess),
+            tutorial_button("4️⃣ Airports", airports),
         )
         .attr("id", "tutorial-dialog")
         .attr("title", "Choose a Tutorial Below...")
