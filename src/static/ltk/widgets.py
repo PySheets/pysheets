@@ -708,6 +708,8 @@ class SplitPane(Div):
         self.set_size(self.first, f"{self.ratio * size + middle}")
         self.set_size(self.last, f"{(1.0 - self.ratio) * size - middle}")
         self.set_position(self.middle, 0)
+        self.first.trigger("layout")
+        self.last.trigger("layout")
         window.localStorage.setItem(self.key, f"{self.ratio}")
 
     def __init__(self, first, last, key):
@@ -730,10 +732,11 @@ class SplitPane(Div):
              self.last
                 .addClass(f"ltk-{self.direction}-split-pane-last")
         )
+        self.attr("id", self.key)
         self.addClass(f"ltk-split-pane")
         self.restore()
         self.layout()
-        self.on("layout", proxy(lambda *args: self.layout()))
+        self.on("layout", proxy(lambda event: self.layout() if event.target.id == self.key else None))
         schedule(self.layout, f"layout-{self.key}")
         window.addEventListener("resize", proxy(lambda *args: self.layout()))
 
