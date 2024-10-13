@@ -422,6 +422,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             self.mousedown = False
             if ltk.find(event.target).hasClass("selection"):
                 self.selection.css("caret-color", "black").focus()
+                self.selection.val(self.current.model.script)
                 self.selection_edited = True
                 return
             self.mousedown = True
