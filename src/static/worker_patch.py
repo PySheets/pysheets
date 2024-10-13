@@ -6,8 +6,11 @@ This module patches the PyOdide runtime to:
  - Buffering DOM access through LTK to improve performance.
 """
 
+import base64
 import builtins
+import io
 import json
+import time
 
 import constants
 import ltk
@@ -18,6 +21,7 @@ import polyscript # type: ignore    pylint: disable=import-error
 
 
 OriginalSession = requests.Session
+network_cache = {}
 
 
 class PyScriptResponse():
@@ -78,9 +82,68 @@ class PyScriptSession(OriginalSession):
         return PyScriptResponse(url, xhr.status, xhr.responseText)
 
 
+def wrap_as_file(content):
+    """
+    Wraps the provided content as a file-like object.
+    
+    Args:
+        content (bytes or str): The content to be wrapped as a file-like object.
+    
+    Returns:
+        file-like object: A file-like object containing the provided content.
+    """
+    return io.StringIO(content) if isinstance(content, str) else io.BytesIO(content)
+
+
+def _load_with_trampoline(url):
+    """
+    Loads the content from the provided URL using a trampoline mechanism to cache the response.
+    
+    Args:
+        url (str): The URL to load the content from.
+    
+    Returns:
+        bytes: The decoded content from the URL.
+    
+    This function first checks if the URL is already cached in the `network_cache` dictionary.
+    If the cached content is less than 60 seconds old, it returns the cached value.
+    Otherwise, it makes a GET request to the URL using `window.XMLHttpRequest` and caches
+    the response text. If the HTTP status code is not 200, it raises an `IOError` with the status code.
+    """
+    def get(url):
+        if url in network_cache:
+            when, value = network_cache[url]
+            if time.time() - when < 60:
+                return value
+
+        xhr = ltk.window.XMLHttpRequest.new()
+        xhr.open("GET", url, False)
+        xhr.send(None)
+        if xhr.status != 200:
+            raise IOError(f"HTTP Error: {xhr.status} for {url}")
+        value = xhr.responseText
+        network_cache[url] = time.time(), value
+        return value
+
+    if url and url[0] != "/":
+        url = f"/load?url={ltk.window.encodeURIComponent(url)}"
+
+    content = base64.b64decode(get(url))
+    return content
+
+
+def _urlopen(url, **args): # pylint: disable=unused-argument
+    return wrap_as_file(_load_with_trampoline(url))
+
+
 def _patch_request():
     requests.Session = PyScriptSession
     requests.session = PyScriptSession
+    try:
+        import urllib.request
+        urllib.request.urlopen = _urlopen
+    except ImportError:
+        pass
 
 
 def _patch_document():

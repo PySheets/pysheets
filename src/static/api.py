@@ -4,12 +4,10 @@ Copyright (c) 2024 laffra - All Rights Reserved.
 Utility functions for working with spreadsheets used by both the worker and the UI.
 """
 
-import base64
 import functools
 import io
 import json
 import re
-import time
 
 import constants
 
@@ -256,18 +254,6 @@ def index_to_col(index: int):
         index = index // 26 - 1
     return col
 
-def wrap_as_file(content):
-    """
-    Wraps the provided content as a file-like object.
-    
-    Args:
-        content (bytes or str): The content to be wrapped as a file-like object.
-    
-    Returns:
-        file-like object: A file-like object containing the provided content.
-    """
-    return io.StringIO(content) if isinstance(content, str) else io.BytesIO(content)
-
 
 def shorten(s: str, length: int):
     """
@@ -281,58 +267,6 @@ def shorten(s: str, length: int):
         str: The shortened string, with an ellipsis appended if the string was truncated.
     """
     return f"{s[:length - 3]}{s[length - 3:] and '...'}"
-
-
-network_cache = {}
-
-
-def load_with_trampoline(url):
-    """
-    Loads the content from the provided URL using a trampoline mechanism to cache the response.
-    
-    Args:
-        url (str): The URL to load the content from.
-    
-    Returns:
-        bytes: The decoded content from the URL.
-    
-    This function first checks if the URL is already cached in the `network_cache` dictionary.
-    If the cached content is less than 60 seconds old, it returns the cached value.
-    Otherwise, it makes a GET request to the URL using `window.XMLHttpRequest` and caches
-    the response text. If the HTTP status code is not 200, it raises an `IOError` with the status code.
-    """
-    def get(url):
-        if url in network_cache:
-            when, value = network_cache[url]
-            if time.time() - when < 60:
-                return value
-
-        xhr = ltk.window.XMLHttpRequest.new()
-        xhr.open("GET", url, False)
-        xhr.send(None)
-        if xhr.status != 200:
-            raise IOError(f"HTTP Error: {xhr.status} for {url}")
-        value = xhr.responseText
-        network_cache[url] = time.time(), value
-        return value
-
-    if url and url[0] != "/":
-        url = f"/load?url={ltk.window.encodeURIComponent(url)}"
-
-    content = base64.b64decode(get(url))
-    return content
-
-
-try:
-    import urllib.request
-
-    def urlopen(url, **args): # pylint: disable=unused-argument
-        """ Patch request.urlopen to bypass CORS restrictions. """
-        return wrap_as_file(load_with_trampoline(url))
-
-    urllib.request.urlopen = urlopen
-except ImportError:
-    pass
 
 
 class PySheets():
@@ -473,7 +407,8 @@ class PySheets():
         assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
         if handler:
             return ltk.get(url, handler)
-        return urlopen(url)
+        import urllib
+        return urllib.request.urlopen(url)
 
     def load_sheet(self, url:str):
         """
@@ -490,7 +425,8 @@ class PySheets():
         """
         assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
         try:
-            data = urlopen(url).read()
+            import urllib
+            data = urllib.request.urlopen(url).read()
         except Exception as e: # pylint: disable=broad-except
             raise ValueError(f"Cannot load url: {e}") from e
         return self.load_sheet_from_data(data)
@@ -540,7 +476,8 @@ class PySheets():
         """
         assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
         assert isinstance(start_key, str), f"Parameter start_key must be a str, not {type(start_key)}"
-        content = urlopen(url).read().decode("utf-8")
+        import urllib
+        content = urllib.request.urlopen(url).read().decode("utf-8")
         self._import_csv_content(content, start_key)
 
     def _import_csv_content(self, content, start_key):
