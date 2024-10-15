@@ -68,6 +68,8 @@ def create_preview(result): # pylint: disable=too-many-return-statements
     Returns:
         A string representation of the preview.
     """
+    if isinstance(result, str):
+        return result
     if str(result) == "DataFrame":
         return str(result)
     if "plotly" in str(type(result)):
