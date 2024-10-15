@@ -1062,9 +1062,10 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         Saves the specified Python packages and reloads the spreadsheet page with those packages.
         """
+        ltk.find("#reload-button").css("display", "none")
         packages = " ".join(ltk.find("#packages").val().replace(",", " ").split())
         history.add(models.PackagesChanged(packages=packages).apply(self.model))
-        ltk.schedule(ltk.window.location.reload, "reload with packages", 1)
+        state.start_worker()
 
     def set_name(self):
         """
