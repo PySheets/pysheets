@@ -524,6 +524,8 @@ def get_dict_table(result):
     Returns:
         str: An HTML table representation of the input dictionary.
     """
+    if not isinstance(result, dict):
+        raise ValueError(f"Expected a dict, got {type(result)}")
     return "".join([
         "<table border='1' class='dict_table'>",
             "<thead>",
@@ -533,4 +535,4 @@ def get_dict_table(result):
                 "".join(f"<tr><td>{key}</td><td>{get_dict_table(value)}</td></tr>" for key, value in result.items()),
             "</thead>",
         "</table>",
-    ]) if isinstance(result, dict) else repr(result)
+    ])

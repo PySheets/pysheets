@@ -401,6 +401,7 @@ def show():
         .dialog()
     )
 
-if not ltk.window.localStorage[constants.TUTORIAL_SHOWN]:
-    ltk.window.localStorage[constants.TUTORIAL_SHOWN] = True
+
+if not ltk.window.localStorage.getItem(constants.TUTORIAL_SHOWN):
+    ltk.window.localStorage.setItem(constants.TUTORIAL_SHOWN, True)
     show()

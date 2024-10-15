@@ -530,8 +530,16 @@
         {{files|safe}}
     </{{runtime}}-config>
     <script type="{{runtime}}">
-        import pysheets
-        pysheets.main()
+        try:
+            import pysheets
+            pysheets.main()
+        except Exception as e:
+            import pyscript
+            try:
+                import traceback
+                pyscript.window.alert(traceback.format_exc())
+            except:
+                pyscript.window.alert(f"Error: {e}")
     </script>
     <style>
         {{css}}

@@ -1,4 +1,5 @@
-html, body {
+html,
+body {
     overscroll-behavior-x: none;
 }
 
@@ -27,11 +28,13 @@ html, body {
     background: #e4a11c;
 }
 
-.multi-select.top,  .multi-select.bottom  {
+.multi-select.top,
+.multi-select.bottom {
     height: 2px;
 }
 
-.multi-select.left,  .multi-select.right  {
+.multi-select.left,
+.multi-select.right {
     width: 2px;
 }
 
@@ -80,7 +83,7 @@ html, body {
     width: 7px;
     height: 7px;
 }
-  
+
 ::-webkit-scrollbar-thumb {
     border-radius: 4px;
     background-color: rgba(181, 181, 181, 0.5);
@@ -93,7 +96,9 @@ html, body {
     z-index: 10;
 }
 
-.sheet th,td,div {
+.sheet th,
+td,
+div {
     padding: 0px;
 }
 
@@ -105,7 +110,9 @@ html, body {
     margin-left: 61px;
 }
 
-.buy-button, .star-button, .learn-button {
+.buy-button,
+.star-button,
+.learn-button {
     color: white;
     background-color: #1f77b4;
     cursor: pointer;
@@ -192,8 +199,8 @@ html, body {
     border-width: 0 0 1px 1px;
     border-right-color: transparent;
     white-space: nowrap;
-    text-overflow: ellipsis; 
-    overflow: hidden; 
+    text-overflow: ellipsis;
+    overflow: hidden;
     vertical-align: bottom;
     z-index: 2100;
 }
@@ -293,7 +300,8 @@ h3 {
     font-family: 'Courier New', Courier, monospace;
 }
 
-.CodeMirror-hscrollbar, .CodeMirror-vscrollbar {
+.CodeMirror-hscrollbar,
+.CodeMirror-vscrollbar {
     display: none;
 }
 
@@ -384,19 +392,21 @@ h3 {
     border-color: transparent;
 }
 
-.preview td, .preview th {
+.preview td,
+.preview th {
     padding: 4px 8px;
     border-color: lightgray;
 }
 
-.preview td div, .preview th div {
+.preview td div,
+.preview th div {
     max-height: 22px;
     max-width: 90px;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.preview thead > tr > th {
+.preview thead>tr>th {
     background-color: #d1e1fb;
 }
 
@@ -456,7 +466,8 @@ h3 {
     border: 14px solid transparent;
 }
 
-.load-button, .import-final-button {
+.load-button,
+.import-final-button {
     color: white;
     background-color: #1f77b4;
     padding: 3px 6px;
@@ -483,7 +494,7 @@ h3 {
 }
 
 .import-dialog button:disabled {
-    background-color:  #929ea8;
+    background-color: #929ea8;
     color: white;
 }
 
@@ -493,7 +504,8 @@ h3 {
     width: 200px;
 }
 
-#completion-dialog .ltk-textarea, #completion-dialog pre {
+#completion-dialog .ltk-textarea,
+#completion-dialog pre {
     width: calc(100% - 20px);
     height: 100px;
     margin: 4px 0 28px 0;
@@ -619,19 +631,22 @@ input {
     align-items: center;
 }
 
-#cell-color, #cell-fill {
+#cell-color,
+#cell-fill {
     padding: 0;
     inline-size: 19px;
     block-size: 21px;
     background: white;
 }
 
-.cell-color-container, .cell-fill-container {
+.cell-color-container,
+.cell-fill-container {
     position: relative;
     margin-right: 4px;
 }
 
-.cell-fill-icon, .cell-color-icon {
+.cell-fill-icon,
+.cell-color-icon {
     position: absolute;
     background-color: white;
     top: 1px;
@@ -814,7 +829,8 @@ td:hover .debug-info {
     display: flex;
     flex-flow: row wrap;
     align-items: flex-start;
-    font-family: "Helvetica Narrow","Arial Narrow",Tahoma,Arial,Helvetica,sans-serif;border: 3px solid #BBB;
+    font-family: "Helvetica Narrow", "Arial Narrow", Tahoma, Arial, Helvetica, sans-serif;
+    border: 3px solid #BBB;
 }
 
 .timeline-container .timeline-switch {
@@ -872,8 +888,8 @@ td:hover .debug-info {
     height: 20px;
     font-size: 15px;
     border: 1px solid gray;
-    text-overflow: ellipsis; 
-    overflow: hidden; 
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 .internals .small-button {
@@ -896,14 +912,16 @@ td:hover .debug-info {
     margin-left: 12px;
 }
 
-#run-button, #generate-button {
+#run-button,
+#generate-button {
     font-size: 12px;
     background-color: #1f77b4;
     color: white;
     min-width: 58px;
 }
 
-#run-button:hover, #generate-button:hover {
+#run-button:hover,
+#generate-button:hover {
     background-color: #b7ddf8;
     color: rgb(58, 58, 58);
 }
@@ -929,11 +947,15 @@ td:hover .debug-info {
     height: 100%;
     padding: "0 8px";
     overflow: scroll;
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
 }
+
 .console-container::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    display: none;
+    /* Chrome, Safari, Opera */
 }
 
 .console-filter {
@@ -1022,7 +1044,7 @@ td:hover .debug-info {
     --checkbox-hover-color: #a3cef1;
     --checkbox-disabled-bg-color: #d9d9d9;
 }
-  
+
 input[type="checkbox"] {
     box-sizing: border-box;
     width: 20px;
@@ -1034,46 +1056,46 @@ input[type="checkbox"] {
     background-color: transparent;
     outline: none;
     transition: outline 0.1s;
-  }
-  
-  input[type="checkbox"]:checked {
+}
+
+input[type="checkbox"]:checked {
     background-size: cover;
     padding: 2px;
-  }
-  
-  input[type="checkbox"]:not(:disabled):checked {
+}
+
+input[type="checkbox"]:not(:disabled):checked {
     border-color: var(--checkbox-checked-color);
     background-color: #e9f5fd;
-  }
-  
-  input[type="checkbox"]:disabled {
+}
+
+input[type="checkbox"]:disabled {
     background-color: var(--checkbox-disabled-bg-color);
-  }
-  
-  input[type="checkbox"]:disabled:checked {
+}
+
+input[type="checkbox"]:disabled:checked {
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="20" viewBox="0 0 32 32" xml:space="preserve"><path style="fill: %238b8c89" d="M11.941,28.877l-11.941-11.942l5.695-5.696l6.246,6.246l14.364-14.364L32,8.818"/></svg>');
-  }
-  
-  @media (hover: hover) {
+}
+
+@media (hover: hover) {
     input[type="checkbox"]:not(:disabled):hover {
-      background-color: var(--checkbox-hover-color);
-      outline: 6px solid var(--checkbox-hover-color);
-      transform: scale(1.05);
+        background-color: var(--checkbox-hover-color);
+        outline: 6px solid var(--checkbox-hover-color);
+        transform: scale(1.05);
     }
-  }
-  
-  input[type="checkbox"]:focus-visible {
+}
+
+input[type="checkbox"]:focus-visible {
     outline: 6px solid var(--checkbox-hover-color);
     transform: scale(1.05);
-  }
-  
-  @media (prefers-reduced-motion: reduce) {
-    input[type="checkbox"] {
-      transition: none;
-    }
-  }
+}
 
-  .load-error {
+@media (prefers-reduced-motion: reduce) {
+    input[type="checkbox"] {
+        transition: none;
+    }
+}
+
+.load-error {
     position: absolute;
     left: 10px;
     top: 190px;
@@ -1084,45 +1106,50 @@ input[type="checkbox"] {
     color: red;
     z-index: 1000000;
     box-shadow: 0 0 1px rgba(255, 255, 255, .5);
-  }
+}
 
-  .ltk-vertical-split-pane > .ltk-vertical-split-pane-middle {
+.ltk-vertical-split-pane>.ltk-vertical-split-pane-middle {
     background-color: rgb(238, 238, 238);
     height: 4px;
-  }
-  .ltk-vertical-split-pane > .ltk-vertical-split-pane-middle:hover {
+}
+
+.ltk-vertical-split-pane>.ltk-vertical-split-pane-middle:hover {
     background-color: #AAF;
-  }
+}
 
-  .editor-error {
+.editor-error {
     background-color: rgb(254, 227, 227);
-  }
+}
 
-  .editor {
+.editor {
     position: relative;
-  }
+}
 
-  .ltk-button {
+.ltk-button {
     border-radius: 4px;
     text-wrap: nowrap;
-  }
+}
 
-  .edit {
+.edit {
     position: relative;
     border: 1px solid gray;
     padding: 3px;
     margin-bottom: 2px;
     width: 100%;
     cursor: pointer;
-  }
+}
 
-  .edit:hover {
+.edit:hover {
     background: #d3e2fc;
-  }
+}
 
-  .edit .undo-button {
+.edit .undo-button {
     min-width: 0;
     display: inline;
     background-color: #1f77b4;
     color: white;
-  }
+}
+
+.ltk-built-with {
+    left: calc(100% - 110px);
+}
