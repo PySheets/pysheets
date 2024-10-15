@@ -330,7 +330,7 @@ def install_package(name):
     packages = ltk.find("#packages")
     if not name in packages.val():
         packages.val(name)
-        ltk.window.alert(f"PySheets will now reload to install package '{name}' and then continue the tutorial...")
+        print(f"PySheets will now reload the worker with package '{name}' and then continue the tutorial...")
         ltk.find("#reload-button").click()
 
 
