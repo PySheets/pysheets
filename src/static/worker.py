@@ -26,7 +26,6 @@ cache = {}
 results = {}
 inputs_cache = {}
 pysheets = api.PySheets(None, cache)
-
 completion_cache = {}
 
 def get_image_data(figure):
@@ -94,7 +93,7 @@ def create_preview(result): # pylint: disable=too-many-return-statements
         return api.get_dict_table(result)
     except Exception: # pylint: disable=broad-except
         pass  # print(traceback.format_exc())
-    return str(result)
+    return f"<div style='color:red;padding:8px;'>Error: Cannot generate a preview image for result of type &lt;{type(result).__name__}&gt;<div>"
 
 
 def get_visualization_prompt(key, columns):

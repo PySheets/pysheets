@@ -21,6 +21,8 @@ UID = ltk.get_url_parameter(constants.SHEET_ID)
 SHEET = None
 UI = None
 
+start = ltk.get_time()
+
 
 def set_title(title):
     """
@@ -313,13 +315,13 @@ def show_worker_status():
             WORKER_DOTS = "."
         console.write(
             "worker-status",
-            f"[Worker] Starting PyOdide {constants.ICON_HOUR_GLASS} {round(ltk.get_time())}s {WORKER_DOTS}"
+            f"[Worker] Starting PyOdide {constants.ICON_HOUR_GLASS} {round(ltk.get_time()-start)}s {WORKER_DOTS}"
         )
         ltk.schedule(show_worker_status, "worker-status", 0.95)
     else:
         console.write(
             "worker-status", 
-            f"[Worker] Running PyOdide; Python v{WORKER_VERSION}; Worker startup took {ltk.get_time():.3f}s."
+            f"[Worker] Running PyOdide; Python v{WORKER_VERSION}; Worker startup took {ltk.get_time()-start:.3f}s."
         )
 
 
@@ -333,6 +335,9 @@ def start_worker():
     Returns:
         None
     """
+    global start, WORKER_VERSION ## pylint: disable=global-statement
+    start = ltk.get_time()
+    WORKER_VERSION = constants.WORKER_LOADING
     if not UID:
         return
     show_worker_status()
