@@ -6,6 +6,7 @@ This module provides functions for creating and managing the application menu.
 """
 
 import constants
+import menu
 import state
 import ltk
 
@@ -402,6 +403,21 @@ def show():
     )
 
 
-if not ltk.window.localStorage.getItem(constants.TUTORIAL_SHOWN):
-    ltk.window.localStorage.setItem(constants.TUTORIAL_SHOWN, True)
-    show()
+def first_experience():
+    """
+    If this is the first time the user visits pysheets.app, show the about section.
+    If this is the first the app runs, show the tutorial.
+    """
+    if not state.UID and not ltk.window.localStorage.getItem(constants.ABOUT_SHOWN):
+        ltk.window.localStorage.setItem(constants.ABOUT_SHOWN, True)
+        ltk.window.location = "/about"
+        return
+
+    if not ltk.window.localStorage.getItem(constants.TUTORIAL_SHOWN):
+        if not state.UID:
+            return menu.new_sheet()
+        ltk.window.localStorage.setItem(constants.TUTORIAL_SHOWN, True)
+        show()
+
+
+ltk.schedule(first_experience, "run later when all modules have loaded", 1)

@@ -90,3 +90,4 @@ PUBSUB_STATE_ID = "State"
 PUBSUB_SHEET_ID = "Application"
 
 TUTORIAL_SHOWN = "tutorial.shown"
+ABOUT_SHOWN = "about.shown"
