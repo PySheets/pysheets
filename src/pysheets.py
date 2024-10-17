@@ -117,7 +117,7 @@ PYSCRIPT_ONLINE = f"""
     <link rel="stylesheet" href="https://pyscript.net/releases/{VERSION_PYSCRIPT}/core.css">
     <script type="module" src="https://pyscript.net/releases/{VERSION_PYSCRIPT}/core.js"></script>
 """
-PYSCRIPT_ONLINE = f"""
+PYSCRIPT_ONLINE = """
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@pyscript/core@0.6.4/dist/core.css">
     <script type="module" src="https://cdn.jsdelivr.net/npm/@pyscript/core@0.6.4/dist/core.js"></script>
 """

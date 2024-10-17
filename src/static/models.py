@@ -406,8 +406,6 @@ class Sheet(Model):  # pylint: disable=too-many-instance-attributes
         """
         self.rows[row] = height
         self.notify_listeners({ "name": "rows", "row": row, "height": height })
-   
-
 
     def __eq__(self, other):
         return isinstance(other, Sheet) and other.uid == self.uid

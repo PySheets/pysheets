@@ -140,7 +140,7 @@ def _patch_request():
     requests.Session = PyScriptSession
     requests.session = PyScriptSession
     try:
-        import urllib.request
+        import urllib.request # pylint: disable=import-outside-toplevel
         urllib.request.urlopen = _urlopen
     except ImportError:
         pass

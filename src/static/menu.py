@@ -47,11 +47,17 @@ def create_menu():
 
 
 def handle_import_preview(data):
+    """
+    Handle a message from the worker with a preview of a CSV or Excel
+    """
     ltk.find("#import-data-preview").html(data["preview"])
     ltk.find(".import-final-button").attr("disabled", False)
 
 
-def handle_import_done(data):
+def handle_import_done(data): # pylint: disable=unused-argument
+    """
+    Handle a request from the UI to import a CSV or Excel from the web
+    """
     ltk.find("#import-dialog").remove()
 
 
@@ -97,6 +103,9 @@ def share_sheet():
         ltk.proxy(handle_url)
     )
 
+    def copy(event): # pylint: disable=unused-argument
+        ltk.window.navigator.clipboard.writeText(ltk.find("#share-url").text())
+
     (ltk.Div(
         ltk.VBox(
             ltk.Strong("Here is a link to a copy of your sheet:")
@@ -105,7 +114,7 @@ def share_sheet():
             ltk.HBox(
                 ltk.Link("#", "Loading...")
                     .attr("id", "share-url"),
-                ltk.Button("🔗", click=lambda event: ltk.window.navigator.clipboard.writeText(ltk.find("#share-url").text()))
+                ltk.Button("🔗", click=copy)
                     .addClass("copy-button")
             ),
         )
@@ -129,7 +138,7 @@ def import_sheet():
     if state.UI.editor.get():
         return ltk.window.alert("Please select an empty cell and press 'import' again.")
 
-    def load_from_web(event):
+    def load_from_web(event): # pylint: disable=unused-argument
         ltk.publish(
             "Importer",
             "Worker",
@@ -140,10 +149,7 @@ def import_sheet():
         )
         # result will arrive in handle_import
 
-    def web_url_changed(event):
-        ltk.find("#import-web-url-load-button").attr("disabled", False)
-
-    def import_into_sheet(event):
+    def import_into_sheet(event): # pylint: disable=unused-argument
         ltk.publish(
             "Application",
             "Worker",
@@ -155,22 +161,12 @@ def import_sheet():
         )
         # result will arrive in handle_import_done
 
-    def load_dataframe(event):
+    def load_dataframe(event): # pylint: disable=unused-argument
         url = ltk.find("#import-web-url").val()
         state.UI.current.set(f"""=
 pysheets.load_sheet("{url}")
         """)
         ltk.find("#import-dialog").remove()
-
-    def upload_file(event):
-        ltk.publish(
-            "Application",
-            "Worker",
-            constants.TOPIC_WORKER_UPLOAD,
-            {
-                "id": "import-file",
-            },
-        )
 
     (ltk.Div(
         ltk.VBox(
