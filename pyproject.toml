@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pysheets-app"
-version = "0.3.26"
+version = "0.3.27"
 description = "A Spreadsheet UI for Python"
 readme = "README.md"
 authors = [{ name = "Chris Laffra", email = "chris@chrislaffra.com" }]
