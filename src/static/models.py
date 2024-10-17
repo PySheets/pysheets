@@ -149,7 +149,11 @@ class SerializableDict(dict):
         Args:
             buffer (list): The list to append the encoded fields to.
         """
-        data_fields = [(key,value) for key,value in self.__dict__.items() if not key.startswith("_")]
+        data_fields = [
+            (key,value)
+            for key,value in self.__dict__.items()
+            if not key.startswith("_")
+        ]
         buffer.append(",".join([f'"{key}":{json.dumps(value)}' for key, value in data_fields]))
 
     def notify_listeners(self, info):
@@ -402,6 +406,8 @@ class Sheet(Model):  # pylint: disable=too-many-instance-attributes
         """
         self.rows[row] = height
         self.notify_listeners({ "name": "rows", "row": row, "height": height })
+   
+
 
     def __eq__(self, other):
         return isinstance(other, Sheet) and other.uid == self.uid
@@ -455,6 +461,16 @@ class Cell(Model):
         self.script = script or s or value
         self.prompt = prompt
         self.style = {} if style is None else style
+
+    def set_key(self, key):
+        """
+        Sets the key of the cell.
+
+        Args:
+            key (str): The key to set.
+        """
+        self.key = key
+        self.column, self.row = api.get_col_row_from_key(key)
 
     def has_changes(self):
         """ 

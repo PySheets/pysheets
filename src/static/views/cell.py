@@ -46,6 +46,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             raise ValueError("Missing key for cell")
         if not self.model:
             raise ValueError(f"No model for cell {key}")
+        self.model.set_key(key)
         self.element = td or ltk.find(f"#{self.model.key}")
         if not self.element.length:
             ltk.window.fillSheet(model.column, model.row)

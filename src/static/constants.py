@@ -84,7 +84,9 @@ PROMPT = "prompt"
 PYTHON_RUNTIME = "runtime"
 STATUS = "status"
 SHEET_ID = "id"
+SHARE_ID = "share"
 ERROR = "error"
+
 
 PUBSUB_STATE_ID = "State"
 PUBSUB_SHEET_ID = "Application"

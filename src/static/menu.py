@@ -59,6 +59,62 @@ ltk.subscribe("Importer", constants.TOPIC_WORKER_PREVIEW_IMPORTED_WEB, handle_im
 ltk.subscribe("Importer", constants.TOPIC_WORKER_IMPORTED_WEB, handle_import_done)
 
 
+def share_sheet():
+    """
+    Create a dialog to let the user share a sheet.
+    """
+    sheet = state.SHEET
+
+    def handle_url(data):
+        url = data["url"]
+        ltk.find("#share-url").text(url, data).attr("href", url)
+
+    url = "https://pysheets.app/share"
+    ltk.post(
+        url,
+        {
+            "sheet": {
+                "cells": dict(
+                    (cell.key, {
+                        "value": cell.value,
+                        "script": cell.script,
+                        "prompt": cell.prompt,
+                        "style": dict([
+                            (property, value)
+                            for property, value in cell.style.items()
+                            if value
+                        ])
+                    })
+                    for cell in sheet.cells.values()
+                ),
+                "columns": sheet.columns,
+                "rows": sheet.rows,
+                "packages": sheet.packages,
+                "name": f"Copy of {sheet.name}",
+                "selected": sheet.selected,
+            }
+        },
+        ltk.proxy(handle_url)
+    )
+
+    (ltk.Div(
+        ltk.VBox(
+            ltk.HBox(
+                ltk.Link("#", "Loading...")
+                    .attr("id", "share-url")
+            ),
+        )
+    )
+    .addClass("share-dialog")
+    .attr("id", "share-dialog")
+    .attr("title", "Share Your Sheet")
+    .dialog({
+        "modal": True,
+        "width": 530,
+        "height": "auto"
+    }))
+
+
 def import_sheet():
     """
     Show a dialog to let the user import a sheet.
@@ -170,6 +226,7 @@ def create_file_menu():
         ltk.MenuItem("📂", "Open", "Cmd+O", ltk.proxy(go_home)),
     ] + ([
         ltk.MenuItem("📥", "Import ...", "", ltk.proxy(lambda event: import_sheet())),
+        ltk.MenuItem("📥", "Share a copy ...", "", ltk.proxy(lambda event: share_sheet())),
         ltk.MenuItem("🗑️", "Delete", "", ltk.proxy(delete_sheet)),
     ] if state.UID else [])
     return ltk.Menu("File", items)

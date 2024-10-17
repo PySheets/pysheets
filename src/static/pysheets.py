@@ -9,6 +9,7 @@ import sys
 import ltk
 import constants
 import inventory
+import models
 import state
 import tutorial
 
@@ -51,8 +52,21 @@ def load_ui():
         state.UI = SpreadsheetView(model)
         state.start_worker()
 
+    def load_shared_sheet():
+        def load(data):
+            sheet = models.Sheet(uid=state.UID, **data["sheet"])
+            storage.save(sheet)
+            load_sheet_with_model(sheet)
+            ltk.window.history.pushState(ltk.to_js({}), "", f"?id={state.UID}")
+
+        state.UID = state.SHARE
+        url = f"https://pysheets.app/shared?sheet_id={state.UID}"
+        ltk.get(url, ltk.proxy(load))
+
     if state.UID:
         storage.load_sheet(state.UID, load_sheet_with_model)
+    elif state.SHARE:
+        load_shared_sheet()
     else:
         load_inventory()
 
