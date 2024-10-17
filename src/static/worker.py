@@ -68,7 +68,7 @@ def create_preview(result): # pylint: disable=too-many-return-statements
     Returns:
         A string representation of the preview.
     """
-    if isinstance(result, str):
+    if isinstance(result, (str, int, float, tuple, list)):
         return result
     if str(result) == "DataFrame":
         return str(result)
