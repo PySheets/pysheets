@@ -99,9 +99,14 @@ def share_sheet():
 
     (ltk.Div(
         ltk.VBox(
+            ltk.Strong("Here is a link to a copy of your sheet:")
+                .css("font-size", 20),
+            ltk.Break(),
             ltk.HBox(
                 ltk.Link("#", "Loading...")
-                    .attr("id", "share-url")
+                    .attr("id", "share-url"),
+                ltk.Button("🔗", click=lambda event: ltk.window.navigator.clipboard.writeText(ltk.find("#share-url").text()))
+                    .addClass("copy-button")
             ),
         )
     )
@@ -112,7 +117,8 @@ def share_sheet():
         "modal": True,
         "width": 530,
         "height": "auto"
-    }))
+    })
+    .find("button").focus())
 
 
 def import_sheet():
