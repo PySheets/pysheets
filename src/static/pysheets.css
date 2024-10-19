@@ -1169,3 +1169,11 @@ input[type="checkbox"]:focus-visible {
     color: orange;
     text-decoration: underline;
 }
+
+.empty-preview {
+    width:220px;
+    text-align:center;
+    line-height:100px;
+    height:100px;
+    background-color: rgb(237, 237, 237);
+}

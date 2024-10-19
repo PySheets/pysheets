@@ -84,13 +84,18 @@ def share_on_host(host):
         try:
             url = f"{host}/{data['url']}"
             ltk.window.navigator.clipboard.writeText(url)
-            ltk.find(".share-link-header").text("Copied to the clipboard:")
+            ltk.find(".share-link-header").text("The following URL was copied to the clipboard:")
             ltk.find(".share-link").text(url)
             ltk.find(".share-link").attr("href", url)
         except Exception as error: # pylint: disable=broad-exception-caught
             print("oops", error)
             ltk.window.alert(f"Cannot share sheet: {error} {data}")
 
+    preview_html = """ 
+        <div class="empty-preview">
+            Loading...
+        </div>
+    """
     ltk.post(
         f"{host}/share",
         {
@@ -113,6 +118,17 @@ def share_on_host(host):
                 "packages": sheet.packages,
                 "name": f"Copy of {sheet.name}",
                 "selected": sheet.selected,
+                "previews": {
+                    key: {
+                        "key": key,
+                        "top": preview.top,
+                        "left": preview.left,
+                        "width": preview.width,
+                        "height": preview.height,
+                        "html": preview_html,
+                    }
+                    for key, preview in sheet.previews.items()
+                },
             }
         },
         ltk.proxy(handle_url)
