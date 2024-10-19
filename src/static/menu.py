@@ -79,14 +79,14 @@ def share_on_host(host):
 
     def handle_url(data):
         try:
-            url = data["url"]
+            share_url = f"{host}/{data['url']}"
             ltk.find("#share-message").empty().append(
                 ltk.VBox(
                     ltk.Text("Copied to clipboard:"),
-                    ltk.Link(f"{url}", ltk.Text(url)).addClass("share-link"),
+                    ltk.Link(f"{share_url}", ltk.Text(share_url)).addClass("share-link"),
                 )
             )
-            ltk.window.navigator.clipboard.writeText(url)
+            ltk.window.navigator.clipboard.writeText(share_url)
         except Exception as error: # pylint: disable=broad-exception-caught
             logger.error(error)
             ltk.window.alert(f"Cannot share sheet: {error} {data}")
