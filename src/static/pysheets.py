@@ -49,6 +49,9 @@ def load_ui():
         inventory.list_sheets()
 
     def load_sheet_with_model(model):
+        if model.new and not state.NEW:
+            ltk.window.alert("This sheet is not available on this browser. Create a new share link using 'File > Share a copy...' to load it.")
+        state.UID = model.uid
         state.SHEET = model
         state.UI = SpreadsheetView(model)
         state.start_worker()
@@ -58,14 +61,13 @@ def load_ui():
             if not "sheet" in data:
                 ltk.window.alert(f"Could not load sheet {json.dumps(data, indent=4)}")
                 return
-            state.UID = data["uid"]
             sheet = models.Sheet(uid=state.UID, **data["sheet"])
             storage.save(sheet)
             load_sheet_with_model(sheet)
             ltk.window.history.pushState(ltk.to_js({}), "", f"?id={state.UID}")
 
         state.UID = state.SHARE
-        url = f"https://pysheets.app/shared?sheet_id={state.UID}"
+        url = f"/shared?sheet_id={state.UID}"
         ltk.get(url, ltk.proxy(load))
 
     if state.UID:

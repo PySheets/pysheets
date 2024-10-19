@@ -325,7 +325,7 @@ def share():
                    (unique_key, json.dumps(sheet)))
     conn.commit()
     conn.close()
-    share_url = f"{request.host_url}?share={unique_key}"
+    share_url = f"?share={unique_key}"
     return jsonify({"url": share_url})
 
 

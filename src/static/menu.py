@@ -69,15 +69,30 @@ def share_sheet():
     """
     Create a dialog to let the user share a sheet.
     """
+    show_share_dialog()
+
+
+def share_on_host(host):
+    """ Share the sheet on the provided host """
+
     sheet = state.SHEET
 
     def handle_url(data):
-        url = data["url"]
-        ltk.find("#share-url").text(url, data).attr("href", url)
+        try:
+            url = data["url"]
+            ltk.find("#share-message").empty().append(
+                ltk.VBox(
+                    ltk.Text("Copied to clipboard:"),
+                    ltk.Link(f"{url}", ltk.Text(url)).addClass("share-link"),
+                )
+            )
+            ltk.window.navigator.clipboard.writeText(url)
+        except Exception as error: # pylint: disable=broad-exception-caught
+            logger.error(error)
+            ltk.window.alert(f"Cannot share sheet: {error} {data}")
 
-    url = "https://pysheets.app/share"
     ltk.post(
-        url,
+        f"{host}/share",
         {
             "sheet": {
                 "cells": {
@@ -103,31 +118,43 @@ def share_sheet():
         ltk.proxy(handle_url)
     )
 
-    def copy(event): # pylint: disable=unused-argument
-        ltk.window.navigator.clipboard.writeText(ltk.find("#share-url").text())
 
-    (ltk.Div(
-        ltk.VBox(
-            ltk.Strong("Here is a link to a copy of your sheet:")
-                .css("font-size", 20),
-            ltk.Break(),
-            ltk.HBox(
-                ltk.Link("#", "Loading...")
-                    .attr("id", "share-url"),
-                ltk.Button("🔗", click=copy)
-                    .addClass("copy-button")
+def show_share_dialog():
+    """ Show a dialog to let the user share the current sheet. """
+
+    local_host = f"{ltk.window.location.protocol}//{ltk.window.location.host}"
+    private_server = not local_host.startswith("https://pysheets.app")
+
+    local_button = ltk.Button(
+        local_host,
+        click=lambda event: share_on_host(local_host),
+    ).addClass("share-button")
+    pysheets_app_button = ltk.Button(
+        "pysheets.app",
+        click=lambda event: share_on_host(f"https://pysheets.app")
+    ).addClass("share-button")
+    buttons = ltk.VBox(local_button, pysheets_app_button) \
+        if private_server else \
+        ltk.VBox(pysheets_app_button)
+    (
+        ltk.Div(
+            ltk.Strong("Choose a server:"),
+            ltk.VBox(
+                buttons,
+                ltk.Break(),
             ),
+            ltk.Div("").attr("id", "share-message")
         )
+            .addClass("share-dialog")
+            .attr("id", "share-dialog")
+            .attr("title", "Share Your Sheet")
+            .dialog({
+                "modal": True,
+                "width": 530,
+                "height": "auto"
+        })
+        .find("button").focus()
     )
-    .addClass("share-dialog")
-    .attr("id", "share-dialog")
-    .attr("title", "Share Your Sheet")
-    .dialog({
-        "modal": True,
-        "width": 530,
-        "height": "auto"
-    })
-    .find("button").focus())
 
 
 def import_sheet():
@@ -276,17 +303,18 @@ def new_sheet():
     import storage # pylint: disable=import-outside-toplevel
     sheet = models.Sheet(uid=ltk.window.crypto.randomUUID())
     storage.save(sheet)
-    load_doc(sheet.uid)
+    load_doc(sheet.uid, new=True)
 
 
-def load_doc(uid):
+def load_doc(uid, new=False):
     """
     Loads a document with the given unique identifier (uid).
     
     Args:
         uid (str): The unique identifier of the document to load.
+        new (bool): Indicates whether the document is new or not.
     
     Returns:
         None
     """
-    ltk.window.document.location = f"?{constants.SHEET_ID}={uid}"
+    ltk.window.document.location = f"?{constants.SHEET_ID}={uid}&{constants.NEW_SHEET}={new}"

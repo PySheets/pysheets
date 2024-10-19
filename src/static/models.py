@@ -227,6 +227,7 @@ class Sheet(Model):  # pylint: disable=too-many-instance-attributes
                  column_count=constants.DEFAULT_COLUMN_COUNT,
                  row_count=constants.DEFAULT_ROW_COUNT,
                  packages="",
+                 new=False,
                  _class="Sheet", _="Sheet"):
         super().__init__()
         self.uid = uid
@@ -242,6 +243,7 @@ class Sheet(Model):  # pylint: disable=too-many-instance-attributes
         self.column_count = column_count
         self.row_count = row_count
         self.packages = packages
+        self.new = new
 
     def convert_cells(self, cells):
         """

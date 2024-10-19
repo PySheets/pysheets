@@ -171,7 +171,7 @@ class Sheets():
             onsuccess(sheet)
 
         def new_sheet(event): # pylint: disable=unused-argument
-            onsuccess(models.Sheet(uid=sheet_id))
+            onsuccess(models.Sheet(uid=sheet_id, new=True))
 
         self.db.load(STORE_NAME, sheet_id, new_sheet, found_sheet)
 

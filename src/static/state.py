@@ -19,6 +19,7 @@ WORKER_VERSION = constants.WORKER_LOADING
 WORKER_DOTS = ""
 UID = ltk.get_url_parameter(constants.SHEET_ID)
 SHARE = ltk.get_url_parameter(constants.SHARE_ID)
+NEW = ltk.get_url_parameter(constants.NEW_SHEET)
 SHEET = None
 UI = None
 

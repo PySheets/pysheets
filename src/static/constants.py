@@ -84,6 +84,7 @@ PROMPT = "prompt"
 PYTHON_RUNTIME = "runtime"
 STATUS = "status"
 SHEET_ID = "id"
+NEW_SHEET = "new"
 SHARE_ID = "share"
 ERROR = "error"
 
