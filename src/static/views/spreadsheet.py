@@ -286,7 +286,8 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             prompt (str): The prompt to be inserted into the AI prompt input field.
         """
         if state.UI.editor.get():
-            return ltk.window.alert("Please select an empty cell and try again.")
+            ltk.window.alert("Please select an empty cell and try again.")
+            return
 
         ltk.find("#ai-prompt").val("")
         self.add_prompt(prompt.strip())

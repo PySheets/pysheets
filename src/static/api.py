@@ -407,7 +407,7 @@ class PySheets():
         assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
         if handler:
             return ltk.get(url, handler)
-        import urllib
+        import urllib # pylint: disable=import-outside-toplevel
         return urllib.request.urlopen(url)
 
     def load_sheet(self, url:str):
@@ -425,7 +425,7 @@ class PySheets():
         """
         assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
         try:
-            import urllib
+            import urllib # pylint: disable=import-outside-toplevel
             data = urllib.request.urlopen(url).read()
         except Exception as e: # pylint: disable=broad-except
             raise ValueError(f"Cannot load url: {e}") from e
@@ -476,7 +476,7 @@ class PySheets():
         """
         assert isinstance(url, str), f"Parameter url must be a str, not {type(url)}"
         assert isinstance(start_key, str), f"Parameter start_key must be a str, not {type(start_key)}"
-        import urllib
+        import urllib # pylint: disable=import-outside-toplevel
         content = urllib.request.urlopen(url).read().decode("utf-8")
         self._import_csv_content(content, start_key)
 

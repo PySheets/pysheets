@@ -80,19 +80,19 @@ def share_sheet():
         url,
         {
             "sheet": {
-                "cells": dict(
-                    (cell.key, {
+                "cells": {
+                    cell.key: {
                         "value": cell.value,
                         "script": cell.script,
                         "prompt": cell.prompt,
-                        "style": dict([
-                            (property, value)
+                        "style": {
+                            property: value
                             for property, value in cell.style.items()
                             if value
-                        ])
-                    })
+                        }
+                    }
                     for cell in sheet.cells.values()
-                ),
+                },
                 "columns": sheet.columns,
                 "rows": sheet.rows,
                 "packages": sheet.packages,
