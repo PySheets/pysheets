@@ -160,7 +160,8 @@ def show_share_dialog():
                     .addClass("share-link-header"),
                 ltk.Link("", "")
                     .addClass("share-link"),
-            )
+            ),
+            ltk.Break(),
         )
             .addClass("share-dialog")
             .attr("id", "share-dialog")
@@ -272,7 +273,7 @@ def create_file_menu():
         ltk.MenuItem("📂", "Open", "Cmd+O", ltk.proxy(go_home)),
     ] + ([
         ltk.MenuItem("📥", "Import ...", "", ltk.proxy(lambda event: import_sheet())),
-        ltk.MenuItem("📥", "Share a copy ...", "", ltk.proxy(lambda event: share_sheet())),
+        ltk.MenuItem("🎁", "Share a copy ...", "", ltk.proxy(lambda event: share_sheet())),
         ltk.MenuItem("🗑️", "Delete", "", ltk.proxy(delete_sheet)),
     ] if state.UID else [])
     return ltk.Menu("File", items)

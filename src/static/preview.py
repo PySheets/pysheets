@@ -140,9 +140,7 @@ class PreviewView(ltk.Div):
                 ltk.Text(self.model.key).addClass("preview-key"),
                 ltk.Button(toggle_size_label, ltk.proxy(lambda event: self.toggle_size(event))).addClass("toggle") # pylint: disable=unnecessary-lambda
             ).addClass("preview-header"),
-            ltk.Div(
-                ltk.create(self.model.html)
-            ).addClass("preview-content")
+            ltk.create(self.model.html).addClass("preview-content")
         )
         self.make_resizable()
         self.draw_arrows()
