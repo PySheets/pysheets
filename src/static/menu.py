@@ -75,20 +75,20 @@ def share_sheet():
 def share_on_host(host):
     """ Share the sheet on the provided host """
 
+    print("share_on_host", host)
+
     sheet = state.SHEET
 
     def handle_url(data):
+        print("handle", data)
         try:
-            share_url = f"{host}/{data['url']}"
-            ltk.find("#share-message").empty().append(
-                ltk.VBox(
-                    ltk.Text("Copied to clipboard:"),
-                    ltk.Link(f"{share_url}", ltk.Text(share_url)).addClass("share-link"),
-                )
-            )
-            ltk.window.navigator.clipboard.writeText(share_url)
+            url = f"{host}/{data['url']}"
+            ltk.window.navigator.clipboard.writeText(url)
+            ltk.find(".share-link-header").text("Copied to the clipboard:")
+            ltk.find(".share-link").text(url)
+            ltk.find(".share-link").attr("href", url)
         except Exception as error: # pylint: disable=broad-exception-caught
-            logger.error(error)
+            print("oops", error)
             ltk.window.alert(f"Cannot share sheet: {error} {data}")
 
     ltk.post(
@@ -143,7 +143,12 @@ def show_share_dialog():
                 buttons,
                 ltk.Break(),
             ),
-            ltk.Div("").attr("id", "share-message")
+            ltk.VBox(
+                ltk.Text("")
+                    .addClass("share-link-header"),
+                ltk.Link("", "")
+                    .addClass("share-link"),
+            )
         )
             .addClass("share-dialog")
             .attr("id", "share-dialog")
