@@ -4,6 +4,7 @@ CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
 Initializes the PySheets application and sets up the necessary components.
 """
 
+import json
 import sys
 
 import ltk
@@ -54,6 +55,10 @@ def load_ui():
 
     def load_shared_sheet():
         def load(data):
+            if not "sheet" in data:
+                ltk.window.alert(f"Could not load sheet {json.dumps(data, indent=4)}")
+                return
+            state.UID = data["uid"]
             sheet = models.Sheet(uid=state.UID, **data["sheet"])
             storage.save(sheet)
             load_sheet_with_model(sheet)
