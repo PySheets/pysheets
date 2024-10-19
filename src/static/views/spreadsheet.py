@@ -893,7 +893,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
 
         tabs = ltk.Tabs(
             console,
-            ltk.Div().addClass("timeline-container").attr("name", "Timeline"),
+            ltk.Table().addClass("timeline-container").attr("name", "Timeline"),
         ).addClass("internals")
 
         ai = ltk.VBox(

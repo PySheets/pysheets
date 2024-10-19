@@ -833,14 +833,13 @@ td:hover .debug-info {
     display: contents;
     background-color: #f9f9ff;
     width: 100%;
-    height: 100%;
     overflow-x: scroll;
     overflow-y: scroll;
     display: flex;
     flex-flow: row wrap;
     align-items: flex-start;
     font-family: "Helvetica Narrow", "Arial Narrow", Tahoma, Arial, Helvetica, sans-serif;
-    border: 3px solid #BBB;
+    border: 0px solid #BBB;
 }
 
 .timeline-container .timeline-switch {
@@ -1142,11 +1141,15 @@ input[type="checkbox"]:focus-visible {
 
 .edit {
     position: relative;
-    border: 1px solid gray;
+    border: 1px solid rgb(220, 220, 220);
+    border-top-width: 0;
     padding: 3px;
-    margin-bottom: 2px;
     width: 100%;
     cursor: pointer;
+}
+
+.edit td {
+    border: 0;
 }
 
 .edit:hover {
