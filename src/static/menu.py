@@ -75,12 +75,9 @@ def share_sheet():
 def share_on_host(host):
     """ Share the sheet on the provided host """
 
-    print("share_on_host", host)
-
     sheet = state.SHEET
 
     def handle_url(data):
-        print("handle", data)
         try:
             url = f"{host}/{data['url']}"
             ltk.window.navigator.clipboard.writeText(url)
@@ -88,10 +85,9 @@ def share_on_host(host):
             ltk.find(".share-link").text(url)
             ltk.find(".share-link").attr("href", url)
         except Exception as error: # pylint: disable=broad-exception-caught
-            print("oops", error)
             ltk.window.alert(f"Cannot share sheet: {error} {data}")
 
-    preview_html = """ 
+    preview_html = """
         <div class="empty-preview">
             Loading...
         </div>
