@@ -9,6 +9,7 @@ import history
 import ltk
 import models
 import selection
+import state
 
 previews = {}
 
@@ -135,9 +136,11 @@ class PreviewView(ltk.Div):
         """
         self.model.html = self.fix_html(html)
         toggle_size_label = "-" if self.height() > constants.PREVIEW_HEADER_HEIGHT or self.height() == 0 else "+"
+        cell = state.SHEET.get_cell(self.model.key)
+        title = f"{self.model.key} - {cell.value}"
         self.empty().append(
             ltk.HBox(
-                ltk.Text(self.model.key).addClass("preview-key"),
+                ltk.Text(title).addClass("preview-key"),
                 ltk.Button(toggle_size_label, ltk.proxy(lambda event: self.toggle_size(event))).addClass("toggle") # pylint: disable=unnecessary-lambda
             ).addClass("preview-header"),
             ltk.create(self.model.html).addClass("preview-content")
