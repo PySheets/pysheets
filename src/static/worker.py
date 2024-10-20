@@ -248,8 +248,12 @@ def handle_run(data): # pylint: disable=too-many-locals
 
     try:
         kind = result.__class__.__name__
+        if isinstance(result, pandas.DataFrame):
+            kind = f"DataFrame with {len(result):,} rows"
+        elif hasattr(result, "size"):
+            kind = f"{kind} with {result.size:,} items"
         cache[key] = results[key] = result
-    except Exception:  # pylint: disable=broad-exception-caught
+    except Exception as error:  # pylint: disable=broad-exception-caught
         polyscript.xworker.sync.publish(
             "Worker",
             "Application",
@@ -260,6 +264,7 @@ def handle_run(data): # pylint: disable=too-many-locals
                     "script": script,
                     "value": None,
                     "preview": "",
+                    "lineno": 1,
                     "duration": time.time() - start,
                     "error": f"Worker result error: {type(error)}:{error}",
                     "traceback": traceback.format_exc(),
@@ -270,7 +275,7 @@ def handle_run(data): # pylint: disable=too-many-locals
 
     prompt = (
         get_visualization_prompt(key, results[key].columns.values)
-        if kind == "DataFrame"
+        if isinstance(result, pandas.DataFrame)
         else ""
     )
 
