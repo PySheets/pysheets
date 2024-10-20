@@ -104,8 +104,10 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         """
         selection.remove_arrows(0)
         self.draw_cell_arrows()
-        cell_preview = ltk.find(f"#preview-{self.model.key}")
-        cell_preview.appendTo(cell_preview.parent()) # raise the preview to the top
+        if self.model.key in preview.previews:
+            preview.previews[self.model.key].draw_arrows()
+            element = ltk.find(f"#preview-{self.model.key}")
+            element.appendTo(element.parent()) # raise the preview to the top
 
     def set(self, script, evaluate=True):
         """
