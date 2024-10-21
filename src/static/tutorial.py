@@ -6,6 +6,7 @@ This module provides functions for creating and managing the application menu.
 """
 
 import constants
+import history
 import menu
 import state
 import ltk
@@ -21,6 +22,7 @@ def basics():
     """
     Render a basic tutorial.
     """
+    ltk.find("#tutorial-dialog").remove()
     return [
         {
             "A1": [ "50", yellow ],
@@ -63,6 +65,7 @@ def charts():
     """
     Render a tutorial that explains how to create charts.
     """
+    ltk.find("#tutorial-dialog").remove()
     return [
         {
             "A1": [ "Country", green],    "B1": [ "Export", green],    "C1": [ "Import", green],
@@ -241,6 +244,7 @@ def chess():
     """
     Create a chess game.
     """
+    ltk.find("#tutorial-dialog").remove()
     return [
         {
             "I1": [ CHESS, green],
@@ -285,6 +289,7 @@ def airports():
     """
     Create a US map with airport locations.
     """
+    ltk.find("#tutorial-dialog").remove()
     return [
         {
             "A1": [ AIRPORTS_LOAD, green],
@@ -330,23 +335,34 @@ def install_package(name):
     state.UI.select(state.UI.get_cell("I1"))
     packages = ltk.find("#packages")
     if not name in packages.val():
-        packages.val(name)
-        print(f"PySheets will now reload the worker with package '{name}' and then continue the tutorial...")
-        ltk.find("#reload-button").click()
+        ltk.window.alert(f"PySheets will now reload the worker with package '{name}' and then continue the tutorial...")
+        set_packages(name)
+
+
+def set_packages(names):
+    """ 
+    Set the packages.
+    """
+    ltk.find("#packages").val(names)
+    state.UI.save_packages()
+    if names:
+        ltk.schedule(ltk.window.location.reload, "Reload", 0.5)
 
 
 def clear():
     """
-    Clear the current sheet.
+    Clear and reload the current sheet.
     """
-    sheet = state.UI
-    start = sheet.get_cell("A1")
-    end = sheet.get_cell("M30")
-    selection = sheet.multi_selection
-    selection.start(start)
-    selection.extend(end)
-    selection.clear()
-    ltk.find(".ltk-step, .ltk-step-marker").remove()
+    for cell in list(state.UI.cell_views.values()):
+        cell.clear()
+    set_packages("")
+
+
+def reload():
+    """
+    Reload the current sheet.
+    """
+    ltk.schedule(ltk.window.location.reload, "Reload", 0.5)
 
 
 def show_tutorial(init_tutorial):

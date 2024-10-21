@@ -35,10 +35,11 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
     navigation, and integration with the underlying spreadsheet model.
     """
     def __init__(self, model):
+        self.cell_enter = ltk.proxy(lambda event: self.enter(event)) # pylint: disable=unnecessary-lambda
         self.model = model
         self.model.listen(self.model_changed)
         self.current = None
-        self.freeze_notifications = False
+        self.ai_scheduled = False
         self.clear()
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_WORKER_RESULT, self.handle_worker_result)
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.pubsub.TOPIC_WORKER_READY, self.worker_ready)
@@ -53,29 +54,12 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         self.setup_pubsub()
         ltk.window.addEventListener("beforeunload", ltk.proxy(lambda event: self.before_unload()))
 
-    def no_notification(self):
-        """ Do not notify any UI elements when models changes """
-        sheet = self
-        class NoNotifications:
-            """ No notifications context manager """
-
-            def __enter__(self):
-                """ Enter the context manager """
-                sheet.freeze_notifications = True
-                return self
-
-            def __exit__(self, exc_type, exc_value, traceback):
-                """ Leave the context manager """
-                sheet.freeze_notifications = False
-
-        return NoNotifications()
-
     def handle_set_cells(self, cells):
         """
         Handle a request from the worker to set a collection of cells.
         """
         with history.SingleEdit(f"Set {len(cells)} cells"):
-            with self.no_notification():
+            with models.freeze():
                 for key, value in cells.items():
                     cell = self.get_cell(key)
                     cell.set(value)
@@ -105,7 +89,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         
         This method updates the UI.
         """
-        with self.no_notification():
+        with models.freeze():
             field_name = info["name"]
             if field_name == "rows":
                 ltk.find(f".row-{info['row']}").css("height", info['height'])
@@ -320,16 +304,23 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             cell.set(script)
             cell.evaluate()
         self.sync()
+        
+    def schedule_ai(self):
+        """
+        Schedule tasks to scan the spreadsheet for cells to make AI suggestions for.
+        """
+        if not self.ai_scheduled:
+            self.ai_scheduled = True
+            ltk.schedule(self.run_ai, "run ai", 3)
 
     def run_ai(self):
         """
-        Schedule tasks to scan the spreadsheet for cells to make AI suggestions for.
-
         Searches the spreadsheet for cells that contain a url, and for rectangular regions
         of cells that could represent Pandas DataFrames.
         """
-        ltk.schedule(self.find_pandas_data_frames, "find frames", 1)
-        ltk.schedule(self.find_urls, "find urls", 1)
+        self.ai_scheduled = False
+        self.find_pandas_data_frames()
+        self.find_urls()
 
     def before_unload(self):
         """
@@ -540,7 +531,8 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         if event.key == "Tab":
             column += -1 if event.shiftKey else 1
         elif event.key in ["Delete", "Backspace"]:
-            self.multi_selection.clear()
+            with models.freeze():
+                self.multi_selection.clear()
         elif event.key == "ArrowLeft":
             column = max(1, column - 1)
         elif event.key == "Home":
@@ -814,6 +806,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         Evaluates the current cell in the spreadsheet.
         """
+        self.update_current_cell()
         selection.remove_arrows()
         self.current.evaluate()
 
@@ -861,10 +854,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         self.editor = editor.Editor()
         self.editor.attr("id", "editor") \
-            .css("overflow", "hidden") \
-            .on("change",
-                ltk.proxy(lambda event: self.update_current_cell(event))  # pylint: disable=unnecessary-lambda
-            )
+            .css("overflow", "hidden")
 
         def resize_ai(*args): # pylint: disable=unused-argument
             selection.remove_arrows()
@@ -995,6 +985,12 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             .on("blur", ltk.proxy(lambda event: self.reset_name())) \
             .on("change", ltk.proxy(lambda event: self.set_name()))
 
+    def enter(self, event):
+        """ Handle the mouse entering a cell """
+        key = event.target.id
+        if key in self.cell_views:
+            self.cell_views[key].enter()
+
     def load_from_web(self, event=None): # pylint: disable=unused-argument
         """
         Load a sheet from the specified URL by calling `pysheets.load_sheet(url)`.
@@ -1059,7 +1055,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         if ltk.find("#title").val() == "":
             ltk.find("#title").val("Untitled Sheet")
 
-    def save_packages(self, event): # pylint: disable=unused-argument
+    def save_packages(self, event=None): # pylint: disable=unused-argument
         """
         Saves the specified Python packages and reloads the spreadsheet page with those packages.
         """

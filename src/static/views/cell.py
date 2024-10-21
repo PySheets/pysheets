@@ -57,9 +57,9 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         self.dependents = set()
         if self.model.script != self.model.value:
             self.set(self.model.script, evaluate=False)
-        self.on("mouseenter", ltk.proxy(lambda event: self.enter()))
         self.model.listen(self.model_changed)
         self.observer.observe(self.element[0], self.observer_config)
+        self.on("mouseenter", self.sheet.cell_enter)
 
     @classmethod
     def cellview_mutated(cls, mutation_records):
@@ -88,15 +88,13 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             info (dict): A dictionary containing information about the update,
             including the name of the property that changed.
         """
-        if self.sheet.freeze_notifications:
-            return
         if info["name"] == "script":
             self.set(model.script)
         elif info["name"] == "value":
             self.text(model.value)
         elif info["name"] == "style":
             self.css(model.style)
-        ltk.schedule(self.sheet.run_ai, "run ai", 3)
+        self.sheet.schedule_ai()
 
     def enter(self):
         """
@@ -317,8 +315,9 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         history.add(models.CellScriptChanged(key=self.model.key, script=""))
         history.add(models.CellValueChanged(key=self.model.key, value=""))
         history.add(models.CellStyleChanged(key=self.model.key, style={}))
-        self.notify()
 
+        self.remove_preview()
+        self.notify()
         self.sheet.reselect()
 
     def remove_preview(self):

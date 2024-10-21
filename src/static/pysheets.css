@@ -742,7 +742,9 @@ img.loading {
 }
 
 .document-card {
-    display: flex;
+    display: block;
+    height: 203px;
+    overflow: hidden;
     float: left;
     background-color: white;
     border-radius: 15px;
@@ -842,13 +844,13 @@ td:hover .debug-info {
     border: 0px solid #BBB;
 }
 
-.timeline-container .timeline-switch {
+.timeline-switch {
     position: absolute;
     right: 5px;
     top: 9px;
 }
 
-.timeline-container .flame-header {
+.flame-header {
     display: flex;
     justify-content: flex-end;
     background-color: #2077b4;
@@ -857,7 +859,7 @@ td:hover .debug-info {
     padding: 2px 8px;
 }
 
-.timeline-container .flame-header .ltk-button {
+.flame-header .ltk-button {
     width: 24px;
     min-width: 24px;
     margin-top: 1px;
@@ -866,14 +868,14 @@ td:hover .debug-info {
     margin-right: 4px;
 }
 
-.timeline-container .flame-header .flame-title {
+.flame-header .flame-title {
     background-color: transparent;
     color: white;
     height: 24px;
     overflow: hidden;
 }
 
-.timeline-container .flame {
+.flame {
     position: relative;
     overflow: hidden;
     border-radius: 2px;
@@ -884,14 +886,27 @@ td:hover .debug-info {
     box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
 }
 
-.timeline-container .flame .label {
+.flame.detached {
+    box-shadow: none;
+    background-color: #dad9d9;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: scroll;
+}
+
+.flame.detached .flame-header{
+    display: none;
+}
+
+.flame .label {
     margin-left: 10px;
     color: rgb(32, 32, 32);
     height: 20px;
     font-size: 15px;
 }
 
-.timeline-container .flame .call {
+.flame .call {
     position: absolute;
     background-color: white;
     height: 20px;

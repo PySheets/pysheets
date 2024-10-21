@@ -247,8 +247,8 @@ pysheets.load_sheet("{url}")
     .attr("title", "Import Data")
     .dialog({
         "modal": True,
-        "width": 530,
-        "height": "auto"
+        "width": 800,
+        "height": "auto",
     }))
 
 

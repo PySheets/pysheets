@@ -49,17 +49,24 @@ def add(edit):
     schedule_flush()
 
 
+flush_scheduled = False
+
 def schedule_flush():
     """
     Schedules a flush of the changes to storage.
     """
-    ltk.schedule( flush, "flush events", 0)
+    global flush_scheduled
+    if not flush_scheduled:
+        flush_scheduled = True
+        ltk.schedule( flush, "flush events", 0)
 
 
 def flush():
     """
     Flushes the changes to the storage and schedules a status update to be displayed after a short delay.
     """
+    global flush_scheduled
+    flush_scheduled = False
     storage.save(state.SHEET)
     ltk.schedule(show_status, "show status", 0.3)
 

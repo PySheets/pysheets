@@ -15,6 +15,30 @@ except ImportError:
     from static import constants
 
 
+class NoNotifications:
+    """ Context manager to freeze notifications """
+
+    frozen = False
+
+    def __enter__(self):
+        """ Enter the context manager """
+        NoNotifications.frozen = True
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """ Leave the context manager """
+        NoNotifications.frozen = False
+
+
+def freeze():
+    """ Do not send any notifications when models change """
+    return NoNotifications()
+
+
+def frozen():
+    """ Return whether notifications are frozen """
+    return NoNotifications.frozen is False
+
 
 def encode(model):
     """
@@ -124,9 +148,9 @@ class SerializableDict(dict):
         self._ = self.__class__.__name__
 
     def __setattr__(self, name: str, value):
-        old_value = getattr(self, name, None)
-        if old_value == value:
-            return
+        # old_value = getattr(self, name, None)
+        # if old_value == value:
+            # return
         object.__setattr__(self, name, value)
         self[name] = value
 
@@ -187,7 +211,7 @@ class Model(SerializableDict):
 
     def __setattr__(self, name: str, value):
         super().__setattr__(name, value)
-        if not name.startswith("_"):
+        if not frozen() and not name.startswith("_"):
             self.notify_listeners({ "name": name })
 
     def notify(self, listener, info):
@@ -207,8 +231,9 @@ class Model(SerializableDict):
         Args:
             info (dict): A dictionary containing information about the changes made to the model.
         """
-        for listener in self._listeners:
-            self.notify(listener, info)
+        if not frozen():
+            for listener in self._listeners:
+                self.notify(listener, info)
 
 
 class Sheet(Model):  # pylint: disable=too-many-instance-attributes

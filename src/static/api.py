@@ -88,7 +88,7 @@ def convert(value: str):
         Union[float, int, str]: The converted value, or the original value if conversion fails.
     """
     try:
-        return float(value) if "." in value else int(value)
+        return float(value) if isinstance(value, str) and "." in value else int(value)
     except ValueError:
         return value if value else 0
 
@@ -122,7 +122,13 @@ def is_cell_reference(s: str):
     Returns:
         bool: True if `s` is a valid cell reference, False otherwise.
     """
-    return isinstance(s, str) and re.match(cell_reference, s)
+    length = len(s)
+    n = 0
+    while n < length and s[n] >= 'A' and s[n] <= 'Z':
+        n += 1
+    while n < length and s[n] >= '0' and s[n] <= '9':
+        n += 1
+    return n == length
 
 
 def is_cell_range_reference(s: str):
