@@ -32,7 +32,7 @@ state.console.write(
 state.console.write(
     "help",
     "[Help] Learn more about PySheets with our tutorials 🎓.",
-    action=ltk.Button("Learn", lambda event: ltk.window.open(""))
+    action=ltk.Button("Learn", lambda event: ltk.window.open("https://github.com/PySheets/pysheets?tab=readme-ov-file#tutorials"))
             .addClass("learn-button")
             .css("min-width", 45)
 )
@@ -59,7 +59,7 @@ def load_ui():
     def load_shared_sheet():
         def load(data):
             if not "sheet" in data:
-                ltk.window.alert(f"Could not load sheet {json.dumps(data, indent=4)}")
+                ltk.window.alert(f"Could not load sheet {json.dumps(data)}")
                 return
             sheet = models.Sheet(uid=state.UID, **data["sheet"])
             storage.save(sheet)
