@@ -31,8 +31,8 @@ state.console.write(
 )
 state.console.write(
     "help",
-    "[Help] Learn more about PySheets using the Help menu 🎓.",
-    action=ltk.Button("Learn", lambda event: tutorial.show())
+    "[Help] Learn more about PySheets with our tutorials 🎓.",
+    action=ltk.Button("Learn", lambda event: ltk.window.open(""))
             .addClass("learn-button")
             .css("min-width", 45)
 )

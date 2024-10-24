@@ -17,6 +17,10 @@ pip install pysheets-app
 pysheets
 ```
 
+# Tutorials 
+
+Run the tutorials below to familiarize yourself with PySheets and its powerful features.
+
 
 ## Tutorial: Generating Matplotlib Charts
 
