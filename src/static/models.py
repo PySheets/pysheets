@@ -37,7 +37,7 @@ def freeze():
 
 def frozen():
     """ Return whether notifications are frozen """
-    return NoNotifications.frozen is False
+    return NoNotifications.frozen is True
 
 
 def encode(model):
