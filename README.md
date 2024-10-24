@@ -26,7 +26,7 @@ Run the tutorials below to familiarize yourself with PySheets and its powerful f
 
 ![PySheets](src/static/icons/screenshot-charts.png)
 
-[Run this tutorial now](https://pysheets.app/?share=05a0ddea-b56b-43aa-985a-1515c77aa168)
+[Run this tutorial now](https://pysheets.app/?share=e2933977-3f56-4333-a71c-ad1d1a7e8a64)
 
 
 # Find out more
