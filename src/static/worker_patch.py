@@ -151,7 +151,7 @@ def _patch_document():
         js.document = ltk.window.document  # patch for matplotlib
 
 
-class WidgetProxy():
+class WidgetProxy(ltk.Widget):
     """
     Creates a proxy for Widgets to optimize access to the DOM through LTK
     """
@@ -162,6 +162,11 @@ class WidgetProxy():
         self.selector = selector
         self.attributes = {}
         ltk.schedule(self.send_to_main, "Flush widget proxy buffer")
+
+    @property
+    def element(self):
+        """ Handle the case when the proxy is added to the DOM """
+        return ltk.window.jQuery(self.selector)
 
     def __getattr__(self, name):
         return getattr(ltk.window.jQuery(self.selector), name)
@@ -265,7 +270,8 @@ class WidgetProxy():
 
     def remove(self):
         """ Wraps existing LTK Widget operation for buffering """
-        WidgetProxy.buffer.append([self.selector, "remove"])
+        self.flush()
+        ltk.window.jQuery(self.selector).remove()
         return self
 
     def animate(self, properties, duration=None, easing=None, complete=None):

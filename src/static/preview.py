@@ -208,6 +208,8 @@ def add(sheet, key, html):
         html (str): The HTML content to be displayed in the preview.
     """
     if not html or html == "None":
+        ltk.find(f".preview-{key}").remove()
+        remove(key)
         return
     if not key in previews:
         PreviewView(sheet, sheet.model.get_preview(key, html=html))

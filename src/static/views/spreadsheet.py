@@ -288,12 +288,12 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         newline = '\n' if prompt else ''
         ltk.find("#ai-prompt").val(f"{prompt}{newline}{extra_text}")
 
-    def update_current_cell(self, event=None): # pylint: disable=unused-argument
+    def update_current_cell(self, evaluate=True):
         """
         Updates the current cell with the script from the editor and evaluates the cell.
-        
+
         Args:
-            event (Optional[Any]): An optional event object, not used in this method.
+        evaluate (bool): If True, the cell will be evaluated after updating. Default is False.
         """
         script = self.editor.get()
         cell = self.current
@@ -301,8 +301,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             return
         cell.model.prompt = ltk.find("#ai-prompt").val()
         if cell and cell.model.script != script:
-            cell.set(script)
-            cell.evaluate()
+            cell.set(script, evaluate)
         self.sync()
         
     def schedule_ai(self):
@@ -854,7 +853,8 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         self.editor = editor.Editor()
         self.editor.attr("id", "editor") \
-            .css("overflow", "hidden")
+            .css("overflow", "hidden") \
+            .on("change", ltk.proxy(lambda event: self.update_current_cell(evaluate=False)))
 
         def resize_ai(*args): # pylint: disable=unused-argument
             selection.remove_arrows()

@@ -282,8 +282,8 @@ class Widget(object):
         Args:
             target:(Widget,Element): An LTK widget or a jQuery element
         """
-        target = target.element if isinstance(target, Widget) else target
-        return self.element.appendTo(target)
+        element = target.element if isinstance(target, Widget) else target
+        return self.element.appendTo(element)
 
     def empty(self):
         """
@@ -983,103 +983,37 @@ class Step(Div):
         Div.__init__(self, buttons, content)
         self.content = content
         self.widget = widget
-        self.appendTo(ltk.find("body"))
-        self.width = self.width()
-        self.height = self.height()
-        self.last_dimensions = self.get_widget_dimensions()
+        self.draggable({
+            "drag": proxy(lambda *args: (
+                ltk.find(".leader-line").remove(),
+                schedule(self.show_arrow, "ltk-step-draw-arrow", 0.1)
+            )),
+        })
 
-    def get_widget_dimensions(self):
-        return (
-            self.widget.offset().left,
-            self.widget.offset().top,
-            self.widget.width(),
-            self.widget.height(),
-        )
+        self.on("mouseenter", proxy(lambda event: self.show_arrow()))
 
     def show(self):
-        self.content.css("visibility", "hidden")
-        self.render()
-        repeat(lambda: self.fix(), f"render widget {id(self)}", 0.1)
-
-    def render(self):
         if not getattr(self.widget, "is")(":visible"):
             return
-        self.css("visibility", "visible")
-        left = self.widget.offset().left + self.widget.outerWidth() + 28
-        top = self.widget.offset().top
-        self.css("width", 0)
-        self.css("height", 0)
-        self.css("left", f"{left + self.width / 2}px")
-        self.css("top", f"{top + self.height / 2}px")
-        self.animate(ltk.to_js({
+        ltk.find(".ltk-step").remove()
+        self.appendTo(ltk.find("body"))
+        self.css(ltk.to_js({
+            "visibility": "visible",
             "opacity": 1,
-            "left": left,
-            "top": top,
-            "width": self.width + 5,
-            "height": self.height,
-        }), 250, ltk.proxy(lambda: self.add_markers()))
+            "left": self.widget.offset().left + self.widget.outerWidth() + 100,
+            "top": self.widget.offset().top,
+            "width": "fit-content",
+        }))
+        self.show_arrow()
 
-    def fix(self):
-        dimensions = self.get_widget_dimensions()
-        if dimensions != self.last_dimensions:
-            self.content.css("visibility", "hidden")
-            self.css("visibility", "hidden")
-            find(".ltk-step-marker").remove()
-            schedule(self.show, f"fix {id(self)}", 1)
-            self.last_dimensions = dimensions
-
-    def add_markers(self):
-        self.content.css("visibility", "visible")
-        # the top part
-        ltk.find("body").append(ltk.Div()
-            .addClass("ltk-step-marker")
-            .css("left", self.widget.offset().left)
-            .css("top", self.widget.offset().top)
-            .css("width", self.widget.outerWidth() + 1)
-        )
-        # the bottom part
-        ltk.find("body").append(ltk.Div()
-            .addClass("ltk-step-marker")
-            .css("left", self.widget.offset().left)
-            .css("top", self.widget.offset().top + self.widget.outerHeight() - 2)
-            .css("width", self.widget.outerWidth() + 1)
-        )
-        # the left part
-        ltk.find("body").append(ltk.Div()
-            .addClass("ltk-step-marker")
-            .css("left", self.widget.offset().left)
-            .css("top", self.widget.offset().top)
-            .css("height", self.widget.outerHeight())
-        )
-        # the right part
-        ltk.find("body").append(ltk.Div()
-            .addClass("ltk-step-marker")
-            .css("left", self.widget.offset().left + self.widget.outerWidth() - 1)
-            .css("top", self.widget.offset().top)
-            .css("height", self.widget.outerHeight())
-        )
-        # the connector
-        ltk.find("body").append(ltk.Div()
-            .addClass("ltk-step-marker")
-            .css("left", self.widget.offset().left + self.widget.outerWidth() - 1)
-            .css("top", self.widget.offset().top + 12)
-            .css("width", 32)
-            .css("height", 3)
-        )
+    def show_arrow(self):
+        ltk.find(".leader-line").remove()
+        source = self.element
+        target = self.widget.element if hasattr(self.widget, "element") else self.widget
+        ltk.schedule(proxy(lambda: ltk.window.addArrow(source, target)), "ltk-step-show-arrow")
 
     def hide(self):
-        ltk.find(".ltk-step-marker").remove()
-        left = self.widget.offset().left + self.widget.outerWidth() + self.width / 2 + 28
-        top = self.widget.offset().top + self.height / 2
-        self.content.css("visibility", "hidden")
-        self.animate(ltk.to_js({
-            "opacity": 0,
-            "left": left,
-            "top": top,
-            "width": 0,
-            "height": 0,
-        }), 250, ltk.proxy(lambda: self.remove()))
-        cancel(f"render widget {id(self)}")
+        self.remove()
 
 
 class Tutorial():
@@ -1088,7 +1022,6 @@ class Tutorial():
     def __init__(self, steps):
         self.steps = steps
         self.index = 0
-        self.current = None
         self.steps = steps
 
     def run(self):
@@ -1096,21 +1029,18 @@ class Tutorial():
         self.show()
         
     def close(self):
-        ltk.find(".ltk-step").remove()
-        ltk.find(".ltk-step-marker").remove()
+        ltk.find(".leader-line, .ltk-step").remove()
 
     def previous(self):
-        if self.current:
-            self.current.hide()
+        self.close()
         if self.index > 0:
             self.index -= 1
             self.show() 
 
     def next(self):
-        if self.current:
-            self.current.hide()
-        self.index += 1
+        self.close()
         if self.index < len(self.steps):
+            self.index += 1
             self.show()
 
     def event(self, index):
@@ -1118,9 +1048,7 @@ class Tutorial():
             self.next()
 
     def show(self):
-        logger.info(f"[Tutorial] Run step {self.index + 1} of {len(self.steps)}")
-        if self.index >= len(self.steps):
-            print("Cannot run tutorial step", self.index, ". Tutorial has", len(self.steps), "steps.")
+        if self.index < 0 or self.index >= len(self.steps):
             return
         selector, event, content = self.steps[self.index]
         buttons = ltk.HBox(
@@ -1129,8 +1057,7 @@ class Tutorial():
             ltk.Text("x").on("click", ltk.proxy(lambda *args: self.close())),
         ).addClass("ltk-step-buttons")
         widget = ltk.find(selector)
-        self.current = Step(widget, buttons, content)
-        self.current.show()
+        Step(widget, buttons, content).show()
         index = self.index
         widget.on(event, ltk.proxy(lambda *args: self.event(index)))
 

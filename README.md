@@ -2,6 +2,36 @@
 
 [PySheets](https://pysheets.app/about) is a spreadsheet UI for Python, implemented in Python, running logic and saving data in the browser, using PyScript and IndexedDB.
 
+
+# Try it now
+
+To run PySheets without locally installing it, simply visit [pysheets.app](https://pysheets.app)
+
+
+# Installation on your own device
+
+To install and run PySheets on your local machine, run:
+
+```
+pip install pysheets-app
+pysheets
+```
+
+
+## Tutorial: Generating Matplotlib Charts
+
+![PySheets](src/static/icons/screenshot-charts.png)
+
+[Run this tutorial now](https://pysheets.app/?share=05a0ddea-b56b-43aa-985a-1515c77aa168)
+
+
+# Find out more
+
+Information sources for PySheets:
+ - [pysheets.app/about](https://pysheets.app/about)
+ - [Discord server](https://discord.com/invite/4wy23872th)
+ - [Feedback form](https://docs.google.com/forms/d/e/1FAIpQLScmeDuDr5fxKYhe04Jo-pNS73P4VF2m-i8X8EC9rfKl-jT84A/viewform)
+
 # Licensing
 
 Ahead In The Cloud Computing makes PySheets available under both the GPLv3 and a
@@ -23,58 +53,3 @@ using PySheets in any commercial service,
 leveraging PySheets to create algorithms or workflows that aim to produce a profit,
 using PySheets in a commercial, financial institution such as a bank or hedge fund,
 or using PySheets to produce other artefacts for commercial purposes.
-
-
-
-  
-# Installation
-
-To install PySheets on your local machine, run:
-
-```
-pip install pysheets-app
-```
-
-Do not install `pysheets`, this is an unrelated dormant project.
-
-# Using
-
-To run PySheets locally on your own machine, storing all data in the browser, without any server, run:
-
-```
-pysheets
-```
-
-Then open http://localhost:8081/ in your browser and create a new sheet.
-
-Some basic things to try:
- - Change the sheet name.
- - Add literal values such as 4 in A1 and 5 in A2.
- - Add an expression in cell D3, such as "=A1 + A2", and see it evaluate to 9.
-
-Produce an AI-driven data-science workflow without writing any Pandas or Matplotlib code:
- - At cells A1 through C4 enter a table looking like this:
-    ```
-    Country	Import	Export
-    Canada	  34      10
-    USA       54      22
-    Germany   11      40
-    ```
- - Select an empty cell, such as F5
- - Click the "⭐ A1" button in the AI prompt section to turn the table into a dataframe
- - Select another empty cell, such as E9
- - Click the "⭐ F5" button to visualize the data
- - You now have a Pandas dataframe and matplotlib Figure, with just a few clicks 🤯. 
-
-Import sample data from the web:
- - Click the "Import" button in the AI prompt section
- - Retrieve a CSV or Excel sheet
- - Turn it into a dataframe using the AI buttons
- - Visualize it. Change the prompt to change colors or image size.
-
-# Find out more
-
-Information sources for PySheets:
- - [pysheets.app/about](https://pysheets.app/about)
- - [Discord server](https://discord.com/invite/4wy23872th)
- - [Feedback form](https://docs.google.com/forms/d/e/1FAIpQLScmeDuDr5fxKYhe04Jo-pNS73P4VF2m-i8X8EC9rfKl-jT84A/viewform)

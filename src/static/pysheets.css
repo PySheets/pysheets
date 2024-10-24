@@ -792,6 +792,8 @@ img.loading {
 
 .ltk-step {
     border: 2px solid #185abc;
+    max-width: 350px;
+    padding-top: 28px;
 }
 
 .ltk-step-marker {

@@ -60,6 +60,8 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         self.model.listen(self.model_changed)
         self.observer.observe(self.element[0], self.observer_config)
         self.on("mouseenter", self.sheet.cell_enter)
+        if "# no-worker" in self.model.script:
+            self.run_in_main()
 
     @classmethod
     def cellview_mutated(cls, mutation_records):
@@ -129,7 +131,10 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         if not self.is_formula():
             self.sheet.cache[self.model.key] = api.convert(script)
         if evaluate:
-            ltk.schedule(self.evaluate, f"eval-{self.model.key}")
+            if "# no-worker" in self.model.script:
+                self.run_in_main()
+            else:
+                ltk.schedule(self.evaluate, f"eval-{self.model.key}")
 
     def is_running(self):
         """
@@ -461,6 +466,17 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         else:
             self.update(0, self.model.script)
 
+    def run_in_main(self):
+        """
+        Evaluates the cell's value in the main thread.
+
+        This is used when the cell's script contains the "# no-worker" directive.
+        """
+        try:
+            exec(self.model.script[1:])
+        except Exception as e:
+            print(f"Error: {e}")
+
     def show_loading(self):
         """
         Shows a loading indicator on the cell if the worker version is set to WORKER_LOADING.
@@ -579,10 +595,10 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
                     return
             self.update(duration, error)
             if self.sheet.current.model.key == self.model.key:
-                self.sheet.editor.mark_line(lineno)
+                self.sheet.editor.mark_line(lineno, error)
+                self.draw_cell_arrows()
             last_tb_lines = "\n".join(tb.split("\n")[-2:])
             state.console.write(self.model.key, f"[Error] {self.model.key}: Line {lineno}: {last_tb_lines} {tb}")
-            ltk.window.console.orig_log(tb)
             return
         value = result["value"]
         if isinstance(value, str):

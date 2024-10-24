@@ -205,6 +205,25 @@ def run_in_worker(script):
     return _locals["_"]
 
 
+def stack_dump():
+    """
+    Returns a string representation of the current call stack.
+    """
+    stack = traceback.format_exc()
+    lines = [line for line in stack.split("\n") if not "<exec>" in line]
+    return "\n".join(lines)
+
+def format_exception():
+    """
+    Returns a formatted string representation of the current exception.
+    """
+    return "\n".join([
+        line.replace('File "<string>", ', "")
+        for line in traceback.format_exc().split("\n")
+        if not "<exec>" in line
+    ])
+
+
 def handle_run(data): # pylint: disable=too-many-locals
     """
     Executes a Python script in the worker context, with access to the global
@@ -216,17 +235,21 @@ def handle_run(data): # pylint: disable=too-many-locals
     try:
         result = run_in_worker(script)
     except Exception:  # pylint: disable=broad-except
-        tb = traceback.format_exc()
+        stack = format_exception()
+        ltk.window.console.orig_log(f"Error in cell '{key}': {stack}")
+
         try:
-            lines = tb.strip().split("\n")
-            line = [line for line in lines if "<module>" in line][0]
-            lineno = int(re.sub("[^0-9]", "", line))
-            error = f"Line {lineno}: {lines[-1]} - {tb}"
+            lines = stack.strip().split("\n")
+            lines[0] = lines.pop()
+            last_stack_line = lines[-1]
+            lineno = int(re.sub("[^0-9]", "", last_stack_line))
+            stack = "\n".join(lines) \
+                .replace(", in ", ", in function ") \
+                .replace(", in function <module>", f", of cell '{key}'")
+            error = f"{stack}\n\nThe inputs for cell '{key}' are: {json.dumps(inputs, indent=4)}"
         except Exception as formatting_error: # pylint: disable=broad-except
             error = str(formatting_error)
-            lineno = 1
-
-        ltk.window.console.orig_log("error", lineno, error, tb)
+            lineno = script.count("\n") + 1
 
         polyscript.xworker.sync.publish(
             "Worker",
@@ -240,7 +263,7 @@ def handle_run(data): # pylint: disable=too-many-locals
                     "duration": time.time() - start,
                     "lineno": lineno,
                     "error": error,
-                    "traceback": tb,
+                    "traceback": stack,
                 }
             ),
         )
@@ -330,7 +353,7 @@ def handle_preview_import_web(data):
     try:
         preview = create_preview(pysheets.load_sheet(url))
     except Exception as e: # pylint: disable=broad-exception-caught
-        preview += f"Error: {e}"
+        preview += f"Error: Cannot preview web content: {e}"
     polyscript.xworker.sync.publish(
         "Worker",
         "Application",
@@ -346,7 +369,6 @@ def handle_upload(data):
     Handle a request from the UI to upload a local CSV or Excel
     """
     def send_preview(event):
-        print("send preview", len(event.target.result))
         sheet = pysheets.load_sheet_from_data(event.target.result)
         preview = create_preview(sheet)
         polyscript.xworker.sync.publish(
@@ -360,7 +382,6 @@ def handle_upload(data):
     reader = ltk.window.FileReader.new()
     reader.onload = ltk.proxy(send_preview)
     file = ltk.window.document.getElementById(data["id"])
-    print("Load", file, file.name)
     reader.readAsArrayBuffer(file)
 
 
@@ -453,7 +474,7 @@ def handle_request(sender, topic, request): # pylint: disable=unused-argument
         else:
             print("Error: Unexpected topic request", topic)
     except Exception as e: # pylint: disable=broad-exception-caught
-        print("Cannot handle request", request, e)
+        print("Error: Cannot handle request", request, e)
 
 
 polyscript.xworker.sync.handler = handle_request

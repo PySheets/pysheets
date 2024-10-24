@@ -115,15 +115,16 @@ class Editor(ltk.Div):
         """
         ltk.window.editorClearLine()
 
-    def mark_line(self, lineno):
+    def mark_line(self, lineno, error):
         """
         Marks the specified line number in the editor with a visual indicator. 
         Used to show the location of syntax errors.
         
         Args:
             lineno (int): The line number to mark, starting from 1.
+            error (str): The error message to display.
         """
-        ltk.window.editorMarkLine(lineno - 1)
+        ltk.window.editorMarkLine(lineno - 1, error)
 
     def start_running(self):
         """

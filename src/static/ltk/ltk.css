@@ -463,11 +463,6 @@
     position: absolute;
     top: -7px;
     right: -7px;
-    visibility: hidden;
-}
-
-.ltk-step:hover .ltk-step-buttons {
-    visibility: visible;
 }
 
 .ltk-step-buttons .ltk-text {
