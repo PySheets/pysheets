@@ -30,7 +30,7 @@ In this tutorial you will learn how to:
  - Create a Python cell function
  - Visualize the dependency graph in the spreadsheet
 
-[Run this tutorial now](https://pysheets.app/?share=7a1e9b64-b875-49e4-9037-cb933535175a)
+[Run the Basics tutorial now](https://pysheets.app/?id=d37ae426-8474-4d20-8479-e074a2cc1f1c)
 
 
 ## Tutorial: Generating Simple Matplotlib Charts
@@ -42,7 +42,7 @@ In this tutorial you will learn how to:
  - Visualize the dataframe as a bargraph
  - Generate your own visualization using the PySheets AI
 
-[Run this tutorial now](https://pysheets.app/?share=cd337dd3-21c9-4001-9acc-2aed6c7931b0)
+[Run the Charts tutorial now](https://pysheets.app/?share=b8b2fde5-c901-41f9-86da-32d81b5467cd)
 
 
 
@@ -60,7 +60,7 @@ This entire tutorial is using the low-code features of PySheets.
 All code in this tutorial was AI-generated. No Python knowledge 
 was needed to generate this dataflow.
 
-[Run this tutorial now](https://pysheets.app/?share=87a0ff5d-79d4-4972-80e6-f8e40953387e)
+[Run the Airport tutorial now](https://pysheets.app/?share=06a5b53d-1d1d-4e8b-9c47-1e0c18caa981)
 
 
 ## ️Tutorial: Playing Chess ♟
@@ -75,7 +75,7 @@ In this tutorial you will learn how to:
 This entire tutorial is showcasing a unique feature of PySheets,
 the ability to interacte with the main UI from a cell function.
 
-[Run this tutorial now](https://pysheets.app/?share=b79caa31-9292-4d55-a95e-81c6fff61509)
+[Run this tutorial now](https://pysheets.app/?share=2321bf22-563e-4460-83bb-fa8ef3b63e88)
 
 
 
