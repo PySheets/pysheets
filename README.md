@@ -22,11 +22,61 @@ pysheets
 Run the tutorials below to familiarize yourself with PySheets and its powerful features.
 
 
-## Tutorial: Generating Matplotlib Charts
+## Tutorial: Basics
+
+![PySheets](src/static/icons/screenshot-basics.png)
+
+In this tutorial you will learn how to:
+ - Create a Python cell function
+ - Visualize the dependency graph in the spreadsheet
+
+[Run this tutorial now](https://pysheets.app/?share=7a1e9b64-b875-49e4-9037-cb933535175a)
+
+
+## Tutorial: Generating Simple Matplotlib Charts
 
 ![PySheets](src/static/icons/screenshot-charts.png)
 
+In this tutorial you will learn how to:
+ - Convert a part of the spreadsheet into a Pandas DataFrame
+ - Visualize the dataframe as a bargraph
+ - Generate your own visualization using the PySheets AI
+
 [Run this tutorial now](https://pysheets.app/?share=cd337dd3-21c9-4001-9acc-2aed6c7931b0)
+
+
+
+## Tutorial: Finding the highest airports with PySheets ETL
+
+![PySheets](src/static/icons/screenshot-airports.png)
+
+In this tutorial you will learn how to:
+ - Import a CSV from the web and convert it into a Pandas DataFrame
+ - Transform the DataFrame by removing rows and adding new columns
+ - Generate a bargraph
+ - Generate a map using Folium
+
+This entire tutorial is using the low-code features of PySheets.
+All code in this tutorial was AI-generated. No Python knowledge 
+was needed to generate this dataflow.
+
+[Run this tutorial now](https://pysheets.app/?share=87a0ff5d-79d4-4972-80e6-f8e40953387e)
+
+
+## ️Tutorial: Playing Chess ♟
+
+![PySheets](src/static/icons/screenshot-chess.png)
+
+In this tutorial you will learn how to:
+ - Write a cell function that generates a chess board
+ - Access the PySheets main UI from a cell function
+ - How the tutorial was generated
+
+This entire tutorial is showcasing a unique feature of PySheets,
+the ability to interacte with the main UI from a cell function.
+
+[Run this tutorial now](https://pysheets.app/?share=b79caa31-9292-4d55-a95e-81c6fff61509)
+
 
 
 # Find out more
