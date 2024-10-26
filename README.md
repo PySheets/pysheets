@@ -75,7 +75,7 @@ In this tutorial you will learn how to:
 This entire tutorial is showcasing a unique feature of PySheets,
 the ability to interacte with the main UI from a cell function.
 
-[Run this tutorial now](https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/examples/tutorial_chess.json)
+[Run the Chess tutorial now](https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/examples/tutorial_chess.json)
 
 
 
