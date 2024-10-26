@@ -154,8 +154,8 @@ def get(url, handler, kind="json"):
         handler(data)
     @callback
     def error(jqXHR, textStatus, errorThrown):
-        window.console.error("[Network] GET ERROR", f"{get_time() - start:.2f}", jqXHR.status, repr(errorThrown), url)
-        return handler(f'{{"Error": "{errorThrown}"}}')
+        window.alert(f"[Network] GET ERROR {get_time() - start:.2f} {jqXHR.status} {repr(textStatus)} {url}")
+        return handler(f'{{"Network error for {url}": "{textStatus}"}}')
     window.ltk_get(url, success, kind, error)
 
 

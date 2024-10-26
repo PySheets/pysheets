@@ -12,7 +12,6 @@ import constants
 import inventory
 import models
 import state
-import tutorial
 
 from views.spreadsheet import SpreadsheetView
 
@@ -56,24 +55,32 @@ def load_ui():
         state.UI = SpreadsheetView(model)
         state.start_worker()
 
-    def load_shared_sheet():
-        def load(data):
-            if not "sheet" in data:
-                ltk.window.alert(f"Could not load sheet {json.dumps(data)}")
-                return
-            sheet = models.Sheet(uid=state.UID, **data["sheet"])
-            storage.save(sheet)
-            load_sheet_with_model(sheet)
-            ltk.window.history.pushState(ltk.to_js({}), "", f"?id={state.UID}")
+    def load(data):
+        if "sheet" in data:
+            data = data["sheet"]
+        if not "uid" in data:
+            data["uid"] = state.UID
+        sheet = models.Sheet(**data)
+        storage.save(sheet)
+        load_sheet_with_model(sheet)
+        ltk.window.history.pushState(ltk.to_js({}), "", f"?id={state.UID}")
 
+    def load_shared_sheet():
         state.UID = state.SHARE
         url = f"/shared?sheet_id={state.UID}"
+        ltk.get(url, ltk.proxy(load))
+
+    def load_sheet_from_url():
+        state.UID = ltk.window.crypto.randomUUID()
+        url = f"/load?{constants.ENCODE}=false&{constants.URL}={state.OPEN_URL}"
         ltk.get(url, ltk.proxy(load))
 
     if state.UID:
         storage.load_sheet(state.UID, load_sheet_with_model)
     elif state.SHARE:
         load_shared_sheet()
+    elif state.OPEN_URL:
+        load_sheet_from_url()
     else:
         load_inventory()
 

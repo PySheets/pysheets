@@ -1199,3 +1199,16 @@ input[type="checkbox"]:focus-visible {
     color: orange;
     text-decoration: underline;
 }
+
+.download-link {
+    display: inline-block;
+    padding: 5px;
+    border: 1px solid gray;
+    width: 100px;
+    text-align: center;
+    color: white;
+    background: #198754;
+    text-decoration: none;
+    margin-right: 20px;
+    cursor: pointer;
+}

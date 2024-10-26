@@ -18,6 +18,7 @@ import requests
 
 from flask import Flask
 from flask import render_template
+from flask import redirect
 from flask import request
 from flask import jsonify
 
@@ -148,6 +149,14 @@ def root():
         "editor_width": 350,
         "path": PATH,
     })
+
+
+@app.route("/go")
+def go():
+    """
+    Handle legacy routes.
+    """
+    return redirect("/")
 
 
 @app.route("/about")
@@ -300,9 +309,9 @@ def load():
         response = ssl_post(url, data, headers=headers)
     else:
         raise ValueError(f"Bad method {request.method}")
-    print(response)
     try:
-        response = base64.b64encode(response) # send base64 encoded bytes
+        if request.args.get(constants.ENCODE) != "false":
+            response = base64.b64encode(response) # send base64 encoded bytes
     except Exception: # pylint: disable=broad-except
         pass
     load_cache[url] = time.time(), response

@@ -8,6 +8,7 @@ This module provides functions for creating and managing the application menu.
 import logging
 
 import ltk
+import models
 import state
 import constants
 import tutorial
@@ -259,6 +260,37 @@ def create_file_menu():
     def go_home(event): # pylint: disable=unused-argument
         ltk.window.document.location = "/"
 
+    def download(event): # pylint: disable=unused-argument
+        json_data = models.encode(state.SHEET)
+        url = f"data:text/json;charset=utf-8,{ltk.window.encodeURIComponent(json_data)}"
+        name = state.SHEET.name.replace(" ", "_").lower()
+        dialog = ltk.VBox(
+            ltk.Text("""
+                After you download this sheet as a JSON file, you can commit it to github
+                or upload it to Google Drive, Dropbox, or any other cloud storage.
+            """),
+            ltk.Break(),
+            ltk.Text("""
+                After your uploaded file is reachable as a url, you can load it into
+                PySheets as https://pysheets.app/open?url=your_url.
+            """),
+            ltk.Break(),
+            ltk.HBox(
+                ltk.Link(url, "Download Now")
+                    .attr("download", name + ".json")
+                    .addClass("download-link")
+                    .css("color", "white")
+                    .on("click", ltk.proxy(lambda event: dialog.remove())),
+            ),
+            ltk.Break(),
+        ).dialog({
+            "title": "Download Sheet",
+            "modal": True,
+            "width": 500,
+            "height": "auto",
+        })
+
+
     def delete_sheet(event): # pylint: disable=unused-argument
         if ltk.window.confirm("This will permanently delete the current sheet."):
             import storage # pylint: disable=import-outside-toplevel
@@ -271,6 +303,7 @@ def create_file_menu():
     items = [
         ltk.MenuItem("➕", "New", "", ltk.proxy(lambda event: new_sheet())),
         ltk.MenuItem("📂", "Open", "Cmd+O", ltk.proxy(go_home)),
+        ltk.MenuItem("💾", "Download", "", ltk.proxy(download)),
     ] + ([
         ltk.MenuItem("📥", "Import ...", "", ltk.proxy(lambda event: import_sheet())),
         ltk.MenuItem("🎁", "Share a copy ...", "", ltk.proxy(lambda event: share_sheet())),
