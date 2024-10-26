@@ -8,11 +8,9 @@ It sets up the Flask app, defines error handlers, and provides various routes fo
 import base64
 import json
 import os
-import sqlite3
 import subprocess
 import time
 import traceback
-import uuid
 
 import requests
 
@@ -20,7 +18,6 @@ from flask import Flask
 from flask import render_template
 from flask import redirect
 from flask import request
-from flask import jsonify
 
 import ai
 
@@ -351,7 +348,10 @@ def send(path):
     try:
         return app.send_static_file(f"icons/{path}")
     except Exception: # pylint: disable=broad-except
-        return app.send_static_file(path)
+        try:
+            return app.send_static_file(f"examples/{path}")
+        except Exception: # pylint: disable=broad-except
+            return app.send_static_file(path)
 
 
 class TerminalColors: # pylint: disable=too-few-public-methods

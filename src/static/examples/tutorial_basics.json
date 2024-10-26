@@ -1,0 +1,61 @@
+{
+    "_": "n",
+    "cells": {
+        "A7": {
+            "value": 206,
+            "key": "A7",
+            "style": {
+                "background-color": "#d4d6f7"
+            },
+            "s": "=\n\n# This is a cell function written in Python. It starts with an \"=\" \n\n# This function refers to three other cells. Hover over the A7 cell\n# to see which other cells are inputs to A7. \n\nsum([A1, A2, A3])"
+        },
+        "C5": {
+            "value": 150,
+            "key": "C5",
+            "style": {
+                "background-color": "#bbf7c5"
+            },
+            "s": "=\n\n# This is a cell function written in Python. It starts with an \"=\" \n\n# This function refers to two other cells. Hover over the C5 cell\n# to see which other cells are inputs to C5. \n\nA1 + A2"
+        },
+        "H1": {
+            "value": "Tutorial ������",
+            "key": "H1",
+            "s": "=\n# no-worker\n\nimport ltk\n\ntutorial = ltk.Tutorial([\n(\n    \"#A1\",\n    \"click\",\n    ltk.VBox(\n        ltk.Heading2(\"PySheets Tutorial: Basics\"),\n        ltk.Text(\"\"\"\n        \tIn this tutorial we will go over the basic features of PySheets,\n            such as cell values, writing Python functions, referencing other\n            cells, and the dependency graph that updates values when others\n            have changed.\n        \"\"\"),\n        ltk.Break(),\n        ltk.Text(\"Next step:\"),\n        ltk.Text(\"➡️ Click inside cell A1 to watch the tutorial.\"),\n    ),\n),(\n    \"#A3\",\n    \"click\",\n    ltk.VBox(\n        ltk.Text(\"Cells A1 and A2 contain a literal value.\"),\n        ltk.Text(\"Cell A3 contains a Python script to return a value.\"),\n        ltk.Break(),\n        ltk.Text(\"Next step:\"),\n        ltk.Text(\"➡️ Click inside cell A3 to see a cell function.\"),\n    ),\n),(\n    \"#A7\",\n    \"click\",\n    ltk.VBox(\n        ltk.Text(\"Cell A7 contains a Python script that combines three sheet values.\"),\n        ltk.Break(),\n        ltk.Text(\"Next steps:\"),\n        ltk.Text(\"➡️ Hover over A7 and C5 to see the dependency graph for each cell.\"),\n        ltk.Text(\"➡️ Click the 'run script' button for cell A3 a few times to see A3 and A7 update.\"),\n        ltk.Text(\"➡️ Click inside cell A7 to see the cell function in the editor at the right.\"),\n    ),\n),(\n    \"#C5\",\n    \"click\",\n    ltk.VBox(\n        ltk.Text(\"\"\"\n        \tThis ends the tutorial on PySheets basics. By now, you have\n            a good idea how cell values and functions are defined and how\n            the dependency graph works.\n        \"\"\"),\n        ltk.Text(\"\"\"\n            We recommend you now watch the next tutorial on creating charts.\n        \"\"\"),\n        ltk.Break(),\n        ltk.Text(\"Next steps:\"),\n        ltk.Link(\n            \"https://pysheets.app/?share=cd337dd3-21c9-4001-9acc-2aed6c7931b\", \n            \"➡️ Using Pandas and Creating Charts\"\n        ).css(\"text-decoration\", \"none\"),\n        ltk.Link(\n            \"https://github.com/PySheets/pysheets?tab=readme-ov-file#tutorials\", \n            \"➡️ All PySheets Tutorials\"\n        ).css(\"text-decoration\", \"none\"),\n    ),\n)])\n\nltk.schedule(tutorial.show, \"Start a bit later\", 0.1)\n\n\"Tutorial 🎓\""
+        },
+        "A1": {
+            "key": "A1",
+            "style": {
+                "background-color": "#f5f9e1"
+            },
+            "s": "50"
+        },
+        "A2": {
+            "key": "A2",
+            "style": {
+                "background-color": "#f5f9e1"
+            },
+            "s": "100"
+        },
+        "A3": {
+            "value": 56,
+            "key": "A3",
+            "style": {
+                "background-color": "#eab8b8"
+            },
+            "s": "=\nimport random\n\nrandom.randint(1, 100)"
+        }
+    },
+    "previews": {},
+    "created_timestamp": 0,
+    "updated_timestamp": 0,
+    "rows": {},
+    "columns": {
+        "1": 81
+    },
+    "row_count": 65,
+    "column_count": 26,
+    "packages": "",
+    "selected": "B16",
+    "uid": "d61c8aba-e016-40ad-87b6-6ca11411546a",
+    "name": "Tutorial - Basics 🎓💡"
+}

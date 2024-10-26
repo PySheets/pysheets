@@ -4,7 +4,6 @@ CopyRight (c) 2024 - Chris Laffra - All Rights Reserved.
 Initializes the PySheets application and sets up the necessary components.
 """
 
-import json
 import sys
 
 import ltk
@@ -31,9 +30,14 @@ state.console.write(
 state.console.write(
     "help",
     "[Help] Learn more about PySheets with our tutorials 🎓.",
-    action=ltk.Button("Learn", lambda event: ltk.window.open("https://github.com/PySheets/pysheets?tab=readme-ov-file#tutorials"))
-            .addClass("learn-button")
-            .css("min-width", 45)
+    action=ltk.Button(
+        "Learn", 
+        lambda event: ltk.window.open(
+            "https://github.com/PySheets/pysheets?tab=readme-ov-file#tutorials"
+        )
+    )
+    .addClass("learn-button")
+    .css("min-width", 45)
 )
 
 

@@ -8,7 +8,6 @@ This module provides functions for creating and managing the application menu.
 import logging
 
 import ltk
-import models
 import state
 import constants
 import tutorial
@@ -151,7 +150,10 @@ def create_file_menu():
         ltk.window.document.location = "/"
 
     def download(event): # pylint: disable=unused-argument
+        import models # pylint: disable=import-outside-toplevel
+        state.SHEET.screenshot = ""
         json_data = models.encode(state.SHEET)
+        json_data = ltk.window.JSON.stringify(ltk.window.JSON.parse(json_data), None, 4)
         url = f"data:text/json;charset=utf-8,{ltk.window.encodeURIComponent(json_data)}"
         name = state.SHEET.name.replace(" ", "_").lower()
         dialog = ltk.VBox(
@@ -162,7 +164,7 @@ def create_file_menu():
             ltk.Break(),
             ltk.Text("""
                 After your uploaded file is reachable as a url, you can load it into
-                PySheets as https://pysheets.app/open?url=your_url.
+                PySheets as https://pysheets.app/?open=your_url.
             """),
             ltk.Break(),
             ltk.HBox(
