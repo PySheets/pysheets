@@ -319,39 +319,6 @@ def load():
     return response # send regular string
 
 
-@app.route("/share", methods=["POST"])
-def share():
-    """
-    Save a sheet and return a shareable URL.
-    """
-    unique_key = str(uuid.uuid4())
-    sheet = get_form_data()
-    conn = sqlite3.connect('pysheets.db')
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS sheets
-                      (id TEXT PRIMARY KEY, data TEXT)''')
-    cursor.execute("INSERT INTO sheets (id, data) VALUES (?, ?)",
-                   (unique_key, json.dumps(sheet)))
-    conn.commit()
-    conn.close()
-    share_url = f"?share={unique_key}"
-    return jsonify({"url": share_url})
-
-
-@app.route("/shared", methods=["GET"])
-def load_sheet():
-    """
-    Load a sheet from SQLite given its id.
-    """
-    sheet_id = request.args.get("sheet_id")
-    conn = sqlite3.connect('pysheets.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT data FROM sheets WHERE id = ?", (sheet_id,))
-    result = cursor.fetchone()
-    conn.close()
-    return jsonify(json.loads(result[0]))
-
-
 @app.route("/version", methods=["GET"])
 def version():
     """

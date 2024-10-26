@@ -1184,22 +1184,6 @@ input[type="checkbox"]:focus-visible {
     left: calc(100% - 110px);
 }
 
-.share-button {
-    color: white;
-    min-width: 220px;
-    width: 220px;
-    font-size: 24px;
-    margin-left: 25px;
-    margin-top: 25px;
-    padding: 8px;
-    background-color: #1f77b4;
-}
-
-.share-link {
-    color: orange;
-    text-decoration: underline;
-}
-
 .download-link {
     display: inline-block;
     padding: 5px;

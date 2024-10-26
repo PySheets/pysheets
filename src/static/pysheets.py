@@ -49,7 +49,7 @@ def load_ui():
 
     def load_sheet_with_model(model):
         if model.new and not state.NEW:
-            ltk.window.alert("This sheet is not available on this browser. Create a new share link using 'File > Share a copy...' to load it.")
+            ltk.window.alert("This sheet is not available on this browser.")
         state.UID = model.uid
         state.SHEET = model
         state.UI = SpreadsheetView(model)
@@ -65,11 +65,6 @@ def load_ui():
         load_sheet_with_model(sheet)
         ltk.window.history.pushState(ltk.to_js({}), "", f"?id={state.UID}")
 
-    def load_shared_sheet():
-        state.UID = state.SHARE
-        url = f"/shared?sheet_id={state.UID}"
-        ltk.get(url, ltk.proxy(load))
-
     def load_sheet_from_url():
         state.UID = ltk.window.crypto.randomUUID()
         url = f"/load?{constants.ENCODE}=false&{constants.URL}={state.OPEN_URL}"
@@ -77,8 +72,6 @@ def load_ui():
 
     if state.UID:
         storage.load_sheet(state.UID, load_sheet_with_model)
-    elif state.SHARE:
-        load_shared_sheet()
     elif state.OPEN_URL:
         load_sheet_from_url()
     else:

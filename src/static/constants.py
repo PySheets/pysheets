@@ -86,7 +86,6 @@ STATUS = "status"
 SHEET_ID = "id"
 NEW_SHEET = "new"
 ENCODE = "encode"
-SHARE_ID = "share"
 OPEN_ID = "open"
 ERROR = "error"
 
