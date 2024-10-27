@@ -6,11 +6,11 @@ This module patches the PyOdide runtime to:
  - Buffering DOM access through LTK to improve performance.
 """
 
-import base64
 import builtins
 import io
 import json
 import time
+import urllib
 
 import constants
 import ltk
@@ -44,8 +44,14 @@ class PyScriptResponse():
     def __init__(self, url, status, content):
         self.url = url
         self.status = status
+        self.code = status
         self.content = content
+        self.msg = {}
+        self.headers = {}
         self.cookies = ltk.window.document.cookie
+
+    def info(self):
+        return self.headers
 
     def json(self):
         """
@@ -59,8 +65,21 @@ class PyScriptResponse():
         """
         return self.content
 
+    def read(self):
+        """
+        Returns the response content as a string.
+        """
+        return self.content.encode('utf-8')
+
     def __repr__(self):
         return f"Response[{self.url}, {self.status}, {self.content[32]}...]"
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+    
 
 
 class PyScriptSession(OriginalSession):
@@ -130,25 +149,42 @@ def _load_with_trampoline(url):
         network_calls.append(("GET", url, xhr.status, len(content), f"{content[:64]}{'...' if len(content) > 64 else ''}"))
         return content
 
-    if url and url[0] != "/":
+    if isinstance(url, str) and url and url[0] != "/":
         url = f"/load?url={ltk.window.encodeURIComponent(url)}"
 
-    content = get(url)
-    return content
+    return get(url)
 
 
-def _urlopen(url, **args): # pylint: disable=unused-argument
-    return wrap_as_file(_load_with_trampoline(url))
+
+class HTTPHandler(urllib.request.HTTPHandler):
+    """ 
+    A custom HTTP handler for urllib.request that uses the PyScript-based XMLHttpRequest
+    """
+
+    def __init__(self, debuglevel=0, context=None, check_hostname=None):
+        urllib.request.HTTPHandler.__init__(self, debuglevel)
+        self._context = context
+        self._check_hostname = check_hostname
+
+    def http_open(self, req):
+        url = f"/load?url={ltk.window.encodeURIComponent(req.full_url)}"
+        content = _load_with_trampoline(url)
+        return PyScriptResponse(req.full_url, 200, content)
+
+
+class HTTPSHandler(HTTPHandler):
+    """ 
+    A custom HTTPS handler for urllib.request that uses the PyScript-based XMLHttpRequest
+    """
+
+    def https_open(self, req):
+        return super(HTTPSHandler, self).http_open(req)
 
 
 def _patch_request():
-    requests.Session = PyScriptSession
     requests.session = PyScriptSession
-    try:
-        import urllib.request # pylint: disable=import-outside-toplevel
-        urllib.request.urlopen = _urlopen
-    except ImportError:
-        pass
+    urllib.request._opener = urllib.request.build_opener(HTTPHandler(), HTTPSHandler())
+
 
 
 def _patch_document():
