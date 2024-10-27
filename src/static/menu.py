@@ -10,7 +10,6 @@ import logging
 import ltk
 import state
 import constants
-import tutorial
 
 logger = logging.getLogger('root')
 
@@ -227,7 +226,7 @@ def create_help_menu():
         ltk.window.open("https://discord.gg/4wy23872th")
 
     def show_tutorial(event): # pylint: disable=unused-argument
-        tutorial.show()
+        ltk.window.open("https://github.com/PySheets/pysheets?tab=readme-ov-file#tutorials")
 
     return ltk.Menu("Help",
         ltk.MenuItem("🅿️", "About", "", ltk.proxy(about)),
