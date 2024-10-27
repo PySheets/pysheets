@@ -243,7 +243,10 @@ def handle_run(data): # pylint: disable=too-many-locals
             lines = stack.strip().split("\n")
             lines[0] = lines.pop()
             last_stack_line = lines[-1]
-            lineno = int(re.sub("[^0-9]", "", last_stack_line))
+            try:
+                lineno = int(re.sub("[^0-9]", "", last_stack_line))
+            except ValueError:
+                lineno = script.count("\n") + 1
             stack = "\n".join(lines) \
                 .replace(", in ", ", in function ") \
                 .replace(", in function <module>", f", of cell '{key}'")
