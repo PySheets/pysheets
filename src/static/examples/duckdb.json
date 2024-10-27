@@ -1,0 +1,43 @@
+{
+    "_": "n",
+    "cells": {
+        "A1": {
+            "value": "DataFrame with 3 rows",
+            "key": "A1",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "font-weight": "",
+                "background-color": ""
+            },
+            "s": "=\nimport duckdb\nimport io\nimport urllib\n\nurl = 'https://raw.githubusercontent.com/duckdb/duckdb-web/refs/heads/main/data/flights.csv'\nflights_csv = io.BytesIO(urllib.request.urlopen(url).read())\nflights_relation = duckdb.read_csv(flights_csv)\nduckdb.sql(\"SELECT * FROM flights_relation\").df()"
+        }
+    },
+    "previews": {
+        "A1": {
+            "html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>FlightDate</th>\n      <th>UniqueCarrier</th>\n      <th>OriginCityName</th>\n      <th>DestCityName</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>1988-01-01</td>\n      <td>AA</td>\n      <td>New York, NY</td>\n      <td>Los Angeles, CA</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>1988-01-02</td>\n      <td>AA</td>\n      <td>New York, NY</td>\n      <td>Los Angeles, CA</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>1988-01-03</td>\n      <td>AA</td>\n      <td>New York, NY</td>\n      <td>Los Angeles, CA</td>\n    </tr>\n  </tbody>\n</table>\n</div>",
+            "left": "39px",
+            "top": "143px",
+            "width": 0,
+            "height": 0,
+            "key": "A1"
+        }
+    },
+    "created_timestamp": 0,
+    "updated_timestamp": 0,
+    "rows": {
+        "1": 70
+    },
+    "columns": {
+        "1": 115
+    },
+    "row_count": 65,
+    "column_count": 26,
+    "screenshot": "",
+    "packages": "duckdb fsspec",
+    "selected": "A1",
+    "uid": "18574ed7-adf1-4201-ab0f-28f005658687",
+    "name": "DuckDB"
+}
