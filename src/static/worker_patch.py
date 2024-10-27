@@ -22,6 +22,7 @@ import polyscript # type: ignore    pylint: disable=import-error
 
 OriginalSession = requests.Session
 network_cache = {}
+network_calls = []
 
 
 class PyScriptResponse():
@@ -44,6 +45,7 @@ class PyScriptResponse():
         self.url = url
         self.status = status
         self.content = content
+        self.cookies = ltk.window.document.cookie
 
     def json(self):
         """
@@ -79,7 +81,9 @@ class PyScriptSession(OriginalSession):
         xhr.open(method, f"load?{constants.URL}={url}", False)
         xhr.setRequestHeader("Authorization", (headers or self.headers).get("Authorization"))
         xhr.send(data)
-        return PyScriptResponse(url, xhr.status, xhr.responseText)
+        content = xhr.responseText
+        network_calls.append((method, url, xhr.status, len(content), f"{content[:64]}{'...' if len(content) > 64 else ''}"))
+        return PyScriptResponse(url, xhr.status, content)
 
 
 def wrap_as_file(content):
@@ -112,23 +116,24 @@ def _load_with_trampoline(url):
     """
     def get(url):
         if url in network_cache:
-            when, value = network_cache[url]
+            when, content = network_cache[url]
             if time.time() - when < 60:
-                return value
+                return content
 
         xhr = ltk.window.XMLHttpRequest.new()
         xhr.open("GET", url, False)
         xhr.send(None)
         if xhr.status != 200:
             raise IOError(f"HTTP Error: {xhr.status} for {url}")
-        value = xhr.responseText
-        network_cache[url] = time.time(), value
-        return value
+        content = xhr.responseText
+        network_cache[url] = time.time(), content
+        network_calls.append(("GET", url, xhr.status, len(content), f"{content[:64]}{'...' if len(content) > 64 else ''}"))
+        return content
 
     if url and url[0] != "/":
         url = f"/load?url={ltk.window.encodeURIComponent(url)}"
 
-    content = base64.b64decode(get(url))
+    content = get(url)
     return content
 
 

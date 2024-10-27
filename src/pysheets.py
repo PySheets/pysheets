@@ -294,7 +294,7 @@ def load():
     if url in load_cache:
         when, response = load_cache[url]
         if time.time() - when < 60:
-            print("/load: network cache hit: %s", url)
+            print("/load: network cache hit:", url)
             return response
     headers = {
         "Authorization": request.headers.get("Authorization")
@@ -307,12 +307,12 @@ def load():
     else:
         raise ValueError(f"Bad method {request.method}")
     try:
-        if request.args.get(constants.ENCODE) != "false":
+        if request.args.get(constants.ENCODE) == "true":
             response = base64.b64encode(response) # send base64 encoded bytes
     except Exception: # pylint: disable=broad-except
         pass
     load_cache[url] = time.time(), response
-    print("/load: network cache miss", url, len(response))
+    print("/load: network cache miss", url, type(response), len(response), response[:128])
     return response # send regular string
 
 

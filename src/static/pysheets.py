@@ -71,7 +71,7 @@ def load_ui():
 
     def load_sheet_from_url():
         state.UID = ltk.window.crypto.randomUUID()
-        url = f"/load?{constants.ENCODE}=false&{constants.URL}={state.OPEN_URL}"
+        url = f"/load?{constants.URL}={state.OPEN_URL}"
         ltk.get(url, ltk.proxy(load))
 
     if state.UID:

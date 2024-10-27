@@ -449,10 +449,15 @@ class PySheets():
         """
         import pandas as pd # pylint: disable=import-outside-toplevel,import-error
         try:
-            return pd.read_csv(io.StringIO(data.decode("utf-8")))
+            data = data.decode("utf-8")
+        except Exception: # pylint: disable=broad-except
+            pass
+        file = io.StringIO(data)
+        try:
+            return pd.read_csv(file)
         except Exception as e1: # pylint: disable=broad-except
             try:
-                return pd.read_excel(data, engine='openpyxl')
+                return pd.read_excel(file, engine='openpyxl')
             except Exception as e2:
                 raise ValueError(f"Cannot load as Excel ({e1}) or CSV ({e2})") from e2
 

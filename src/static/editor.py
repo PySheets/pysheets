@@ -124,6 +124,7 @@ class Editor(ltk.Div):
             lineno (int): The line number to mark, starting from 1.
             error (str): The error message to display.
         """
+        ltk.window.editorMarkLine(1, error)
         ltk.window.editorMarkLine(lineno - 1, error)
 
     def start_running(self):

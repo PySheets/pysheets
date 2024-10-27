@@ -511,6 +511,9 @@
         return $(this).is(':focus');
     };
 
+    window.stdout = { batched: (str) => console.log(str) };
+    window.stderr = { batched: (str) => console.error(str) };
+
     </script>
 
     {{pyscript|safe}}

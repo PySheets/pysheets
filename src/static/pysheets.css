@@ -1060,6 +1060,10 @@ td:hover .debug-info {
     color: rgb(207, 112, 3);
 }
 
+.console .network td {
+    color: rgb(82, 29, 150);
+}
+
 .dict_table td {
     max-width: 800px;
 }

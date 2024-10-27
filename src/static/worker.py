@@ -199,6 +199,7 @@ def run_in_worker(script):
     _globals["pyscript"] = pyscript
     _globals["pysheets"] = sys.modules["pysheets"] = pysheets
     _locals = _globals
+    worker_patch.network_calls = []
     setattr(pysheets, "_inputs", cache)
     script = api.intercept_last_expression(script)
     exec(script, _globals, _locals) # pylint: disable=exec-used
@@ -263,6 +264,7 @@ def handle_run(data): # pylint: disable=too-many-locals
                     "duration": time.time() - start,
                     "lineno": lineno,
                     "error": error,
+                    "network": worker_patch.network_calls,
                     "traceback": stack,
                 }
             ),
@@ -287,6 +289,7 @@ def handle_run(data): # pylint: disable=too-many-locals
                     "script": script,
                     "value": None,
                     "preview": "",
+                    "network": worker_patch.network_calls,
                     "lineno": 1,
                     "duration": time.time() - start,
                     "error": f"Worker result error: {type(error)}:{error}",
@@ -317,6 +320,7 @@ def handle_run(data): # pylint: disable=too-many-locals
                     "value": preview if base_kind else kind,
                     "preview": "" if base_kind else preview,
                     "prompt": prompt,
+                    "network": worker_patch.network_calls,
                     "error": (
                         preview
                         if kind == "str" and preview.startswith("ERROR:")

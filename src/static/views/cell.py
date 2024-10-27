@@ -582,6 +582,10 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         if self.model.script == "":
             self.update(0, "")
             return
+        if "network" in result:
+            for method, url, status, size, text in result["network"]:
+                text = text.replace('\n', '\\n')
+                state.console.write(f"{ltk.get_time()}", f"[Network] {method} {url} => status={status} size={size} response='{text}'")
         if result["error"]:
             error = result["error"]
             duration = result["duration"]
