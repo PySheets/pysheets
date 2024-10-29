@@ -28,6 +28,7 @@ def list_sheets():
     storage.list_sheets(show_sheet_list)
     ltk.find("#main").animate(ltk.to_js({ "opacity": 1 }), constants.ANIMATION_DURATION)
     ltk.find("#menu").empty().append(menu.create_menu())
+    ltk.find("#title").attr("readonly", "true")
 
 
 def show_sheet_list(sheets):
