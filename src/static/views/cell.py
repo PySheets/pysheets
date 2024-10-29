@@ -585,7 +585,8 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         if "network" in result:
             for method, url, status, size, text in result["network"]:
                 text = text.replace('\n', '\\n')
-                state.console.write(f"{ltk.get_time()}", f"[Network] {method} {url} => status={status} size={size} response='{text}'")
+                url = ltk.window.decodeURIComponent(url).replace("/load?url=", "")
+                state.console.write(f"{ltk.get_time()}", f"[Network] {method} {status} {url} => size={size} response='{text}'")
         if result["error"]:
             error = result["error"]
             duration = result["duration"]

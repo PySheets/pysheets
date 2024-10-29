@@ -101,7 +101,13 @@ class PyScriptSession(OriginalSession):
         xhr.setRequestHeader("Authorization", (headers or self.headers).get("Authorization"))
         xhr.send(data)
         content = xhr.responseText
-        network_calls.append((method, url, xhr.status, len(content), f"{content[:64]}{'...' if len(content) > 64 else ''}"))
+        network_calls.append((
+            method, 
+            url, 
+            xhr.status, 
+            len(content), 
+            f"{content[:64]}{'...' if len(content) > 64 else ''}"
+        ))
         return PyScriptResponse(url, xhr.status, content)
 
 
@@ -146,7 +152,13 @@ def _load_with_trampoline(url):
             raise IOError(f"HTTP Error: {xhr.status} for {url}")
         content = xhr.responseText
         network_cache[url] = time.time(), content
-        network_calls.append(("GET", url, xhr.status, len(content), f"{content[:64]}{'...' if len(content) > 64 else ''}"))
+        network_calls.append((
+            "GET", 
+            url, 
+            xhr.status, 
+            len(content), 
+            f"{content[:64]}{'...' if len(content) > 64 else ''}"
+        ))
         return content
 
     if isinstance(url, str) and url and url[0] != "/":
