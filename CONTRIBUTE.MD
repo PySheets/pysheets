@@ -55,6 +55,16 @@ To navigate to the source of PySheets, and make changes to it:
   - Open the `pysheets` folder
   - Open a terminal inside VS Code
 
+# To make style changes to the pysheets
+```
+cd pysheets # or wherever you have cloned the pysheets repo
+npm install 
+
+# Add your changes to the bottom of the file ./scss/custom.scss
+# Watch your custom Sass for changes and compile it to CSS
+sass --watch ./scss/custom.scss ./src/templates/css/custom.css
+
+```
 # Making changes and committing them
 
 First add PR request support to VS Code:
