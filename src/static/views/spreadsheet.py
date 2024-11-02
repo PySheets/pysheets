@@ -95,7 +95,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                 ltk.find(f".row-{info['row']}").css("height", info['height'])
                 self.reselect()
             elif field_name == "columns":
-                ltk.find(f".col-{info['column']}").css("width", info['width'])
+                ltk.find(f".pysheets-col-{info['column']}").css("width", info['width'])
                 self.reselect()
             elif field_name == "name":
                 new_name = sheet.name
@@ -140,7 +140,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         label = ltk.find(event.target)
         column = label.attr('col')
-        ltk.find(f".cell.col-{column}").css("width", round(label.width()))
+        ltk.find(f".cell.pysheets-col-{column}").css("width", round(label.width()))
         self.sheet_resized()
 
     def column_resized(self, event):

@@ -62,7 +62,8 @@ npm install
 
 # Add your changes to the bottom of the file ./scss/custom.scss
 # Watch your custom Sass for changes and compile it to CSS
-sass --watch ./scss/custom.scss ./src/templates/css/custom.css
+sass --no-source-map --style=compressed --watch ./scss/custom.scss ./src/static/lib/css/custom.css
+# Test your changes
 
 ```
 # Making changes and committing them

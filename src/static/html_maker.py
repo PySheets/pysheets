@@ -14,7 +14,7 @@ def make_css(sheet: models.Sheet):
     """
     lines = []
     for col, width in sheet.columns.items():
-        lines.append(f".col-{col} {{ width: {width}px; }}")
+        lines.append(f".pysheets-col-{col} {{ width: {width}px; }}")
     for row, height in sheet.rows.items():
         lines.append(f".row-{row} {{ height: {height}px; }}")
     return "\n".join(lines)
@@ -32,7 +32,7 @@ def make_column_label(col: int):
         str: The HTML markup for the column label.
     """
     label = api.get_column_name(col)
-    return f'<div class="column-label col-{col}" id="col-{col}" col="{col}"">{label}</div>'
+    return f'<div class="column-label pysheets-col-{col}" id="pysheets-col-{col}" col="{col}"">{label}</div>'
 
 
 def make_column_header(sheet: models.Sheet):
@@ -66,7 +66,7 @@ def make_cell(col, row, sheet):
         "padding:2px",
     ]
     style = f'style="{";".join(styles)};"' if styles else ""
-    return f'<div id="{key}" class="cell row-{row} col-{col}" col="{col}" row="{row}" {style}>{value}</div>'
+    return f'<div id="{key}" class="cell row-{row} pysheets-col-{col}" col="{col}" row="{row}" {style}>{value}</div>'
 
 
 def make_row_label(row: int, sheet: models.Sheet):

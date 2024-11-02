@@ -30,3 +30,10 @@
 @import "../node_modules/bootstrap/scss/utilities/api";
 
 // 8. Add additional custom code here
+
+// 1. Change from `box-sizing: content-box` so that `width` is not affected by `padding` or `border`.
+*,
+*::before,
+*::after {
+  box-sizing: content-box;
+}
