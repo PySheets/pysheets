@@ -56,6 +56,9 @@ To navigate to the source of PySheets, and make changes to it:
   - Open a terminal inside VS Code
 
 # To make style changes to the pysheets
+
+This is an optional step. You don't have to do this.
+
 ```
 cd pysheets # or wherever you have cloned the pysheets repo
 npm install 
