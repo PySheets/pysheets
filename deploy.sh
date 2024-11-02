@@ -12,7 +12,8 @@ cp -r src/*.py ../pysheets-prod
 cp -r requirements.txt ../pysheets-prod
 cp -r LICENSE ../pysheets-prod
 cp -r Procfile ../pysheets-prod
-cp src/css/custom.css ../pysheets-prod/static/css/custom.css
+mkdir -p ../pysheets-prod/static/css
+cp src/static/lib/css/custom.css ../pysheets-prod/static/css/custom.css
 
 
 rm dist/*.gz dist/*.whl
