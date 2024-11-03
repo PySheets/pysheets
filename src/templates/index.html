@@ -117,11 +117,11 @@
 
         // Add column headers
         for (var column=existingColumnCount + 1; column <= newColumnCount; column++) {
-            if ($(`#col-${column}`).length == 0) {
+            if ($(`#pysheets-col-${column}`).length == 0) {
                 makeColumnResizable(
                     $("<div>")
-                        .addClass(`column-label col-${column}`)
-                        .attr("id", `col-${column}`)
+                        .addClass(`column-label pysheets-col-${column}`)
+                        .attr("id", `pysheets-col-${column}`)
                         .attr("col", column)
                         .text(window.getColumnName(column))
                         .appendTo(columnHeader)
@@ -135,7 +135,7 @@
             for (var column=existingColumnCount + 1; column <= newColumnCount; column++) {
                 const key = window.getKeyFromColumnRow(column, row);
                 elements.push(
-                    `<div id="${key}" class="cell row-${row} col-${column}" col="${column}" row="${row}"></div>`
+                    `<div id="${key}" class="cell row-${row} pysheets-col-${column}" col="${column}" row="${row}"></div>`
                 );
             }
             $(`#row-${row}`).append($(elements.join("")))
@@ -159,7 +159,7 @@
             for (var column=1; column <= newColumnCount; column++) {
                 const key = window.getKeyFromColumnRow(column, row);
                 cell_elements.push(
-                    `<div id="${key}" class="cell row-${row} col-${column}" col="${column}" row="${row}"></div>`
+                    `<div id="${key}" class="cell row-${row} pysheets-col-${column}" col="${column}" row="${row}"></div>`
                 )
             }
             cell_elements.push("</div>")
@@ -259,7 +259,7 @@
         $(".row-label").css("background-color", "white")
         // add current row/col highlights
         for (var col=from_col; col<=to_col; col++) {
-            $(`.column-label.col-${col}`).css("background-color", "#d3e2fc")
+            $(`.column-label.pysheets-col-${col}`).css("background-color", "#d3e2fc")
         }
         for (var row=from_row; row<=to_row; row++) {
             $(`.row-label.row-${row}`).css("background-color", "#d3e2fc")
@@ -440,7 +440,7 @@
             columnCount = cols.length;
         });
         html.find("col").each((index, col) => {
-            $(`.col-${atColumn + index}`).width($(col).attr("width"))
+            $(`.pysheets-col-${atColumn + index}`).width($(col).attr("width"))
         });
         setTimeout(() => insertDone(keys));
     }
@@ -550,6 +550,11 @@
     <style>
         {{css}}
     </style>
+    <!-- 
+     1. Adding Custom CSS at the end of the head section.
+     2. Comment the below line, if you don't want to have bootstrap css in your pysheets
+     -->
+    <link defer rel="stylesheet" href="lib/css/custom.css" >
 </head>
 <body>
     <div class="header">
