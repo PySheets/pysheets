@@ -223,16 +223,10 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
 
     def worker_ready(self):
         """
-        Marks the worker as ready and evaluates the cell.
-
-        This method is called when the worker has finished executing the cell's script.
-        It removes the cell from the sheet's cache, sets the running flag to False,
-        and then evaluates the cell.
+        Marks the worker as ready.
         """
-        if self.model.key in self.sheet.cache:
-            del self.sheet.cache[self.model.key]
         self.stop_running()
-        self.evaluate()
+        self.remove_loading()
 
     def select(self):
         """
@@ -487,6 +481,12 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         if not text.startswith(constants.ICON_HOUR_GLASS):
             self.text(f"{constants.ICON_HOUR_GLASS} {text}")
 
+    def remove_loading(self):
+        """
+        Removes the loading indicator on the cell
+        """
+        self.text(self.text().replace(constants.ICON_HOUR_GLASS, ""))
+
     def resolve_inputs(self):
         """
         Resolves the input cells required to evaluate the current cell's formula or script.
@@ -507,16 +507,17 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
 
     def inputs_missing(self):
         """
-        Checks if any of the input cells required to evaluate the current cell are missing.
-        
-        Returns:
-            bool: True if any of the input cells are missing, False otherwise.
+        Checks if any of the input cells required to evaluate the current cell need to be evaluated.
         """
+        missing = False
         for key in self.inputs:
             cell = self.sheet.get_cell(key)
             if cell.is_formula() and not self.sheet.counts[key]:
-                return True
-        return False
+                cell.evaluate()
+                missing = True
+        if missing:
+            self.resolve_inputs()
+        return missing
 
     def set_inputs(self, inputs):
         """
