@@ -52,7 +52,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             ltk.window.fillSheet(model.column, model.row)
             self.element = ltk.find(f"#{self.model.key}")
         self.running = False
-        self.needs_worker = False
+        self.needs_evaluation = "# run-on-load" in self.model.script
         self.inputs = set()
         self.dependents = set()
         if self.model.script != self.model.value:
@@ -225,6 +225,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         """
         Marks the worker as ready.
         """
+        self.resolve_inputs()
         self.stop_running()
         self.remove_loading()
 
@@ -456,6 +457,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         """
         state.console.remove(self.model.key)
         if self.is_formula():
+            self.needs_evaluation = True
             self.resolve_inputs()
         else:
             self.update(0, self.model.script)
@@ -549,14 +551,18 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         count, mark the cell as needing worker processing, and publish a message to the
         worker to run the cell's script.
         """
-        self.stop_running()
         if self.model.key in inputs:
             self.report_cycle(inputs)
         self.set_inputs(inputs)
-        if self.inputs_missing():
-            return
+        if not self.inputs_missing() and self.needs_evaluation:
+            self.evaluate_with_inputs()
+
+    def evaluate_with_inputs(self):
+        """
+        Evaluates the current cell's formula or script with the provided input cells.
+        """
+        self.stop_running()
         self.sheet.counts[self.model.key] += 1
-        self.needs_worker = True
         self.show_loading()
         ltk.publish(
             "Application",
