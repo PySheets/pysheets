@@ -32,23 +32,29 @@
     <script defer src="lib/html2canvas.min.js"></script>
 
     <script>
-        (function checkChromiumVersion() {
-            const userAgent = navigator.userAgent.toLowerCase();
-            const match = userAgent.match(/chrome\/([0-9]+)/);
-            if (match && match.length >= 2) {
-                version = parseInt(match[1]);
-                if (version == 128) {
-                    if (localStorage["chromium-128-checked"]) return;
-                    localStorage["chromium-128-checked"] = "yes";
-                    alert(
-                        "Chromium v128 broke PyScript. This impacts the following browsers: Chrome, Brave, and Edge. " +
-                        "You may see 'Aw. Snap!' browser crashes. In that case, please use Chrome v129 or later. " +
-                        "As a temporary workaround, you can try Safari, Firefox, or Chrome Canary."
-                    )
-                }
+    if (window.location.hostname === "localhost") {
+        window.location = window.location.href.replace("localhost", "127.0.0.1")
+    }
+
+
+    (function checkChromiumVersion() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        const match = userAgent.match(/chrome\/([0-9]+)/);
+        if (match && match.length >= 2) {
+            version = parseInt(match[1]);
+            if (version == 128) {
+                if (localStorage["chromium-128-checked"]) return;
+                localStorage["chromium-128-checked"] = "yes";
+                alert(
+                    "Chromium v128 broke PyScript. This impacts the following browsers: Chrome, Brave, and Edge. " +
+                    "You may see 'Aw. Snap!' browser crashes. In that case, please use Chrome v129 or later. " +
+                    "As a temporary workaround, you can try Safari, Firefox, or Chrome Canary."
+                )
             }
-        })()
-           window.start = new Date().getTime();
+        }
+    })()
+
+    window.start = new Date().getTime();
 
     window.time = () => {
         return new Date().getTime() / 1000.0;
@@ -85,6 +91,21 @@
         }
         return `Post error for ${url}: ${request.status}`
     }
+
+    window.patchFetch = (window) => {
+        const originalFetch = window.fetch;
+        const domain = location.protocol + "//" + location.host;
+        window.fetch = async (url, config) => {
+            if (!url.startsWith(domain) && !url.startsWith("/load")) {
+                url = `/load?url=${encodeURIComponent(url)}`
+                console.log("FETCH - patched", url, config)
+            } else {
+                console.log("FETCH - original", url, config)
+            }
+            return await originalFetch(url, config);
+        };
+    }
+    // window.patchFetch(window);
 
     setTimeout(() => $("py-splashscreen").text(""), 10);
     setTimeout(() => $("py-splashscreen").text(""), 100);
