@@ -18,6 +18,7 @@ import requests
 
 import js # type: ignore    pylint: disable=import-error
 import polyscript # type: ignore    pylint: disable=import-error
+import pyscript # type: ignore    pylint: disable=import-error
 
 
 OriginalSession = requests.Session
@@ -197,6 +198,12 @@ def _patch_request():
     requests.session = PyScriptSession
     urllib.request._opener = urllib.request.build_opener(HTTPHandler(), HTTPSHandler())
 
+
+def _patch_fetch():
+    """
+    Patches the `fetch()` function to use the PyScript-based XMLHttpRequest
+    """
+    ltk.window.patchFetch(pyscript.window)
 
 
 def _patch_document():
@@ -385,3 +392,4 @@ def patch():
     _patch_print()
     _patch_document()
     _patch_ltk()
+    _patch_fetch()

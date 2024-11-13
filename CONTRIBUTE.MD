@@ -68,6 +68,13 @@ npm install
 sass --no-source-map --style=compressed --watch ./scss/custom.scss ./src/static/lib/css/custom.css
 # Test your changes
 
+# Running the PlayWright UI tests
+
+ - Install [Node](https://nodejs.org/en/download/prebuilt-binaries)
+ - Install the [PlayWright VSCode Extension](https://marketplace.visualstudio.com/items?itemName=ms-playwright.playwright)
+ - Hit Ctrl+Shift+P and select "Install Playwright"
+ - Select the Test Beaker in the side tray
+
 ```
 # Making changes and committing them
 

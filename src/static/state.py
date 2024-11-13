@@ -380,7 +380,7 @@ def start_worker_with_packages(packages):
             "static/ltk/ltk.css": "ltk/ltk.css"
         }
     }
-    worker = XWorker("./worker.py", config=ltk.to_js(config), type="pyodide")
+    worker = XWorker("worker.py", config=ltk.to_js(config), type="pyodide")
     ltk.register_worker("pyodide-worker", worker)
     ltk.schedule(lambda: check_worker(packages), "check-worker", 10)
     return worker
