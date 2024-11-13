@@ -22,7 +22,7 @@ pysheets
 Run the tutorials below to familiarize yourself with PySheets and its powerful features.
 
 
-## Tutorial: Basics
+## Tutorial: Basics 🛠️
 
 ![PySheets](src/static/icons/screenshot-basics.png)
 
@@ -33,7 +33,7 @@ In this tutorial you will learn how to:
 <a href="https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/src/static/examples/tutorial_basics.json" target="_blank">Run the Basics tutorial now</a>
 
 
-## Tutorial: Generating Simple Matplotlib Charts
+## Tutorial: Generating Simple Matplotlib Charts 📈
 
 ![PySheets](src/static/icons/screenshot-charts.png)
 
@@ -47,7 +47,7 @@ In this tutorial you will learn how to:
 
 
 
-## Tutorial: Finding the highest airports with PySheets ETL
+## Tutorial: Finding the highest airports with PySheets ETL ✈️
 
 ![PySheets](src/static/icons/screenshot-airports.png)
 
@@ -81,17 +81,23 @@ the ability to interacte with the main UI from a cell function.
 
 # Examples
 
-## Example: DuckDB
+## Example: DuckDB 🦆
 
 ![PySheets](src/static/icons/screenshot-duckdb.png)
 
 This example shows how to load a CSV from the web and load it into DuckDB.
 
-## Example: CloudSlurp
+<a href="https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/src/static/examples/duckdb.json" target="_blank">Run the DuckDB example now</a>
+
+
+## Example: CloudSlurp ☁️
 
 ![PySheets](src/static/icons/screenshot-cloudslurp.png)
 
 This example shows how to download details about the [CloudSlurp](https://www.cloudslurp.com/) APIs from the web.
+
+<a href="https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/src/static/examples/cloudslurp.json" target="_blank">Run the CloudSlurp example now</a>
+
 
 
 # Find out more
