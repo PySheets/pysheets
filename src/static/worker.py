@@ -68,8 +68,16 @@ def create_preview(result): # pylint: disable=too-many-return-statements
     Returns:
         A string representation of the preview.
     """
-    if isinstance(result, (str, int, float, tuple, list)):
+    if isinstance(result, (str, int, float)):
         return result
+    if isinstance(result, (tuple, list)):
+        if len(result) > 100:
+            first = ltk.window.JSON.stringify(result[:50], None, 4)
+            last = ltk.window.JSON.stringify(result[-50:], None, 4)
+            preview = f"{first[:-2]}\n    ...\n{last[2:]}"
+        else:
+            preview = ltk.window.JSON.stringify(result, None, 4)
+        return f"{result.__class__.__name__} with {len(result)} items: <pre>{preview}</pre>"
     if str(result) == "DataFrame":
         return str(result)
     if "plotly" in str(type(result)):
@@ -97,7 +105,7 @@ def create_preview(result): # pylint: disable=too-many-return-statements
         pass  # print(traceback.format_exc())
     return f"""
         <div style='color:red;padding:8px;'>
-            Error: Cannot generate a preview image for
+            Error: Cannot generate a preview for
             result of type &lt;{type(result).__name__}&gt;
         <div>"""
 
