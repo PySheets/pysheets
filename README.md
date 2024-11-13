@@ -79,6 +79,20 @@ the ability to interacte with the main UI from a cell function.
 <a href="https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/src/static/examples/tutorial_chess.json" target="_blank">Run the Chess tutorial now</a>
 
 
+# Examples
+
+## Example: DuckDB
+
+![PySheets](src/static/icons/screenshot-duckdb.png)
+
+This example shows how to load a CSV from the web and load it into DuckDB.
+
+## Example: CloudSlurp
+
+![PySheets](src/static/icons/screenshot-cloudslurp.png)
+
+This example shows how to download details about the [CloudSlurp](https://www.cloudslurp.com/) APIs from the web.
+
 
 # Find out more
 

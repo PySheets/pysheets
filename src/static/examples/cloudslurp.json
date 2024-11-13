@@ -1,0 +1,31 @@
+{
+    "_": "n",
+    "cells": {
+        "A1": {
+            "value": "list",
+            "key": "A1",
+            "s": "=\nimport json\n\ncloudslurp_endpoints_url = \"https://api.cloudslurp.com/connectors/public\"\nbytes = pysheets.load_url(cloudslurp_endpoints_url).read()\nendpoints = json.loads(bytes.decode(\"utf-8\"))\nprint(json.dumps(endpoints[0]))\nnames = [endpoint[\"name\"] for endpoint in endpoints]\n        "
+        }
+    },
+    "previews": {
+        "A1": {
+            "html": "<div>list with 2442 items: <pre>[\n    \"quickbooks\",\n    \"xero\",\n    \"sage\",\n    \"square\",\n    \"coinbase\",\n    \"bank-AIRWALLEX_AIPTAU32\",\n    \"bank-ALLGEMEINE_SPARKASSE_OBEROSTERREICH_AG_ASPKAT2LXXX\",\n    \"bank-UNICREDIT_BKAUATWW\",\n    \"bank-UNICREDIT_BUSINESS_BKAUATWW\",\n    \"bank-UNICREDIT_EBANKING_BKAUATWW\",\n    \"bank-BANK_NINENINE_SPBAATWW\",\n    \"bank-BANKHAUS_KRENTSCHKER_AND_CO_AG_KRECAT2GWIE\",\n    \"bank-BAWAG_BAWAATWW\",\n    \"bank-BKS_BFKKAT2K\",\n    \"bank-BTV_BTVAAT22\",\n    \"bank-DIE_ZWEITE_WIENER_VEREINS_SPARCASSE_GIBAAT21XXX\",\n    \"bank-DORNBIRNER_SPARKASSE_BANK_AG_DOSPAT2DXXX\",\n    \"bank-ERSTE_BANK_DER_OESTERREICHISCHEN_SPARKASSEN_AG_GIBAATWWXXX\",\n    \"bank-ERSTE_GROUP_BANK_AG_GIBAATWGXXX\",\n    \"bank-HYPO_OBLAAT2L\",\n    \"bank-ING_WB_INGBNL2A\",\n    \"bank-KREMSER_BANK_UND_SPARKASSEN_AG_SPKDAT21XXX\",\n    \"bank-KARNTNER_SPARKASSE_AG_KSPKAT2KXXX\",\n    \"bank-LIENZER_SPARKASSE_AG_LISPAT21XXX\",\n    \"bank-MARCHFELDER_BANK_MVOGAT22\",\n    \"bank-N26_NTSBDEB1\",\n    \"bank-PAYSAFE_NETEGB21\",\n    \"bank-OBERBANK_OBKLHUHB\",\n    \"bank-PAYPAL_PPLXLULL\",\n    \"bank-RAIFFEISEN_AT_RZBAATWW\",\n    \"bank-REVOLUT_REVOLT21\",\n    \"bank-SALZBURGER_SPARKASSE_BANK_AG_SBGSAT2SXXX\",\n    \"bank-PAYSAFE_SKRLGB2L\",\n    \"bank-SOLDO_SFSDIE22\",\n    \"bank-SPARDABANK_SVIEAT21\",\n    \"bank-SPARKASSE_BADEN_SPBDAT21\",\n    \"bank-SPARKASSE_BLUDENZ_BANK_AG_SSBLAT21\",\n    \"bank-SPARKASSE_BREGENZ_BANK_AG_SPBRAT2B\",\n    \"bank-SPARKASSE_DER_GEMEINDE_EGG_SPEGAT21\",\n    \"bank-SPARKASSE_DER_STADT_AMSTETTEN_AG_SPAMAT21\",\n    \"bank-SPARKASSE_DER_STADT_FELDKIRCH_SPFKAT2B\",\n    \"bank-SPARKASSE_DER_STADT_KITZBUHEL_SPKIAT2K\",\n    \"bank-SPARKASSE_EFERDING_PEUERBACH_WAIZENKIRCHEN_SPPBAT21\",\n    \"bank-SPARKASSE_FELDKIRCHEN_KARNTEN_SPFNAT21\",\n    \"bank-SPARKASSE_FRANKENMARKT_AG_SPFRAT21\",\n    \"bank-SPARKASSE_HAINBURG_BRUCK_NEUSIEDL_AG_SPHBAT21\",\n    \"bank-SPARKASSE_HAUGSDORF_SPHAAT21\",\n    \"bank-SPARKASSE_HERZOGENBURG_NEULENGBACH_BANK_AG_SPHEAT21\",\n    \"bank-SPARKASSE_HORN_RAVELSBACH_KIRCHBERG_AG_SPHNAT21\",\n    \"bank-SPARKASSE_IMST_AG_SPIMAT21\"\n    ...\n    \"bank-HANDELSBANKEN_CORPORATE_HANDGB22\",\n    \"bank-HANDELSBANKEN_HANDGB22\",\n    \"bank-HARGREAVES_LANSDOWN_HLSVGB22\",\n    \"bank-NEWDAY_HOUSEOFFRASER_NEWDUK00X11\",\n    \"bank-HSBC_BUSINESS_HBUKGB4B\",\n    \"bank-HSBC_KINETIC_HBUKGB4B\",\n    \"bank-HSBC_HBUKGB4B\",\n    \"bank-LLOYDS_BUSINESS_LOYDGB2L\",\n    \"bank-LLOYDS_COMMERCIAL_LOYDGB2L\",\n    \"bank-LLOYDS_LOYDGB2L\",\n    \"bank-LOMBARD_ODIER_GB_LOCYGB2L\",\n    \"bank-NEWDAY_MARBLES_NEWDUK00X13\",\n    \"bank-MNS_MSFEGB21\",\n    \"bank-MBNA_MBNAGB22\",\n    \"bank-METTLE_NWBKGB2L\",\n    \"bank-MONESE_MNEEGB21\",\n    \"bank-MONZO_MONZGB2L\",\n    \"bank-NATIONWIDE_NAIAGB21\",\n    \"bank-NATWEST_NWBKGB2L\",\n    \"bank-NATWEST_CORP_NWBKGB2L\",\n    \"bank-NATWEST_CS_NWBKGB2L\",\n    \"bank-NATWEST_INTERNATONAL_RBOSGIGI\",\n    \"bank-NEWDAY_NEWPAY_NEWDUK00X15\",\n    \"bank-ONEPAY_1PAYGB00\",\n    \"bank-NEWDAY_OPUS_NEWDUK00X16\",\n    \"bank-NEWDAY_PULSE_NEWDUK00X17\",\n    \"bank-REVOLUT_REVOGB21\",\n    \"bank-RBS_GB_RBSSGBKC\",\n    \"bank-RBS_GB_CORP_RBSSGBKC\",\n    \"bank-RBS_GB_CS_RBSSGBKC\",\n    \"bank-SAINSBURYS_SANBGB21\",\n    \"bank-SANTANDER_GB_ABBYGB2L\",\n    \"bank-SVB_SVBKGB2L\",\n    \"bank-SOLDO_SOAVGB21\",\n    \"bank-STARLING_SRLGGB3L\",\n    \"bank-TESCOBANK_TPFGGB2E\",\n    \"bank-COOPERATIVE_CPBKGB22\",\n    \"bank-THINKMONEY_THKMGB21\",\n    \"bank-TIDE_TIDEGB00X01\",\n    \"bank-TRIODOS_TRIOGB22\",\n    \"bank-TSB_GB_TSBSGB2A\",\n    \"bank-NEWDAY_TUI_NEWDUK00X20\",\n    \"bank-UBS_UBSWGB2L\",\n    \"bank-ULSTER_ULSBGB2B\",\n    \"bank-UNION_UBPGGB2X\",\n    \"bank-UNITY_TRUST_UYTBGB22\",\n    \"bank-VANQUIS_VQISGB21\",\n    \"bank-VIRGIN_NRNBGB22\",\n    \"bank-NEWDAY_WALLIS_NEWDUK00X21\",\n    \"bank-YBS_YORBGB2V\"\n]</pre></div>",
+            "left": "141.996px",
+            "top": "49.9766px",
+            "width": "591.5px",
+            "height": "598px",
+            "key": "A1"
+        }
+    },
+    "created_timestamp": 0,
+    "updated_timestamp": 0,
+    "rows": {},
+    "columns": {},
+    "row_count": 65,
+    "column_count": 26,
+    "screenshot": "",
+    "packages": "",
+    "selected": "A1",
+    "uid": "6044b455-4553-4f09-8e2f-1e7c49d00e41",
+    "name": "CloudSlurp"
+}
