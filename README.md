@@ -26,7 +26,7 @@ Run the tutorials below to familiarize yourself with PySheets and its powerful f
 
 ![PySheets](src/static/icons/screenshot-basics.png)
 
-In this tutorial you will learn how to:
+In this tutorial, you will learn how to:
  - Create a Python cell function
  - Visualize the dependency graph in the spreadsheet
 
@@ -37,9 +37,9 @@ In this tutorial you will learn how to:
 
 ![PySheets](src/static/icons/screenshot-charts.png)
 
-In this tutorial you will learn how to:
+In this tutorial, you will learn how to:
  - Convert a part of the spreadsheet into a Pandas DataFrame
- - Visualize the dataframe as a bargraph
+ - Visualize the dataframe as a bar graph
  - Generate your own visualization using the PySheets AI
 
 <a href="https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/src/static/examples/tutorial_charts.json" target="_blank">Run the Charts tutorial now</a>
@@ -51,10 +51,10 @@ In this tutorial you will learn how to:
 
 ![PySheets](src/static/icons/screenshot-airports.png)
 
-In this tutorial you will learn how to:
+In this tutorial, you will learn how to:
  - Import a CSV from the web and convert it into a Pandas DataFrame
  - Transform the DataFrame by removing rows and adding new columns
- - Generate a bargraph
+ - Generate a bar graph
  - Generate a map using Folium
 
 This entire tutorial is using the low-code features of PySheets.
@@ -68,13 +68,13 @@ was needed to generate this dataflow.
 
 ![PySheets](src/static/icons/screenshot-chess.png)
 
-In this tutorial you will learn how to:
- - Write a cell function that generates a chess board
+In this tutorial, you will learn how to:
+ - Write a cell function that generates a chessboard
  - Access the PySheets main UI from a cell function
  - How the tutorial was generated
 
 This entire tutorial is showcasing a unique feature of PySheets,
-the ability to interacte with the main UI from a cell function.
+the ability to interact with the main UI from a cell function.
 
 <a href="https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/src/static/examples/tutorial_chess.json" target="_blank">Run the Chess tutorial now</a>
 
@@ -112,12 +112,12 @@ Information sources for PySheets:
 Ahead In The Cloud Computing makes PySheets available under both the GPLv3 and a
 [commercial license](https://buy.stripe.com/00g1684SS2BZ9Es7st).
 
-If you want to self-host PySheets for personal projects or evaluation purposes, the GPLv3 licence applies. 
-This licence allows free use of the software, but also implies that if you make any modifications or
-extensions to PySheets, you need to share those changes yourself, under the same license. 
+If you want to self-host PySheets for personal projects or evaluation purposes, the GPLv3 license applies. 
+This license allows free use of the software but also implies that if you make any modifications or
+extensions to PySheets, you must share those changes under the same license. 
 
 Self-hosting installations of PySheets that want to use the software but do not want to be subject to the GPL and
-do not want to release the source code for their proprietary extensions and addons should purchase a
+do not want to release the source code for their proprietary extensions and addons, should purchase a
 [commercial license](https://buy.stripe.com/00g1684SS2BZ9Es7st)
 from Ahead In The Cloud Computing. Purchasing a commercial license means that the GPL does not apply, and a commercial 
 license includes the assurances that distributors typically find in commercial distribution agreements.
@@ -126,5 +126,5 @@ When using PySheets for any commercial purpose, we recommend a [commercial licen
 Commercial use includes incorporating PySheets into a commercial product, 
 using PySheets in any commercial service, 
 leveraging PySheets to create algorithms or workflows that aim to produce a profit,
-using PySheets in a commercial, financial institution such as a bank or hedge fund,
-or using PySheets to produce other artefacts for commercial purposes.
+using PySheets in a commercial financial institution such as a bank or hedge fund,
+or using PySheets to produce other artifacts for commercial purposes.
