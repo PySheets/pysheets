@@ -295,7 +295,10 @@ def load():
         if time.time() - when < 60:
             print("/load: network cache hit:", url)
             return response
-    headers = request.headers
+    headers = {
+        "User-Agent": request.headers.get("User-Agent"),
+        "Authorization": request.headers.get("Authorization"),
+    }
     if request.method == "GET":
         response = ssl_get(url, headers=headers)
     elif request.method == "POST":
