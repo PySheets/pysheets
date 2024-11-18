@@ -76,7 +76,7 @@ def handle_404(error): # pylint: disable=unused-argument
     return "Nothing here"
 
 
-VERSION_PYSCRIPT = "2024.10.1"
+VERSION_PYSCRIPT = "2024.10.2"
 PATH = os.path.join(os.path.dirname(__file__), "static").replace("\\", "/")
 RUNTIME_PYODIDE = "py"
 RUNTIME_MICROPYTHON = "mpy"
@@ -295,9 +295,7 @@ def load():
         if time.time() - when < 60:
             print("/load: network cache hit:", url)
             return response
-    headers = {
-        "Authorization": request.headers.get("Authorization")
-    }
+    headers = request.headers
     if request.method == "GET":
         response = ssl_get(url, headers=headers)
     elif request.method == "POST":
@@ -311,7 +309,7 @@ def load():
     except Exception: # pylint: disable=broad-except
         pass
     load_cache[url] = time.time(), response
-    print("/load: network cache miss", url, type(response), len(response), response[:128])
+    print("/load: network cache miss", url, type(response), len(response), response)
     return response # send regular string
 
 
