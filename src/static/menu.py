@@ -223,7 +223,7 @@ def create_help_menu():
                     "-pNS73P4VF2m-i8X8EC9rfKl-jT84A/viewform")
 
     def discord(event): # pylint: disable=unused-argument
-        ltk.window.open("https://discord.gg/4wy23872th")
+        ltk.window.open("https://discord.gg/m6mkZ5me")
 
     def show_tutorial(event): # pylint: disable=unused-argument
         ltk.window.open("https://github.com/PySheets/pysheets?tab=readme-ov-file#tutorials")
