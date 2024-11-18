@@ -52,6 +52,7 @@ class PyScriptResponse():
         self.cookies = ltk.window.document.cookie
 
     def info(self):
+        """ Return the response headers. """
         return self.headers
 
     def json(self):
@@ -80,7 +81,7 @@ class PyScriptResponse():
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
-    
+
 
 
 class PyScriptSession(OriginalSession):
@@ -103,10 +104,10 @@ class PyScriptSession(OriginalSession):
         xhr.send(data)
         content = xhr.responseText
         network_calls.append((
-            method, 
-            url, 
-            xhr.status, 
-            len(content), 
+            method,
+            url,
+            xhr.status,
+            len(content),
             f"{content[:64]}{'...' if len(content) > 64 else ''}"
         ))
         return PyScriptResponse(url, xhr.status, content)
@@ -155,9 +156,9 @@ def _load_with_trampoline(url):
         network_cache[url] = time.time(), content
         network_calls.append((
             "GET", 
-            url, 
-            xhr.status, 
-            len(content), 
+            url,
+            xhr.status,
+            len(content),
             f"{content[:64]}{'...' if len(content) > 64 else ''}"
         ))
         return content
@@ -191,12 +192,14 @@ class HTTPSHandler(HTTPHandler):
     """
 
     def https_open(self, req):
+        """ Wraps the https_open call, so it can be easily debugged """
         return super(HTTPSHandler, self).http_open(req)
 
 
 def _patch_request():
     requests.session = PyScriptSession
-    urllib.request._opener = urllib.request.build_opener(HTTPHandler(), HTTPSHandler())
+    opener = urllib.request.build_opener(HTTPHandler(), HTTPSHandler())
+    urllib.request._opener = opener # pylint: disable=protected-access
 
 
 def _patch_fetch():
@@ -219,6 +222,7 @@ class WidgetProxy(ltk.Widget):
     buffer = []
 
     def __init__(self, selector):
+        ltk.Widget.__init__(self)
         self.selector = selector
         self.attributes = {}
         ltk.schedule(self.send_to_main, "Flush widget proxy buffer")
@@ -227,6 +231,10 @@ class WidgetProxy(ltk.Widget):
     def element(self):
         """ Handle the case when the proxy is added to the DOM """
         return ltk.window.jQuery(self.selector)
+
+    @element.setter
+    def element(self, value):
+        """ Handle setting the element property """
 
     def __getattr__(self, name):
         return getattr(ltk.window.jQuery(self.selector), name)
@@ -237,7 +245,7 @@ class WidgetProxy(ltk.Widget):
             return ltk.window.jQuery(selector)
         return WidgetProxy(f"{self.selector} {selector}")
 
-    def css(self, prop, value=None):
+    def css(self, prop, value=None): # pylint: disable=arguments-renamed
         """ Wraps existing LTK Widget operation for buffering """
         if value is not None:
             WidgetProxy.buffer.append([self.selector, "css", prop, value])
@@ -305,19 +313,19 @@ class WidgetProxy(ltk.Widget):
         WidgetProxy.buffer.append([self.selector, "removeClass", classes])
         return self
 
-    def text(self, value=None):
+    def text(self, text=None):
         """ Wraps existing LTK Widget operation for buffering """
-        if value is not None:
-            WidgetProxy.buffer.append([self.selector, "text", value])
+        if text is not None:
+            WidgetProxy.buffer.append([self.selector, "text", text])
         else:
             self.flush()
             return ltk.window.jQuery(self.selector).text()
         return self
 
-    def html(self, value=None):
+    def html(self, html=None):
         """ Wraps existing LTK Widget operation for buffering """
-        if value is not None:
-            WidgetProxy.buffer.append([self.selector, "html", value])
+        if html is not None:
+            WidgetProxy.buffer.append([self.selector, "html", html])
         else:
             self.flush()
             return ltk.window.jQuery(self.selector).html()

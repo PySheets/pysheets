@@ -1,20 +1,23 @@
-# LTK - Copyright 2023 - All Rights Reserved - chrislaffra.com - See LICENSE 
+"""
+LTK - Copyright 2023 - All Rights Reserved - chrislaffra.com - See LICENSE
+"""
 
 import json
 import logging
 import ltk
-from pyscript import window
+from pyscript import window # pylint: disable=import-error
 
 logger = logging.getLogger('root')
 logger.setLevel(logging.DEBUG)
 
 
 class Logger(ltk.Div):
+    """ Logger UI """
     classes = [ "ltk-log-list" ]
     level = logging.INFO
     messages = []
     callback_count = 0
-    icons = { 
+    icons = {
         logging.CRITICAL : '💥',
         logging.ERROR    : '🔥️',
         logging.WARNING  : '🤔',
@@ -42,8 +45,9 @@ class Logger(ltk.Div):
         self._setup_console()
         self._setup_py_error()
         self._filter_rows()
-        
+
     def resize(self):
+        """  Resize the log list """
         setattr(ltk.local_storage, "log-list-height", self.css("height"))
 
     def _add_table(self):
@@ -72,7 +76,7 @@ class Logger(ltk.Div):
         ltk.observe(self.element, self._changed)
         self.last_width = self.element.width()
 
-    def _changed(self, element=None):
+    def _changed(self, element=None): # pylint: disable=unused-argument
         if self.element.width() != self.last_width:
             ltk.find(".ltk-log-header").css("width", self.width())
             ltk.find(".ltk-log-buttons").css("right", 10)
@@ -81,7 +85,7 @@ class Logger(ltk.Div):
     def _set_level(self, selected):
         self.level = self.levels[selected]
         self._filter_rows()
-        
+
         ltk.pubsub.show_publish = self.level == logging.DEBUG
 
     def _apply_filter(self):
@@ -111,16 +115,17 @@ class Logger(ltk.Div):
         logger_widget = self
 
         class Handler(logging.StreamHandler):
+            """ Log handler """
             level = Logger.level
             formatter = logging.Formatter(fmt=' %(name)s :: %(levelname)-8s :: %(message)s')
 
             def emit(self, record):
                 message = getattr(record, "msg", getattr(record, "message", "???"))
-                logger_widget._add(record.levelno, message)
+                logger_widget._add(record.levelno, message) # pylint: disable=protected-access
 
         logger.addHandler(Handler())
 
-    def _add(self, level, *args, **argv):
+    def _add(self, level, *args, **argv): # pylint: disable=unused-argument
         try:
             message = " ".join(map(str, args))
             if message.startswith("js_callable_proxy"):
@@ -148,9 +153,9 @@ class Logger(ltk.Div):
             self._check_pubsub(message)
             self._check_network(message)
             self._check_events(message)
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             print("Log error:", e)
-                
+
     def _check_pubsub(self, message):
         if message.startswith("[Pubsub]"):
             self.sequence_ui.log(*json.loads(message[9:]))
@@ -158,13 +163,13 @@ class Logger(ltk.Div):
     def _check_network(self, message):
         if message.startswith("[Network]"):
             print(message)
-            _, kind, status, duration, size, url = message.split()
+            _, kind, _, _, size, url = message.split()
             source, destination = "Network", "Application"
             if message.startswith("[Network] POST "):
                 self.sequence_ui.get_component(source)
                 source, destination = destination, source
             self.sequence_ui.log(kind, source, destination, url, size)
-            
+
 
     def _check_events(self, message):
         print(message)
@@ -177,9 +182,9 @@ class Logger(ltk.Div):
         window.console.warn = self._console_log
         window.console.error = self._console_log
         try:
-            import warnings
+            import warnings # pylint: disable=import-outside-toplevel
             warnings.warn = self._console_log
-        except:
+        except: # pylint: disable=bare-except
             pass # Micropython
 
     def _setup_py_error(self):
@@ -191,30 +196,33 @@ class Logger(ltk.Div):
                 py_error.remove()
         ltk.repeat(find_errors, "find errors", 1)
 
-    def _console_log(self, *args, **argv):
+    def _console_log(self, *args, **argv): # pylint: disable=unused-argument
         try:
             if not args:
                 return
 
-            def format(arg):
+            def format_argument(arg):
+                """ Format argument """
                 if arg.__class__.__name__ == "jsobj":
                     try:
                         return json.dumps(ltk.to_py(arg))
-                    except:
+                    except: # pylint: disable=bare-except
                         pass
                 return str(arg)
 
-            message = " ".join(filter(None, [format(arg) for arg in args]))
+            message = " ".join(filter(None, [format_argument(arg) for arg in args]))
             level = self._get_level(message)
             self._add(level, message)
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             print(e)
 
     def _get_level(self, message):
         level = logging.INFO
         if "Traceback" in message or "ERROR" in message.upper():
             level = logging.ERROR
-        elif "[Network]" in message or "Debug" in message or "js_callable_proxy" in message or message.startswith("💀🔒 - Possible deadlock"):
+        elif "[Network]" in message or "Debug" in message or \
+                        "js_callable_proxy" in message or \
+                        message.startswith("💀🔒 - Possible deadlock"):
             level = logging.DEBUG
         return level
 
@@ -244,19 +252,21 @@ class _Call(ltk.Div):
         )
         self.element.append(self.dot.element)
         self.set_index(index)
-    
+
     def set_index(self, index):
+        """ Set index for this call """
         self.index = index
         self.css("display", "block")
         ltk.schedule(self.set_position, f"{self}.set_position")
-    
+
     def set_position(self):
+        """ Set position for this call """
         left = min(self.sender.title.position().left, self.receiver.title.position().left)
         right = max(self.sender.title.position().left, self.receiver.title.position().left)
         top = self.sender.title.position().top
         width = self.sender.title.width()
         height = self.sender.title.height()
-        
+
         self.css("width", right - left)
         self.css("left", round(left + width / 2 + 8))
         self.css("top", round(top + height * 2 + 26 + self.index * 32))
@@ -277,14 +287,17 @@ class _Dot(ltk.Div):
             self.css("left", "").css("right", 0)
         self.addClass("ltk-arrow ltk-arrow-left" if reverse else "ltk-arrow ltk-arrow-right")
         self.line = line
-    
+
     def get_start(self):
+        """ Get start position for this dot"""
         return self.line.width() - 5 if self.reverse else -5
 
     def get_stop(self):
+        """ Get stop position for this dot"""
         return -5 if self.reverse else self.line.width() - 5
 
     def set_position(self):
+        """ Set position for this dot"""
         self.css("left", self.get_start())
         if self.animated:
             self.css("left", self.get_stop())
@@ -308,8 +321,9 @@ class _SequenceDiagram(ltk.HBox):
         self.element.attr("id", "ltk-sequence-ui")
         ltk.observe(self.element, self.changed)
         self.last_width = self.element.width()
-        
-    def changed(self, element=None, force=False):
+
+    def changed(self, element=None, force=False): # pylint: disable=unused-argument
+        """ Called when the element is changed """
         if force or self.element.width() != self.last_width:
             ltk.find(".ltk-sequence-header").width(self.width())
             self.closest("td").width(self.width())
@@ -317,17 +331,19 @@ class _SequenceDiagram(ltk.HBox):
             for call in self.calls:
                 call.set_position()
 
-    def log(self, type, sender_name, receiver_name, topic, data):
+    def log(self, kind, sender_name, receiver_name, topic, data):
+        """ Log a message """
         self.element.width("100%")
         sender = self.get_component(sender_name)
         receiver = self.get_component(receiver_name)
-        call = _Call(sender, receiver, f"{type}:{topic}", data, len(self.calls))
+        call = _Call(sender, receiver, f"{kind}:{topic}", data, len(self.calls))
         self.calls.append(call)
         self.append(call.element)
         self.filter_messages()
         ltk.schedule(lambda: self.changed(force=True), f"{self}.changed", 1.5)
 
     def clear(self):
+        """  Clear the sequence diagram """
         ltk.find(".ltk-sequence-call").animate(
             ltk.to_js({ "opacity": 0}),
             lambda: ltk.find(".ltk-sequence-call").remove()
@@ -335,18 +351,19 @@ class _SequenceDiagram(ltk.HBox):
         self.calls = []
 
     def filter_messages(self):
-        filter = ltk.find("#ltk-log-filter").val()
+        """ Filter the messages """
+        filter_text = ltk.find("#ltk-log-filter").val()
         ltk.find(".ltk-sequence-call").css("display", "none")
-        calls = [call for call in self.calls if filter in call.text()]
+        calls = [call for call in self.calls if filter_text in call.text()]
         index = len(calls) - 1
         for call in calls:
             call.set_index(index)
             index -= 1
 
     def get_component(self, name):
+        """ Get a component """
         if not name in self.components:
             component = _Component(name)
             self.components[name] = component
             component.appendTo(self.element)
         return self.components[name]
-

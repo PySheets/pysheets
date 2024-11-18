@@ -1,11 +1,20 @@
-# LTK - Copyright 2023 - All Rights Reserved - chrislaffra.com - See LICENSE 
+# pylint: disable=too-many-lines
 
-from pyscript import window # type: ignore
-from ltk.jquery import *
-import itertools
+"""
+LTK - Copyright 2023 - All Rights Reserved - chrislaffra.com - See LICENSE
+"""
+
 import json
 import logging
-import math
+
+from ltk.jquery import find
+from ltk.jquery import get_time
+from ltk.jquery import inject_css
+from ltk.jquery import inject_script
+from ltk.jquery import proxy
+from ltk.jquery import schedule
+from ltk.jquery import to_js
+from ltk.jquery import window
 
 __all__ = [
     "HBox", "Div", "VBox", "Container", "Card", "Preformatted", "Text", "Input", "Checkbox",
@@ -15,6 +24,7 @@ __all__ = [
     "TableHeader", "TableData", "HorizontalSplitPane", "VerticalSplitPane", "TextArea", "Code",
     "Image", "MenuBar", "Switch", "MenuLabel", "Menu", "Popup", "MenuPopup", "MenuItem", "Select",
     "Option", "Widget", "Form", "FieldSet", "Legend", "Tutorial", "Step", "Canvas",
+    "Model", "LocalStorageModel",
 ]
 
 BROWSER_SHORTCUTS = [ "Cmd+N","Cmd+T","Cmd+W", "Cmd+Q" ]
@@ -87,7 +97,7 @@ class Widget(object):
                 result.append(child)
         return result
 
-    def css(self, property, value=None):
+    def css(self, prop, value=None):
         """
         Get or set a computed style property. 
 
@@ -96,12 +106,12 @@ class Widget(object):
         jQuery is used to set or get that specific CSS property.
 
         Args:
-            property:(str,dict): The CSS property or map to set/get
+            prop:(str,dict): The CSS property or map to set/get
             value:Any The CSS value to set. Numeric values auto-convert to "px"
         """
-        if isinstance(property, dict):
-            property = to_js(property)
-        return self.element.css(property, value) if value != None else self.element.css(property)
+        if isinstance(prop, dict):
+            prop = to_js(prop)
+        return self.element.css(prop, value) if value is not None else self.element.css(prop)
 
     def attr(self, name, value=None):
         """
@@ -116,9 +126,9 @@ class Widget(object):
                 Otherwise, it sets the value, which needs to be a string.
         """
         try:
-            return self.element.attr(name, value) if value != None else self.element.attr(name)
-        except:
-            raise ValueError(f"Widget <{self}> does not have attribute {name}")
+            return self.element.attr(name, value) if value is not None else self.element.attr(name)
+        except Exception as e:
+            raise ValueError(f"Widget <{self}> does not have attribute {name}") from e
 
     def prop(self, name, value=None):
         """
@@ -136,11 +146,12 @@ class Widget(object):
                 If value is None, this gets the value as a string. 
                 Otherwise, it sets the value, which needs to be a string.
         """
-        return self.element.prop(name, value) if value != None else self.element.prop(name)
+        return self.element.prop(name, value) if value is not None else self.element.prop(name)
 
     def val(self, value=None):
         """
-        Get or set a the value on the underlying DOM form element, such as input, select, and textarea.
+        Get or set a the value on the underlying DOM form element, such as input,
+        select, and textarea.
 
         Calls jQuery's val method, see https://api.jquery.com/val. 
 
@@ -149,7 +160,7 @@ class Widget(object):
                 If value is None, this gets the value as a string. 
                 Otherwise, it sets the value, which needs to be a string.
         """
-        return self.element.val(value) if value != None else self.element.val()
+        return self.element.val(value) if value is not None else self.element.val()
 
     def height(self, value=None):
         """
@@ -167,7 +178,7 @@ class Widget(object):
                 If value is None, this gets the current height of the DOM element as a number. 
                 Otherwise, it sets the height.
         """
-        return self.element.height(value) if value != None else self.element.height()
+        return self.element.height(value) if value is not None else self.element.height()
 
     def width(self, value=None):
         """
@@ -185,12 +196,12 @@ class Widget(object):
                 If value is None, this gets the current width of the DOM element as a number. 
                 Otherwise, it sets the width.
         """
-        return self.element.width(value) if value != None else self.element.width()
+        return self.element.width(value) if value is not None else self.element.width()
 
     def find(self, selector):
         """
-        Search through the DOM tree descendants of this widget and construct a new jQuery object from the
-        matching elements. 
+        Search through the DOM tree descendants of this widget and construct a new jQuery
+        object from the matching elements. 
 
         Args:
             selector:str: A string containing a selector expression to match elements against.
@@ -207,7 +218,7 @@ class Widget(object):
         """
         return self.element.closest(selector)
 
-    def addClass(self, classes):
+    def addClass(self, classes): # pylint: disable=invalid-name
         """
         Add the specified class(es) to the current widget's DOM element.
 
@@ -216,21 +227,21 @@ class Widget(object):
         """
         return self.element.addClass(classes)
 
-    def removeClass(self, classes):
+    def removeClass(self, classes): # pylint: disable=invalid-name
         """
         Remove the specified class(es) from the current widget's DOM element.
 
         Args:
-            classes:(str,list): One or more space-separated classes or a list of classes to be removed
+            classes:(str,list): One or more space-separated classes or a list of classes to remove
         """
         return self.element.removeClass(classes)
 
     def children(self, selector=None):
         """
-        Search through the direct children of this widget's DOM tree and construct a new jQuery object
-        from the matching elements. The .children() method differs from .find() in that .children()
-        only travels a single level down the DOM tree while .find() can traverse down multiple levels
-        to select descendant elements (grandchildren, etc.) as well.
+        Search through the direct children of this widget's DOM tree and construct a new jQuery
+        object from the matching elements. The .children() method differs from .find() in that
+        .children() only travels a single level down the DOM tree while .find() can traverse down
+        multiple levels to select descendant elements (grandchildren, etc.) as well.
 
         Args:
             selector:str: A string containing a selector expression to match elements against.
@@ -242,8 +253,8 @@ class Widget(object):
         Return a string containing the combined text of the current widget's DOM tree
         or completely replace that DOM tree with a new text value.
         
-        Due to variations in the HTML parsers in different browsers, the text returned may vary in newlines
-        and other white space.
+        Due to variations in the HTML parsers in different browsers, the text returned may vary
+        in newlines and other white space.
 
         Args:
             text:str: A string that to replace the current widget's DOM tree with.
@@ -275,7 +286,7 @@ class Widget(object):
         """
         return self.element.append(*self._flatten(children))
 
-    def appendTo(self, target):
+    def appendTo(self, target): # pylint: disable=invalid-name
         """
         Append the current widget at the end of the children list in target.
 
@@ -332,10 +343,11 @@ class Widget(object):
     def __getattr__(self, name):
         try:
             return getattr(self.element, name)
-        except:
-            raise AttributeError(f"LTK widget {self} does not have attribute {name}")
+        except Exception as e:
+            raise AttributeError(f"LTK widget {self} does not have attribute {name}") from e
 
-    def toJSON(self, *args):
+    def toJSON(self, *args): # pylint: disable=invalid-name
+        """ Return a JSON representation of the widget """
         return f"[{self.__class__.__name__}|{','.join(args)}]"
 
 
@@ -376,8 +388,111 @@ class Text(Widget):
     """ A <div> to hold text """
     classes = [ "ltk-text" ]
 
-    def __init__(self, *args, style=DEFAULT_CSS):
-        Widget.__init__(self, *args, style)
+    def __init__(self, *args, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
+        for value in args:
+            if isinstance(value, Field):
+                bind(self, value)
+            else:
+                self.append(value)
+
+    def val(self, value=None):
+        print("set value", self, value)
+        return self.element.text() if value is None else self.element.text(value)
+
+
+class Model():
+    """ A model that can be bound to a widget """
+
+    def __init__(self):
+        for name, value in self.__class__.__dict__.items():
+            if not name.startswith("__") and not callable(value):
+                object.__setattr__(self, name,
+                    Field(self, name, getattr(self.__class__, name))
+                )
+
+    def __setattr__(self, name: str, value):
+        if hasattr(self, name) and isinstance(getattr(self, name), Field):
+            print("set", name, value)
+            field = getattr(self, name)
+            field.set(value)
+            try:
+                self.changed(name, value)
+            except Exception as e: #  pylint: disable=broad-except
+                print(e)
+        else:
+            object.__setattr__(self, name, value)
+
+    def decode(self, json_encoding: str):
+        """ Decode the JSON encoding of the model """
+        try:
+            for name, value in json.loads(json_encoding).items():
+                setattr(self, name, value)
+        except Exception as e: # pylint: disable=broad-except
+            print("Decode error: ", e)
+
+    def encode(self):
+        """ Encode the model as JSON """
+        return json.dumps({
+            name: value.get()
+            for name, value in self.__dict__.items()
+            if isinstance(value, Field)
+        })
+
+    def changed(self, name, value):
+        """ Called when a field of the model has changed """
+
+
+class LocalStorageModel(Model):
+    """ A model that is stored in the browser's local storage """
+
+    __store = window.localStorage
+
+    def __init__(self, key=None):
+        Model.__init__(self)
+        key = key or f"{self.__class__.__name__}-{get_time()}"
+        self.decode(self.__store.getItem(key))
+        self.key = key
+
+    def changed(self, name, value):
+        """ Called when a field of the model has changed """
+        if hasattr(self, "key"):
+            self.__store.setItem(self.key, self.encode())
+
+    @classmethod
+    def load(cls):
+        """ Load all models of this type from local storage """
+        return [ cls(key) for key in window.Object.keys(cls.__store)]
+
+
+class Field():
+    """ A specific field of a Model """
+    def __init__(self, model: Model, name: str, value):
+        self.model = model
+        self.name = name
+        self.value = value
+        self.listener = lambda field: None
+
+    def get(self):
+        """ Get the value of the field """
+        return self.value
+
+    def set(self, value):
+        """ Set the value of the field """
+        self.value = value
+        self.model.changed(self.name, self.value)
+        self.listener(self)
+
+    def __repr__(self):
+        return f'"{self.value}"' if isinstance(self.value, str) else repr(self.value)
+
+
+def bind(widget, field):
+    """ Establish a binding between a Widget and a model Field """
+    print("bind", widget, field)
+    field.listener = lambda field: widget.val(field.get())
+    widget.val(field.get())
+    widget.on("change", proxy(lambda event: field.set(widget.val())))
 
 
 class Input(Widget):
@@ -385,10 +500,13 @@ class Input(Widget):
     classes = [ "ltk-input" ]
     tag = "input"
 
-    def __init__(self, value, style=DEFAULT_CSS):
-        Widget.__init__(self, style)
-        self.element.val(value)
-        self.on("wheel", ltk.proxy(lambda event: None)) # ensure Chrome handles wheel events
+    def __init__(self, value, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
+        if isinstance(value, Field):
+            bind(self, value)
+        else:
+            self.element.val(value)
+        self.on("wheel", proxy(lambda event: None)) # ensure Chrome handles wheel events
 
 
 class Checkbox(Widget):
@@ -396,15 +514,17 @@ class Checkbox(Widget):
     classes = [ "ltk-checkbox" ]
     tag = "input"
 
-    def __init__(self, checked, style=DEFAULT_CSS):
-        Widget.__init__(self, style)
+    def __init__(self, checked, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
         self.element.prop("type", "checkbox")
         self.check(checked)
 
     def check(self, checked):
+        """ Check or uncheck the checkbox """
         self.element.prop("checked", "checked" if checked else None)
 
     def checked(self):
+        """ Return whether the checkbox is checked or not """
         return self.element.prop("checked") == "checked"
 
 
@@ -418,7 +538,7 @@ class Switch(HBox):
     """ A checkbox with special styling to resemble a switch/toggle """
     classes = [ "ltk-switch-container ltk-hbox" ]
 
-    def __init__(self, label, checked, style=DEFAULT_CSS):
+    def __init__(self, label, checked, style=None):
         """
         Create a new switch
 
@@ -426,22 +546,33 @@ class Switch(HBox):
             label:str: The label for the switch
             checked:bool Whether the switch is checked or not
         """
-        def toggle_edit(event):
+        def toggle_edit(event): # pylint: disable=unused-argument
             checked = self.element.find(".ltk-checkbox").prop("checked")
             self.element.prop("checked", checked)
-        id = f"edit-switch-{get_time()}"
-        HBox.__init__(self, 
-            Div(label).addClass("ltk-switch-label"),
-            Checkbox(checked).attr("id", id).addClass("ltk-switch-checkbox").on("change", proxy(toggle_edit)),
-            Label("").attr("value", "edit:").attr("for", id).addClass("ltk-switch"),
+
+        element_id = f"edit-switch-{get_time()}"
+        HBox.__init__(self,
+            Div(label)
+                .addClass("ltk-switch-label"),
+            Checkbox(checked)
+                .attr("id", element_id)
+                .addClass("ltk-switch-checkbox")
+                .on("change", proxy(toggle_edit)),
+            Label("")
+                .attr("value", "edit:")
+                .attr("for", element_id)
+                .addClass("ltk-switch"),
+            style or DEFAULT_CSS
         )
 
         self.check(checked)
 
     def check(self, checked):
+        """ Check or uncheck the switch """
         self.element.find(".ltk-checkbox").prop("checked", "checked" if checked else None)
 
     def checked(self):
+        """ Return whether the switch is checked or not """
         return self.element.find(".ltk-checkbox").prop("checked") == "checked"
 
 class Label(Widget):
@@ -449,10 +580,11 @@ class Label(Widget):
     classes = [ "ltk-label" ]
     tag = "label"
 
-    def __init__(self, label, input=None, style=DEFAULT_CSS):
-        Widget.__init__(self, style)
-        if input:
-            self.element.append(input)
+    def __init__(self, label, input_widget=None, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
+        if input_widget:
+            element = input_widget.element if isinstance(input_widget, Widget) else input_widget
+            self.elemeet.append(element)
         self.element.append(label)
 
 
@@ -461,7 +593,7 @@ class Button(Widget):
     classes = [ "ltk-button" ]
     tag = "button"
 
-    def __init__(self, label:str, click, style=DEFAULT_CSS):
+    def __init__(self, label:str, click, style=None):
         """
         Initializes a new Button instance.
 
@@ -470,17 +602,17 @@ class Button(Widget):
             click:function(event): The event handler for this button
             style:dict [optional] CSS values to set on the element
         """
-        Widget.__init__(self, style)
+        Widget.__init__(self, style or DEFAULT_CSS)
         self.element.text(label).on("click", proxy(click))
 
 
 class Link(Text):
     """ Wraps an HTML element of type <a> """
     classes = [ "ltk-a" ]
-    tag = "a" 
+    tag = "a"
 
     def __init__(self, href, *items):
-        Widget.__init__(self, *items)
+        Text.__init__(self, *items)
         self.attr("href", href)
         self.attr("target", "_blank")
 
@@ -500,7 +632,7 @@ class Important(Text):
 class Italic(Text):
     """ Wraps an HTML element of type <i> """
     classes = [ "ltk-i" ]
-    tag = "i" 
+    tag = "i"
 
 
 class Paragraph(Text):
@@ -576,6 +708,7 @@ class Tabs(Widget):
         self.on("tabsactivate", proxy(lambda *args: self.find(".ltk-split-pane").trigger("layout")))
 
     def add_tab(self, tab):
+        """ Adds a new tab """
         tab_id = f"{self.name}-{self.labels.children().length}"
         self.labels.append(
             ListItem().append(Link(f"#{tab_id}").text(tab.attr("name")))
@@ -583,15 +716,19 @@ class Tabs(Widget):
         self.append(Div(tab).attr("id", tab_id))
 
     def active(self):
+        """ Returns the index of the active tab """
         return self.element.tabs("option", "active")
 
     def activate(self, index):
+        """ Activates a tab """
         self.element.tabs("option", "active", index)
 
     def get_tab(self, index):
+        """ Returns the tab at the given index """
         return self.element.find(f"li:nth-child({index + 1})")
 
     def get_panel(self, index):
+        """ Returns the panel at the given index """
         return self.element.children().eq(index + 1)
 
 
@@ -600,8 +737,8 @@ class File(Widget):
     classes = [ "ltk-file" ]
     tag = "input"
 
-    def __init__(self, style=DEFAULT_CSS):
-        Widget.__init__(self, style)
+    def __init__(self, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
         self.element.attr("type", "file")
 
 
@@ -610,8 +747,8 @@ class DatePicker(Widget):
     classes = [ "ltk-datepicker" ]
     tag = "input"
 
-    def __init__(self, style=DEFAULT_CSS):
-        Widget.__init__(self, style)
+    def __init__(self, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
         self.element.attr("type", "date")
 
 
@@ -620,8 +757,8 @@ class ColorPicker(Widget):
     classes = [ "ltk-colorpicker" ]
     tag = "input"
 
-    def __init__(self, style=DEFAULT_CSS):
-        Widget.__init__(self, style)
+    def __init__(self, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
         self.element.attr("type", "color")
 
 
@@ -629,11 +766,11 @@ class RadioGroup(VBox):
     """ Wraps an HTML element of type collection of Radio buttons """
     classes = [ "ltk-vbox ltk-radiogroup" ]
 
-    def __init__(self, *buttons, style=DEFAULT_CSS):
+    def __init__(self, *buttons, style=None):
         name = f"ltk-radiogroup-{window.get_time()}"
         for button in buttons:
             button.find("input").attr("name", name)
-        VBox.__init__(self, *buttons, style)
+        VBox.__init__(self, *buttons, style or DEFAULT_CSS)
 
 
 class RadioButton(Widget):
@@ -641,8 +778,8 @@ class RadioButton(Widget):
     classes = [ "ltk-radiobutton" ]
     tag = "input"
 
-    def __init__(self, checked, style=DEFAULT_CSS):
-        Widget.__init__(self, style)
+    def __init__(self, checked, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
         self.element.prop("type", "radio")
         self.element.attr("checked", "checked" if checked else None)
 
@@ -653,6 +790,7 @@ class Table(Widget):
     tag = "table"
 
     def __init__(self, *rows):
+        Widget.__init__(self)
         self.element = (
             window.table()
                 .addClass(" ".join(self.classes))
@@ -660,12 +798,15 @@ class Table(Widget):
         )
 
     def title(self, column, title):
+        """ Sets the title of a column """
         window.tableTitle(self.element, column, title)
 
     def get(self, column, row):
+        """ Returns the value of a cell """
         return window.tableGet(self.element, column, row)
 
     def set(self, column, row, value):
+        """ Sets the value of a cell """
         window.tableSet(self.element, column, row, str(value))
 
 
@@ -691,18 +832,21 @@ class SplitPane(Div):
     """ Lays out its child widgets horizontally or vertically with a resize handle in the center """
 
     def resize(self):
+        """ Resizes the split pane """
         position = self.get_position(self.middle) - self.get_position(self)
         self.ratio = position / self.get_size(self)
         self.layout()
 
     def restore(self):
+        """ Restores the split pane to its original size """
         try:
             self.ratio = float(window.localStorage.getItem(self.key))
-        except:
+        except: # pylint: disable=bare-except
             self.ratio = 0.5
         self.layout()
 
     def layout(self):
+        """ Lays out the split pane """
         size = self.get_size(self)
         middle = self.get_size(self.middle)
         self.set_size(self.first, f"{self.ratio * size + middle}")
@@ -733,10 +877,12 @@ class SplitPane(Div):
                 .addClass(f"ltk-{self.direction}-split-pane-last")
         )
         self.attr("id", self.key)
-        self.addClass(f"ltk-split-pane")
+        self.addClass("ltk-split-pane")
         self.restore()
         self.layout()
-        self.on("layout", proxy(lambda event: self.layout() if event.target.id == self.key else None))
+        self.on("layout", proxy(
+            lambda event: self.layout() if event.target.id == self.key else None
+        ))
         schedule(self.layout, f"layout-{self.key}")
         window.addEventListener("resize", proxy(lambda *args: self.layout()))
 
@@ -753,15 +899,19 @@ class HorizontalSplitPane(SplitPane):
         SplitPane.__init__(self, first, last, key)
 
     def get_position(self, x):
+        """ Returns the position of the handle """
         return x.position().left
 
     def set_position(self, x, value):
+        """ Sets the position of the handle """
         x.css("left", value)
 
     def get_size(self, x):
+        """ Returns the size of the handle """
         return max(1, x.width())
 
     def set_size(self, x, value):
+        """ Sets the size of the handle """
         x.width(value)
 
 
@@ -777,15 +927,19 @@ class VerticalSplitPane(SplitPane):
         SplitPane.__init__(self, first, last, key)
 
     def get_position(self, x):
+        """ Returns the position of the handle """
         return x.position().top
 
     def set_position(self, x, value):
+        """ Sets the position of the handle """
         x.css("top", value)
 
     def get_size(self, x):
+        """ Returns the size of the handle """
         return max(1, x.height())
 
     def set_size(self, x, value):
+        """" Sets the size of the handle """
         x.height(value)
 
 
@@ -794,8 +948,8 @@ class TextArea(Text):
     classes = [ "ltk-textarea" ]
     tag = "textarea"
 
-    def __init__(self, text="", style=DEFAULT_CSS):
-        Widget.__init__(self, style)
+    def __init__(self, text="", style=None):
+        Text.__init__(self, style or DEFAULT_CSS)
         self.element.text(text)
 
 
@@ -805,16 +959,17 @@ class Code(Widget):
     tag = "code"
     highlighted = False
 
-    def __init__(self, language, code, style=DEFAULT_CSS):
-        Widget.__init__(self, style)
+    def __init__(self, language, code, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
         if not hasattr(window, "hljs"):
-            inject_css("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css")
-            inject_script("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js")
-            inject_script(f"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/{language}.min.js")
+            inject_css("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css") # pylint: disable=line-too-long
+            inject_script("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js") # pylint: disable=line-too-long
+            inject_script(f"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/{language}.min.js") # pylint: disable=line-too-long
         self.element.text(code).css("opacity", 0)
         schedule(self.highlight, f"{self}.highlight")
 
     def highlight(self):
+        """ Highlights the code using the provided language """
         if self.highlighted:
             return
         if hasattr(window, "hljs"):
@@ -830,8 +985,8 @@ class Image(Widget):
     classes = [ "ltk-image" ]
     tag = "img"
 
-    def __init__(self, src, onerror=None, style=DEFAULT_CSS):
-        Widget.__init__(self, style)
+    def __init__(self, src, onerror=None, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
         self.element.referrerPolicy = "referrer"
         self.element.attr("src", src)
         if onerror:
@@ -847,8 +1002,8 @@ class MenuLabel(Widget):
     """ Creates a label used in menus """
     classes = ["ltk-menulabel"]
 
-    def __init__(self, label, style=DEFAULT_CSS):
-        Widget.__init__(self, style)
+    def __init__(self, label, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
         self.element.text(label)
 
 
@@ -856,14 +1011,15 @@ class Menu(Widget):
     """ Creates a menu """
     classes = ["ltk-menu"]
 
-    def __init__(self, label, *items, style=DEFAULT_CSS):
+    def __init__(self, label, *items, style=None):
         self.label = MenuLabel(label)
         self.popup = MenuPopup(*items)
-        Widget.__init__(self, self.label, self.popup, style)
-        self.label.on("click", proxy(lambda event: self.show(event)))
-        self.on("mouseenter", proxy(lambda event: self.replace_other(event)))
+        Widget.__init__(self, self.label, self.popup, style or DEFAULT_CSS)
+        self.label.on("click", proxy(lambda event: self.show(event))) # pylint: disable=unnecessary-lambda
+        self.label.on("click", proxy(lambda event: self.show(event))) # pylint: disable=unnecessary-lambda
 
     def replace_other(self, event):
+        """ Replaces the menu with the other menu """
         if find(".ltk-menupopup-open").length:
             _close_all_menus()
             self.show(event)
@@ -881,16 +1037,19 @@ class Popup(Widget):
     classes = [ "ltk-popup" ]
 
     def show(self, element):
+        """ Closes all existing popups and shows the popup """
         _close_all_menus()
+        body_width = window.jQuery(window.document.body).width()
         (self
             .appendTo(window.jQuery(window.document.body))
             .css("top", element.offset().top + 28)
-            .css("left", min(element.offset().left + 2, window.jQuery(window.document.body).width() - self.width() - 12))
+            .css("left", min(element.offset().left + 2, body_width - self.width() - 12))
         )
-        ltk.schedule(proxy(lambda: self.css("display", "block")), "ltk-menupopup")
+        schedule(proxy(lambda: self.css("display", "block")), "ltk-menupopup")
         return self
 
     def close(self):
+        """ Closes the popup """
         self.css("display", "none")
 
 
@@ -903,16 +1062,16 @@ class MenuItem(Widget):
     """ Creates a menuitem used inside a menu """
     classes = [ "ltk-menuitem" ]
 
-    def __init__(self, icon, label, shortcut, selected, style=DEFAULT_CSS):
+    def __init__(self, icon, label, shortcut, selected, style=None):
         items = [
             Text(icon).addClass("ltk-menuitem-icon"),
             Text(label).addClass("ltk-menuitem-label"),
         ] + ([
             Text(shortcut).addClass("ltk-menuitem-shortcut"),
         ] if shortcut else [])
-        Widget.__init__(self, items, style)
-        self.on("click", proxy(lambda event: self.select(event)))
-        self.on("select", proxy(lambda event: self.select(event)))
+        Widget.__init__(self, items, style or DEFAULT_CSS)
+        self.on("click", proxy(lambda event: self.select(event))) # pylint: disable=unnecessary-lambda
+        self.on("select", proxy(lambda event: self.select(event))) # pylint: disable=unnecessary-lambda
         if shortcut in BROWSER_SHORTCUTS:
             raise ValueError(f"Cannot capture shortcut {shortcut} as the browser won't allow that")
         if shortcut:
@@ -921,6 +1080,7 @@ class MenuItem(Widget):
         self.selected = selected
 
     def select(self, event):
+        """ Selects the menu item """
         _close_all_menus()
         self.selected(self)
         event.preventDefault()
@@ -931,8 +1091,8 @@ class Select(Widget):
     classes = [ "ltk-select" ]
     tag = "select"
 
-    def __init__(self, options, selected, handler, style=DEFAULT_CSS):
-        Widget.__init__(self, 
+    def __init__(self, options, selected, handler, style=None):
+        Widget.__init__(self,
             [
                 Option(text).prop("selected", "selected" if text == selected else "")
                 for text in options
@@ -943,12 +1103,15 @@ class Select(Widget):
         self.element.on("change", proxy(lambda event: schedule(self.changed, f"{self}.changed")))
 
     def get_selected_index(self):
+        """  Returns the index of the selected option """
         return self.element.prop("selectedIndex")
 
     def get_selected_option(self):
+        """ Returns the selected option """
         return self.element.find("option").eq(self.get_selected_index())
 
     def changed(self):
+        """ Called when the selected option changes """
         self.handler(self.get_selected_index(), self.get_selected_option())
 
 
@@ -977,6 +1140,7 @@ class Option(Text):
 
 
 class Step(Div):
+    """ Represents a step in a tutorial """
     classes = [ "ltk-step" ]
 
     def __init__(self, widget, buttons, content):
@@ -985,7 +1149,7 @@ class Step(Div):
         self.widget = widget
         self.draggable({
             "drag": proxy(lambda *args: (
-                ltk.find(".leader-line").remove(),
+                find(".leader-line").remove(),
                 schedule(self.show_arrow, "ltk-step-draw-arrow", 0.1)
             )),
         })
@@ -993,11 +1157,12 @@ class Step(Div):
         self.on("mouseenter", proxy(lambda event: self.show_arrow()))
 
     def show(self):
+        """ Shows the tutorial step """
         if not getattr(self.widget, "is")(":visible"):
             return
-        ltk.find(".ltk-step").remove()
-        self.appendTo(ltk.find("body"))
-        self.css(ltk.to_js({
+        find(".ltk-step").remove()
+        self.appendTo(find("body"))
+        self.css(to_js({
             "visibility": "visible",
             "opacity": 1,
             "left": self.widget.offset().left + self.widget.outerWidth() + 100,
@@ -1007,16 +1172,19 @@ class Step(Div):
         self.show_arrow()
 
     def show_arrow(self):
-        ltk.find(".leader-line").remove()
+        """ Shows the arrow to indicate which widget the step is for """
+        find(".leader-line").remove()
         source = self.element
         target = self.widget.element if hasattr(self.widget, "element") else self.widget
-        ltk.schedule(proxy(lambda: ltk.window.addArrow(source, target)), "ltk-step-show-arrow")
+        schedule(proxy(lambda: window.addArrow(source, target)), "ltk-step-show-arrow")
 
     def hide(self):
+        """ Hides the tutorial step """
         self.remove()
 
 
 class Tutorial():
+    """ Creates a tutorial """
     tag = None
 
     def __init__(self, steps):
@@ -1025,63 +1193,71 @@ class Tutorial():
         self.steps = steps
 
     def run(self):
+        """ Runs the tutorial """
         self.index = 0
         self.show()
-        
+
     def close(self):
-        ltk.find(".leader-line, .ltk-step").remove()
+        """ Closes the tutorial """
+        find(".leader-line, .ltk-step").remove()
 
     def previous(self):
+        """ Goes to the previous step """
         self.close()
         if self.index > 0:
             self.index -= 1
-            self.show() 
+            self.show()
 
     def next(self):
+        """ Goes to the next step """
         self.close()
         if self.index < len(self.steps):
             self.index += 1
             self.show()
 
     def event(self, index):
+        """ Handles the event for the current step """
         if index == self.index:
             self.next()
 
     def show(self):
+        """ Shows the current step """
         if self.index < 0 or self.index >= len(self.steps):
             return
         selector, event, content = self.steps[self.index]
-        buttons = ltk.HBox(
-            ltk.Text("⟸").on("click", ltk.proxy(lambda *args: self.previous())),
-            ltk.Text("⟹").on("click", ltk.proxy(lambda *args: self.next())),
-            ltk.Text("x").on("click", ltk.proxy(lambda *args: self.close())),
+        buttons = HBox(
+            Text("⟸").on("click", proxy(lambda *args: self.previous())),
+            Text("⟹").on("click", proxy(lambda *args: self.next())),
+            Text("x").on("click", proxy(lambda *args: self.close())),
         ).addClass("ltk-step-buttons")
-        widget = ltk.find(selector)
+        widget = find(selector)
         Step(widget, buttons, content).show()
         index = self.index
-        widget.on(event, ltk.proxy(lambda *args: self.event(index)))
+        widget.on(event, proxy(lambda *args: self.event(index)))
 
 
 class Canvas(Widget):
+    """  Wraps an HTML element of type <canvas> """
     classes = [ "ltk-canvas" ]
     tag = "canvas"
 
-    def __init__(self, style=DEFAULT_CSS) -> None:
+    def __init__(self, style=None) -> None:
         self._context = None
         self._font = None
         self._fill_style = None
         self._stroke_style = None
-        Widget.__init__(self, style)
+        Widget.__init__(self, style or DEFAULT_CSS)
 
     def __getattr__(self, name):
         try:
             return getattr(self.element, name)
-        except:
+        except: # pylint: disable=bare-except
             try:
                 return getattr(self.context, name)
-            except:
-                raise AttributeError(f"LTK widget {self} does not have attribute {name}")
- 
+            except: # pylint: disable=bare-except
+                error = f"LTK widget {self} does not have attribute {name}"
+                raise AttributeError(error) # pylint: disable=raise-missing-from
+
     def __setattr__(self, name, value):
         if name != "_context" and self._context and hasattr(self._context, name):
             setattr(self._context, name, value)
@@ -1089,62 +1265,73 @@ class Canvas(Widget):
             setattr(self.element, name, value)
         else:
             super().__setattr__(name, value)
- 
+
     @property
     def context(self):
-        if self._context == None:
+        """ The context for the canvas """
+        if self._context is None:
             self._context = self.element[0].getContext("2d")
         return self._context
 
     @property
     def stroke_style(self):
+        """ The stroke style for the canvas """
         return self._stroke_style
-            
+
     @stroke_style.setter
     def stroke_style(self, value):
         if self._stroke_style != value:
             self._stroke_style = value
             self.context.strokeStyle = value
-    
+
     @property
     def fill_style(self):
+        """ The fill style for the canvas """
         return self._fill_style
-            
+
     @fill_style.setter
     def fill_style(self, value):
         if self._fill_style != value:
             self._fill_style = value
             self.context.fillStyle = value
-    
+
     @property
     def font(self):
+        """ The font for the canvas """
         return self._font
-            
+
     @font.setter
     def font(self, value):
         if self._font != value:
             self._font = value
             self.context.font = value
-    
+
     def line(self, x1, y1, x2, y2):
+        """ Draws a line on the canvas """
         window.canvas.line(self.context, x1, y1, x2, y2)
 
-    def text(self, x, y, text):
+    def text(self, x, y, text): # pylint: disable=arguments-differ
+        """ Draws the outline of a text on the canvas """
         window.canvas.text(self.context, x, y, text)
 
     def fill_text(self, x, y, text):
+        """ Fills a text on the canvas """
         self.context.fillText(x, y, text)
 
     def rect(self, x, y, w, h):
+        """ Draws a rectangle on the canvas """
         window.canvas.rect(self.context, x, y, w, h)
 
     def fill_rect(self, x, y, w, h):
+        """ Fills a rectangle on the canvas """
         self.context.fillRect(x, y, w, h)
 
     def circle(self, x, y, radius):
+        """ Draws a circle on the canvas """
         window.canvas.circle(self.context, x, y, radius)
 
     def fill_circle(self, x, y, radius):
+        """ Fills a circle on the canvas """
         window.canvas.fillCircle(self.context, x, y, radius)
 
 
@@ -1160,7 +1347,7 @@ def _handle_shortcuts():
     def handle_keydown(event):
         try:
             shortcut = f"{'Cmd+' if event.metaKey else ''}{event.key.upper()}"
-        except:
+        except: # pylint: disable=bare-except
             shortcut = ""
         if shortcut in shortcuts:
             event.preventDefault()
@@ -1169,10 +1356,3 @@ def _handle_shortcuts():
 
 
 _handle_shortcuts()
-
-import ltk
-
-ltk.find('.btn').on(
-    "click",
-    ltk.proxy(lambda event: ltk.find(event.target).attr("id"))
-)
