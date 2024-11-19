@@ -90,6 +90,25 @@ This example shows how to load a CSV from the web and load it into DuckDB.
 <a href="https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/src/static/examples/duckdb.json" target="_blank">Run the DuckDB example now</a>
 
 
+## Example: Basic Accounting ⊞
+
+![PySheets](src/static/icons/screenshot-accounting.png)
+
+This example shows how to do basic accounting:
+ - We convert sheet data into a Pandas DataFrame
+ - We rename columns and add a new one
+ - We calculate the revenue per year per product
+ - We join all products into one DataFrame
+
+This exercise shows how hard it is to manipulate rows in Pandas.
+The reason is that Pandas dataframes were designed to focus on columns.
+For use-cases such as this one, it would be better to handly multi-dimensional
+data using pandas-pivot or by transposing the original dataframes.
+
+<a href="https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/src/static/examples/basic_accounting.json" target="_blank">Run the Basic Accounting example now</a>
+
+
+
 ## Example: CloudSlurp ☁️
 
 ![PySheets](src/static/icons/screenshot-cloudslurp.png)

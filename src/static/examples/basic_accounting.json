@@ -1,0 +1,658 @@
+{
+    "_": "n",
+    "cells": {
+        "B9": {
+            "key": "B9",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(197, 221, 252)",
+                "font-weight": ""
+            },
+            "s": "2021"
+        },
+        "D1": {
+            "key": "D1",
+            "style": {
+                "background-color": "#c5ddfc"
+            },
+            "s": "2023"
+        },
+        "D3": {
+            "key": "D3",
+            "style": {
+                "background-color": "#e3e3e3"
+            },
+            "s": "54"
+        },
+        "D2": {
+            "key": "D2",
+            "style": {
+                "background-color": "#e3e3e3"
+            },
+            "s": "10"
+        },
+        "D5": {
+            "key": "D5",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(197, 221, 252)",
+                "font-weight": ""
+            },
+            "s": "2023"
+        },
+        "D7": {
+            "key": "D7",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "54"
+        },
+        "D6": {
+            "key": "D6",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "10"
+        },
+        "D9": {
+            "key": "D9",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(197, 221, 252)",
+                "font-weight": ""
+            },
+            "s": "2023"
+        },
+        "J9": {
+            "value": "DataFrame with 2 rows",
+            "key": "J9",
+            "style": {
+                "background-color": "#ffb3ba"
+            },
+            "s": "=\nimport pandas as pd\n\ndf = G9.copy()\n\n# Rename the first column\ndf['Name'] = \"Product 3\"\n\n# Add a new column for the product name\ndf.rename(columns={'Product 3': 'Details'}, inplace=True)\ndf"
+        },
+        "J5": {
+            "value": "DataFrame with 2 rows",
+            "key": "J5",
+            "style": {
+                "background-color": "#ffb3ba"
+            },
+            "s": "=\nimport pandas as pd\n\ndf = G5.copy()\n\n# Rename the first column\ndf['Name'] = \"Product 2\"\n\n# Add a new column for the product name\ndf.rename(columns={'Product 2': 'Details'}, inplace=True)\ndf"
+        },
+        "J1": {
+            "value": "DataFrame with 2 rows",
+            "key": "J1",
+            "style": {
+                "background-color": "#ffb3ba"
+            },
+            "s": "=\nimport pandas as pd\n\ndf = G1.copy()\n\n# Rename the first column\ndf['Name'] = \"Product 1\"\n\n# Add a new column for the product name\ndf.rename(columns={'Product 1': 'Details'}, inplace=True)\ndf"
+        },
+        "E11": {
+            "key": "E11",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "60"
+        },
+        "E10": {
+            "key": "E10",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "88"
+        },
+        "D10": {
+            "key": "D10",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "16"
+        },
+        "D11": {
+            "key": "D11",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "52"
+        },
+        "A5": {
+            "key": "A5",
+            "style": {
+                "color": "",
+                "vertical-align": "",
+                "font-style": "",
+                "font-weight": "",
+                "background-color": "rgb(231, 208, 208)"
+            },
+            "s": "Product 2"
+        },
+        "A6": {
+            "key": "A6",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(146, 211, 171)",
+                "font-weight": ""
+            },
+            "s": "Volume"
+        },
+        "A7": {
+            "key": "A7",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(146, 211, 171)",
+                "font-weight": ""
+            },
+            "s": "Price"
+        },
+        "A1": {
+            "key": "A1",
+            "style": {
+                "background-color": "#e7d0d0"
+            },
+            "s": "Product 1"
+        },
+        "A2": {
+            "key": "A2",
+            "style": {
+                "background-color": "#92d3ab"
+            },
+            "s": "Volume"
+        },
+        "A3": {
+            "key": "A3",
+            "style": {
+                "background-color": "#92d3ab"
+            },
+            "s": "Price"
+        },
+        "L9": {
+            "value": "DataFrame with 3 rows",
+            "key": "L9",
+            "style": {
+                "background-color": "#b9ffb8"
+            },
+            "s": "=\ndf = J9.copy()\n\n# Add a third row to compute revenue, which is Volume * Price\ndf.loc[2] = [\n    \"Revenue\",\n    df.loc[0][2021] * df.loc[1][2021],\n    df.loc[0][2022] * df.loc[1][2022],\n    df.loc[0][2023] * df.loc[1][2023],\n    df.loc[0][2024] * df.loc[1][2024],\n    \"Product 3\"\n]\ndf"
+        },
+        "A9": {
+            "key": "A9",
+            "style": {
+                "color": "",
+                "vertical-align": "",
+                "font-style": "",
+                "font-weight": "",
+                "background-color": "rgb(231, 208, 208)"
+            },
+            "s": "Product 3"
+        },
+        "L1": {
+            "value": "DataFrame with 3 rows",
+            "key": "L1",
+            "style": {
+                "background-color": "#b9ffb8"
+            },
+            "s": "=\ndf = J1.copy()\n\n# Add a third row to compute revenue, which is Volume * Price\ndf.loc[2] = [\n    \"Revenue\",\n    df.loc[0][2021] * df.loc[1][2021],\n    df.loc[0][2022] * df.loc[1][2022],\n    df.loc[0][2023] * df.loc[1][2023],\n    df.loc[0][2024] * df.loc[1][2024],\n    \"Product 1\"\n]\ndf"
+        },
+        "L5": {
+            "value": "DataFrame with 3 rows",
+            "key": "L5",
+            "style": {
+                "background-color": "#b9ffb8"
+            },
+            "s": "=\ndf = J5.copy()\n\n# Add a third row to compute revenue, which is Volume * Price\ndf.loc[2] = [\n    \"Revenue\",\n    df.loc[0][2021] * df.loc[1][2021],\n    df.loc[0][2022] * df.loc[1][2022],\n    df.loc[0][2023] * df.loc[1][2023],\n    df.loc[0][2024] * df.loc[1][2024],\n    \"Product 2\"\n]\ndf"
+        },
+        "C11": {
+            "key": "C11",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "47"
+        },
+        "C10": {
+            "key": "C10",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "5"
+        },
+        "C6": {
+            "key": "C6",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "12"
+        },
+        "C7": {
+            "key": "C7",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "50"
+        },
+        "B10": {
+            "key": "B10",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "47"
+        },
+        "B11": {
+            "key": "B11",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "8"
+        },
+        "C5": {
+            "key": "C5",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(197, 221, 252)",
+                "font-weight": ""
+            },
+            "s": "2022"
+        },
+        "C2": {
+            "key": "C2",
+            "style": {
+                "background-color": "#e3e3e3"
+            },
+            "s": "12"
+        },
+        "C3": {
+            "key": "C3",
+            "style": {
+                "background-color": "#e3e3e3"
+            },
+            "s": "50"
+        },
+        "C9": {
+            "key": "C9",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(197, 221, 252)",
+                "font-weight": ""
+            },
+            "s": "2022"
+        },
+        "C1": {
+            "key": "C1",
+            "style": {
+                "background-color": "#c5ddfc"
+            },
+            "s": "2022"
+        },
+        "E1": {
+            "key": "E1",
+            "style": {
+                "background-color": "#c5ddfc"
+            },
+            "s": "2024"
+        },
+        "E2": {
+            "key": "E2",
+            "style": {
+                "background-color": "#e3e3e3"
+            },
+            "s": "84"
+        },
+        "E3": {
+            "key": "E3",
+            "style": {
+                "background-color": "#e3e3e3"
+            },
+            "s": "60"
+        },
+        "E5": {
+            "key": "E5",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(197, 221, 252)",
+                "font-weight": ""
+            },
+            "s": "2024"
+        },
+        "E6": {
+            "key": "E6",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "84"
+        },
+        "E7": {
+            "key": "E7",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "60"
+        },
+        "A11": {
+            "key": "A11",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(146, 211, 171)",
+                "font-weight": ""
+            },
+            "s": "Price"
+        },
+        "A10": {
+            "key": "A10",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(146, 211, 171)",
+                "font-weight": ""
+            },
+            "s": "Volume"
+        },
+        "E9": {
+            "key": "E9",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(197, 221, 252)",
+                "font-weight": ""
+            },
+            "s": "2024"
+        },
+        "P5": {
+            "value": "DataFrame with 9 rows",
+            "key": "P5",
+            "style": {
+                "background-color": "#ffb3ba"
+            },
+            "s": "=\nimport pandas as pd\n\n# This exercise shows how hard it is to manipulate rows in Pandas.\n# Pandas dataframes were designed to focus on columns.\n# It would be simpler to handly multi-dimensional data using \n# pandas-pivot or by transposing the original dataframes.\n# This is not a PySheets issue, but really a Pandas API issue.\n\n# Join dataframes L1, L5, and L9\njoined_df = pd.concat([L1, L5, L9])\n\n# Show joined dataframe\njoined_df"
+        },
+        "B7": {
+            "key": "B7",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "10"
+        },
+        "B6": {
+            "key": "B6",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(227, 227, 227)",
+                "font-weight": ""
+            },
+            "s": "35"
+        },
+        "B5": {
+            "key": "B5",
+            "style": {
+                "color": "",
+                "font-size": "",
+                "font-style": "",
+                "vertical-align": "",
+                "background-color": "rgb(197, 221, 252)",
+                "font-weight": ""
+            },
+            "s": "2021"
+        },
+        "G1": {
+            "value": "DataFrame with 2 rows",
+            "key": "G1",
+            "style": {
+                "background-color": "#ffdfba"
+            },
+            "s": "=\n# Convert sheet values into a dataframe\n\npysheets.get_sheet('A1:E3')"
+        },
+        "B3": {
+            "key": "B3",
+            "style": {
+                "background-color": "#e3e3e3"
+            },
+            "s": "10"
+        },
+        "B2": {
+            "key": "B2",
+            "style": {
+                "background-color": "#e3e3e3"
+            },
+            "s": "41"
+        },
+        "B1": {
+            "key": "B1",
+            "style": {
+                "background-color": "#c5ddfc"
+            },
+            "s": "2021"
+        },
+        "G5": {
+            "value": "DataFrame with 2 rows",
+            "key": "G5",
+            "style": {
+                "background-color": "#f7d8b4"
+            },
+            "s": "=\n\n# Convert sheet values into a dataframe\npysheets.get_sheet('A5:E7')"
+        },
+        "G9": {
+            "value": "DataFrame with 2 rows",
+            "key": "G9",
+            "style": {
+                "background-color": "#f6d7b3"
+            },
+            "s": "=\n\n# Convert sheet values into a dataframe\npysheets.get_sheet('A9:E11')"
+        }
+    },
+    "previews": {
+        "J5": {
+            "html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Details</th>\n      <th>2021</th>\n      <th>2022</th>\n      <th>2023</th>\n      <th>2024</th>\n      <th>Name</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>35</td>\n      <td>12</td>\n      <td>10</td>\n      <td>84</td>\n      <td>Product 2</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>10</td>\n      <td>50</td>\n      <td>54</td>\n      <td>60</td>\n      <td>Product 2</td>\n    </tr>\n  </tbody>\n</table>\n</div>",
+            "left": "374.543px",
+            "top": "363.883px",
+            "width": 0,
+            "height": 0,
+            "key": "J5"
+        },
+        "G9": {
+            "html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Product 3</th>\n      <th>2021</th>\n      <th>2022</th>\n      <th>2023</th>\n      <th>2024</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>47</td>\n      <td>5</td>\n      <td>16</td>\n      <td>88</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>8</td>\n      <td>47</td>\n      <td>52</td>\n      <td>60</td>\n    </tr>\n  </tbody>\n</table>\n</div>",
+            "left": "16.2148px",
+            "top": "497.68px",
+            "width": "304.184px",
+            "height": "129.938px",
+            "key": "G9"
+        },
+        "L5": {
+            "html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Details</th>\n      <th>2021</th>\n      <th>2022</th>\n      <th>2023</th>\n      <th>2024</th>\n      <th>Name</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>35</td>\n      <td>12</td>\n      <td>10</td>\n      <td>84</td>\n      <td>Product 2</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>10</td>\n      <td>50</td>\n      <td>54</td>\n      <td>60</td>\n      <td>Product 2</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>Revenue</td>\n      <td>350</td>\n      <td>600</td>\n      <td>540</td>\n      <td>5040</td>\n      <td>Product 2</td>\n    </tr>\n  </tbody>\n</table>\n</div>",
+            "left": "751.059px",
+            "top": "392.914px",
+            "width": 0,
+            "height": 0,
+            "key": "L5"
+        },
+        "G1": {
+            "html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Product 1</th>\n      <th>2021</th>\n      <th>2022</th>\n      <th>2023</th>\n      <th>2024</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>41</td>\n      <td>12</td>\n      <td>10</td>\n      <td>84</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>10</td>\n      <td>50</td>\n      <td>54</td>\n      <td>60</td>\n    </tr>\n  </tbody>\n</table>\n</div>",
+            "left": "16.8516px",
+            "top": "229.965px",
+            "width": 0,
+            "height": 0,
+            "key": "G1"
+        },
+        "J1": {
+            "html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Details</th>\n      <th>2021</th>\n      <th>2022</th>\n      <th>2023</th>\n      <th>2024</th>\n      <th>Name</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>41</td>\n      <td>12</td>\n      <td>10</td>\n      <td>84</td>\n      <td>Product 1</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>10</td>\n      <td>50</td>\n      <td>54</td>\n      <td>60</td>\n      <td>Product 1</td>\n    </tr>\n  </tbody>\n</table>\n</div>",
+            "left": "373.75px",
+            "top": "230.926px",
+            "width": 0,
+            "height": 0,
+            "key": "J1"
+        },
+        "G5": {
+            "html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Product 2</th>\n      <th>2021</th>\n      <th>2022</th>\n      <th>2023</th>\n      <th>2024</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>35</td>\n      <td>12</td>\n      <td>10</td>\n      <td>84</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>10</td>\n      <td>50</td>\n      <td>54</td>\n      <td>60</td>\n    </tr>\n  </tbody>\n</table>\n</div>",
+            "left": "16.1875px",
+            "top": "363.746px",
+            "width": 0,
+            "height": 0,
+            "key": "G5"
+        },
+        "P5": {
+            "html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Details</th>\n      <th>2021</th>\n      <th>2022</th>\n      <th>2023</th>\n      <th>2024</th>\n      <th>Name</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>41</td>\n      <td>12</td>\n      <td>10</td>\n      <td>84</td>\n      <td>Product 1</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>10</td>\n      <td>50</td>\n      <td>54</td>\n      <td>60</td>\n      <td>Product 1</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>Revenue</td>\n      <td>410</td>\n      <td>600</td>\n      <td>540</td>\n      <td>5040</td>\n      <td>Product 1</td>\n    </tr>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>35</td>\n      <td>12</td>\n      <td>10</td>\n      <td>84</td>\n      <td>Product 2</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>10</td>\n      <td>50</td>\n      <td>54</td>\n      <td>60</td>\n      <td>Product 2</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>Revenue</td>\n      <td>350</td>\n      <td>600</td>\n      <td>540</td>\n      <td>5040</td>\n      <td>Product 2</td>\n    </tr>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>47</td>\n      <td>5</td>\n      <td>16</td>\n      <td>88</td>\n      <td>Product 3</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>8</td>\n      <td>47</td>\n      <td>52</td>\n      <td>60</td>\n      <td>Product 3</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>Revenue</td>\n      <td>376</td>\n      <td>235</td>\n      <td>832</td>\n      <td>5280</td>\n      <td>Product 3</td>\n    </tr>\n  </tbody>\n</table>\n</div>",
+            "left": "1155.39px",
+            "top": "174.883px",
+            "width": 0,
+            "height": 0,
+            "key": "P5"
+        },
+        "L1": {
+            "html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Details</th>\n      <th>2021</th>\n      <th>2022</th>\n      <th>2023</th>\n      <th>2024</th>\n      <th>Name</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>41</td>\n      <td>12</td>\n      <td>10</td>\n      <td>84</td>\n      <td>Product 1</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>10</td>\n      <td>50</td>\n      <td>54</td>\n      <td>60</td>\n      <td>Product 1</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>Revenue</td>\n      <td>410</td>\n      <td>600</td>\n      <td>540</td>\n      <td>5040</td>\n      <td>Product 1</td>\n    </tr>\n  </tbody>\n</table>\n</div>",
+            "left": "750.996px",
+            "top": "233.98px",
+            "width": 0,
+            "height": 0,
+            "key": "L1"
+        },
+        "J9": {
+            "html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Details</th>\n      <th>2021</th>\n      <th>2022</th>\n      <th>2023</th>\n      <th>2024</th>\n      <th>Name</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>47</td>\n      <td>5</td>\n      <td>16</td>\n      <td>88</td>\n      <td>Product 3</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>8</td>\n      <td>47</td>\n      <td>52</td>\n      <td>60</td>\n      <td>Product 3</td>\n    </tr>\n  </tbody>\n</table>\n</div>",
+            "left": "375.305px",
+            "top": "497.758px",
+            "width": 0,
+            "height": 0,
+            "key": "J9"
+        },
+        "L9": {
+            "html": "<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>Details</th>\n      <th>2021</th>\n      <th>2022</th>\n      <th>2023</th>\n      <th>2024</th>\n      <th>Name</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>Volume</td>\n      <td>47</td>\n      <td>5</td>\n      <td>16</td>\n      <td>88</td>\n      <td>Product 3</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>Price</td>\n      <td>8</td>\n      <td>47</td>\n      <td>52</td>\n      <td>60</td>\n      <td>Product 3</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>Revenue</td>\n      <td>376</td>\n      <td>235</td>\n      <td>832</td>\n      <td>5280</td>\n      <td>Product 3</td>\n    </tr>\n  </tbody>\n</table>\n</div>",
+            "left": "749.051px",
+            "top": "550.828px",
+            "width": 0,
+            "height": 0,
+            "key": "L9"
+        }
+    },
+    "created_timestamp": 0,
+    "updated_timestamp": 0,
+    "rows": {
+        "4": 78,
+        "8": 73
+    },
+    "columns": {
+        "1": 62,
+        "2": 35,
+        "3": 37,
+        "4": 37,
+        "5": 41,
+        "6": 35,
+        "7": 87,
+        "8": 35,
+        "9": 35,
+        "10": 91,
+        "13": 35,
+        "14": 35,
+        "15": 35
+    },
+    "row_count": 65,
+    "column_count": 26,
+    "screenshot": "",
+    "packages": "",
+    "selected": "P5",
+    "uid": "bf9a82b3-3a3d-4d51-9f60-6f5bdeccfd0a",
+    "name": "Basic Accounting"
+}
