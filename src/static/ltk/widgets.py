@@ -1,11 +1,12 @@
 # pylint: disable=too-many-lines
 
 """
-LTK - Copyright 2023 - All Rights Reserved - chrislaffra.com - See LICENSE
+LTK - Copyright 2024 - All Rights Reserved - chrislaffra.com - See LICENSE
 """
 
 import json
 import logging
+import math
 
 from ltk.jquery import find
 from ltk.jquery import get_time
@@ -15,17 +16,6 @@ from ltk.jquery import proxy
 from ltk.jquery import schedule
 from ltk.jquery import to_js
 from ltk.jquery import window
-
-__all__ = [
-    "HBox", "Div", "VBox", "Container", "Card", "Preformatted", "Text", "Input", "Checkbox",
-    "Label", "Button", "Link", "Strong", "Important", "Italic", "Paragraph", "Break", "Heading1",
-    "Heading2", "Heading3", "Heading4", "OrderedList", "UnorderedList", "ListItem", "Span",
-    "Tabs", "File", "DatePicker", "ColorPicker", "RadioGroup", "RadioButton", "Table", "TableRow",
-    "TableHeader", "TableData", "HorizontalSplitPane", "VerticalSplitPane", "TextArea", "Code",
-    "Image", "MenuBar", "Switch", "MenuLabel", "Menu", "Popup", "MenuPopup", "MenuItem", "Select",
-    "Option", "Widget", "Form", "FieldSet", "Legend", "Tutorial", "Step", "Canvas",
-    "Model", "LocalStorageModel",
-]
 
 BROWSER_SHORTCUTS = [ "Cmd+N","Cmd+T","Cmd+W", "Cmd+Q" ]
 DEFAULT_CSS = {}
@@ -40,6 +30,8 @@ class Widget(object):
     instances = {}
     element = None
     tag = "div"
+
+    DEBUG = True
 
     def __init__(self, *args):
         """
@@ -57,6 +49,7 @@ class Widget(object):
                 .append(*self._flatten(args))
         )
         self._handle_css(args)
+        args = self._flatten(args)
 
     def _handle_css(self, args):
         """Apply CSS styles passed in the args to the widget.
@@ -97,6 +90,42 @@ class Widget(object):
                 result.append(child)
         return result
 
+    def debug(self, *args):
+        """ log a message to the console """
+        if self.DEBUG:
+            print(self.__class__.__name__, *args)
+
+    def _bind(self, attribute):
+        """ Establish a binding between this Widget and a model """
+        def set_model_value(_=None):
+            attribute.set_value(self.get_value())
+
+        def set_widget_value(_=None):
+            self.set_value(attribute.get_value())
+
+        set_widget_value()
+        attribute.listeners.append(set_widget_value)
+        self.on("change", proxy(lambda event: schedule(set_model_value, f"set model {self}")))
+
+    def set_value(self, value):
+        """ Set the value of the widget. """
+        if isinstance(value, ModelAttribute):
+            self._bind(value)
+        else:
+            self._set_value(value)
+
+    def _set_value(self, value):
+        """ To be overridden by subclasses. """
+        self.element.text(value)
+
+    def get_value(self):
+        """ Get the value of the widget. """
+        return self._get_value()
+    
+    def _get_value(self):
+        """ To be overridden by subclasses. """
+        return self.element.text()
+
     def css(self, prop, value=None):
         """
         Get or set a computed style property. 
@@ -128,7 +157,7 @@ class Widget(object):
         try:
             return self.element.attr(name, value) if value is not None else self.element.attr(name)
         except Exception as e:
-            raise ValueError(f"Widget <{self}> does not have attribute {name}") from e
+            raise ValueError(f"ltk.{self.__class__.__name__} does not have attribute {name}") from e
 
     def prop(self, name, value=None):
         """
@@ -314,17 +343,9 @@ class Widget(object):
                 is always triggered when it reaches the selected element.
             handler:function A Python function that is called when the event happens.
         """
-        if handler is None:
-            if data is None:
-                handler = selector
-                selector = None
-            else:
-                handler = data
-                data = None
-        assert handler is not None, "The handler argument should be a valid Python function"
-        return self.element.on(events, selector, data, proxy(handler))
+        return self.element.on(events, selector, data, handler)
 
-    def animate(self, properties, duration=None, easing=None, complete=None):
+    def animate(self, properties, duration=400, easing="swing", complete=None):
         """
         Perform a custom animation of a set of CSS properties.
 
@@ -338,13 +359,13 @@ class Widget(object):
         """
         if isinstance(properties, dict):
             properties = to_js(properties)
-        return self.element.animate(properties, duration, easing, proxy(complete))
+        return self.element.animate(properties, duration, easing, complete and proxy(complete))
 
     def __getattr__(self, name):
         try:
             return getattr(self.element, name)
         except Exception as e:
-            raise AttributeError(f"LTK widget {self} does not have attribute {name}") from e
+            raise AttributeError(f"Widget {self.__class__.__name__} does not have attribute {name}") from e
 
     def toJSON(self, *args): # pylint: disable=invalid-name
         """ Return a JSON representation of the widget """
@@ -388,17 +409,15 @@ class Text(Widget):
     """ A <div> to hold text """
     classes = [ "ltk-text" ]
 
-    def __init__(self, *args, style=None):
+    def __init__(self, value="", style=None):
         Widget.__init__(self, style or DEFAULT_CSS)
-        for value in args:
-            if isinstance(value, Field):
-                bind(self, value)
-            else:
-                self.append(value)
+        self.set_value(value)
 
-    def val(self, value=None):
-        print("set value", self, value)
-        return self.element.text() if value is None else self.element.text(value)
+    def _get_value(self):
+        return self.element.text()
+
+    def _set_value(self, value):
+        return self.element.text(value)
 
 
 class Model():
@@ -408,14 +427,13 @@ class Model():
         for name, value in self.__class__.__dict__.items():
             if not name.startswith("__") and not callable(value):
                 object.__setattr__(self, name,
-                    Field(self, name, getattr(self.__class__, name))
+                    ModelAttribute(self, name, getattr(self.__class__, name))
                 )
 
     def __setattr__(self, name: str, value):
-        if hasattr(self, name) and isinstance(getattr(self, name), Field):
-            print("set", name, value)
-            field = getattr(self, name)
-            field.set(value)
+        if hasattr(self, name) and isinstance(getattr(self, name), ModelAttribute):
+            attribute = getattr(self, name)
+            attribute.set_value(value)
             try:
                 self.changed(name, value)
             except Exception as e: #  pylint: disable=broad-except
@@ -436,11 +454,11 @@ class Model():
         return json.dumps({
             name: value.get()
             for name, value in self.__dict__.items()
-            if isinstance(value, Field)
+            if isinstance(value, ModelAttribute)
         })
 
     def changed(self, name, value):
-        """ Called when a field of the model has changed """
+        """ Called when an attribute of the model has changed """
 
 
 class LocalStorageModel(Model):
@@ -455,7 +473,7 @@ class LocalStorageModel(Model):
         self.key = key
 
     def changed(self, name, value):
-        """ Called when a field of the model has changed """
+        """ Called when an attribute of the model has changed """
         if hasattr(self, "key"):
             self.__store.setItem(self.key, self.encode())
 
@@ -465,34 +483,92 @@ class LocalStorageModel(Model):
         return [ cls(key) for key in window.Object.keys(cls.__store)]
 
 
-class Field():
-    """ A specific field of a Model """
+class ModelAttribute():
+    """ A specific attribute of a Model """
     def __init__(self, model: Model, name: str, value):
         self.model = model
         self.name = name
         self.value = value
-        self.listener = lambda field: None
+        self.listeners = []
 
-    def get(self):
-        """ Get the value of the field """
+    def get_value(self):
+        """ Get the value of the attribute """
         return self.value
 
-    def set(self, value):
-        """ Set the value of the field """
-        self.value = value
+    def set_value(self, value):
+        """ Set the value of the attribute """
+        typed_value = type(self.value)(value)
+        if typed_value == self.value:
+            return
+        self.value = typed_value
         self.model.changed(self.name, self.value)
-        self.listener(self)
+        for listener in self.listeners:
+            listener(self)
+
+    def __int__(self): return int(self.value)         # pylint: disable=multiple-statements
+    def __bool__(self): return bool(self.value)        # pylint: disable=multiple-statements
+    def __float__(self): return float(self.value)       # pylint: disable=multiple-statements
+    def __str__(self): return str(self.value)    # pylint: disable=multiple-statements
+
+    def __neg__(self): return -self.value        # pylint: disable=multiple-statements
+    def __pos__(self): return +self.value        # pylint: disable=multiple-statements
+    def __invert__(self): return ~self.value     # pylint: disable=multiple-statements
+
+    def __add__(self, value):       return self.value + value        # pylint: disable=multiple-statements
+    def __sub__(self, value):       return self.value - value        # pylint: disable=multiple-statements
+    def __mul__(self, value):       return self.value * value        # pylint: disable=multiple-statements
+    def __truediv__(self, value):   return self.value / value        # pylint: disable=multiple-statements
+    def __mod__(self, value):       return self.value % value        # pylint: disable=multiple-statements
+    def __floordiv__(self, value):  return self.value // value       # pylint: disable=multiple-statements
+    def __pow__(self, value):       return self.value ** value       # pylint: disable=multiple-statements
+    def __matmul__(self, value):    return self.value @ value        # pylint: disable=multiple-statements
+
+    def __radd__(self, value):       return value + self.value       # pylint: disable=multiple-statements
+    def __rsub__(self, value):       return value - self.value       # pylint: disable=multiple-statements
+    def __rmul__(self, value):       return value * self.value       # pylint: disable=multiple-statements
+    def __rtruediv__(self, value):   return value / self.value       # pylint: disable=multiple-statements
+    def __rmod__(self, value):       return value % self.value       # pylint: disable=multiple-statements
+    def __rfloordiv__(self, value):  return value // self.value      # pylint: disable=multiple-statements
+    def __rpow__(self, value):       return value ** self.value      # pylint: disable=multiple-statements
+    def __rmatmul__(self, value):    return value @ self.value       # pylint: disable=multiple-statements
+
+    def __and__(self, value):       return self.value & value        # pylint: disable=multiple-statements
+    def __or__(self, value):        return self.value | value        # pylint: disable=multiple-statements
+    def __xor__(self, value):       return self.value ^ value        # pylint: disable=multiple-statements
+    def __rshift__(self, value):    return self.value >> value       # pylint: disable=multiple-statements
+    def __lshift__(self, value):    return self.value << value       # pylint: disable=multiple-statements
+
+    def __rand__(self, value):       return value & self.value       # pylint: disable=multiple-statements
+    def __ror__(self, value):        return value | self.value       # pylint: disable=multiple-statements
+    def __rxor__(self, value):       return value ^ self.value       # pylint: disable=multiple-statements
+    def __rrshift__(self, value):    return value >> self.value      # pylint: disable=multiple-statements
+    def __rlshift__(self, value):    return value << self.value      # pylint: disable=multiple-statements
+
+    def __iadd__(self, value):       self.value += value        # pylint: disable=multiple-statements
+    def __isub__(self, value):       self.value -= value        # pylint: disable=multiple-statements
+    def __imul__(self, value):       self.value *= value        # pylint: disable=multiple-statements
+    def __itruediv__(self, value):   self.value /= value        # pylint: disable=multiple-statements
+    def __imod__(self, value):       self.value %= value        # pylint: disable=multiple-statements
+    def __ifloordiv__(self, value):  self.value //= value       # pylint: disable=multiple-statements
+    def __ipow__(self, value):       self.value **= value       # pylint: disable=multiple-statements
+    def __imatmul__(self, value):    self.value @= value        # pylint: disable=multiple-statements
+    def __iand__(self, value):       self.value &= value        # pylint: disable=multiple-statements
+    def __ior__(self, value):        self.value |= value        # pylint: disable=multiple-statements
+    def __ixor__(self, value):       self.value ^= value        # pylint: disable=multiple-statements
+    def __irshift__(self, value):    self.value >>= value       # pylint: disable=multiple-statements
+    def __ilshift__(self, value):    self.value <<= value       # pylint: disable=multiple-statements
+
+    def __divmod__(self, value):    return divmod(self.value, value)    # pylint: disable=multiple-statements
+    def __rdivmod__(self, value):   return divmod(value, self.value)    # pylint: disable=multiple-statements
+    def __abs__(self):              return abs(self.value)              # pylint: disable=multiple-statements
+    def __index__(self):            return self.value                   # pylint: disable=multiple-statements
+    def __round__(self ):           return round(self.value)            # pylint: disable=multiple-statements
+    def __trunc__(self):            return math.trunc(self.value)       # pylint: disable=multiple-statements
+    def __floor__(self):            return math.floor(self.value)       # pylint: disable=multiple-statements
+    def __ceil__(self):             return math.ceil(self.value)        # pylint: disable=multiple-statements
 
     def __repr__(self):
         return f'"{self.value}"' if isinstance(self.value, str) else repr(self.value)
-
-
-def bind(widget, field):
-    """ Establish a binding between a Widget and a model Field """
-    print("bind", widget, field)
-    field.listener = lambda field: widget.val(field.get())
-    widget.val(field.get())
-    widget.on("change", proxy(lambda event: field.set(widget.val())))
 
 
 class Input(Widget):
@@ -502,11 +578,14 @@ class Input(Widget):
 
     def __init__(self, value, style=None):
         Widget.__init__(self, style or DEFAULT_CSS)
-        if isinstance(value, Field):
-            bind(self, value)
-        else:
-            self.element.val(value)
+        self.set_value(value)
         self.on("wheel", proxy(lambda event: None)) # ensure Chrome handles wheel events
+
+    def _set_value(self, value):
+        self.element.val(str(value))
+
+    def _get_value(self):
+        return self.element.val()
 
 
 class Checkbox(Widget):
@@ -517,21 +596,52 @@ class Checkbox(Widget):
     def __init__(self, checked, style=None):
         Widget.__init__(self, style or DEFAULT_CSS)
         self.element.prop("type", "checkbox")
-        self.check(checked)
+        self.set_value(checked)
 
     def check(self, checked):
         """ Check or uncheck the checkbox """
-        self.element.prop("checked", "checked" if checked else None)
+        self.element.prop("checked", "checked" if checked else "")
 
     def checked(self):
         """ Return whether the checkbox is checked or not """
-        return self.element.prop("checked") == "checked"
+        return self.element.prop("checked")
+
+    def _set_value(self, value):
+        if value != self._get_value():
+            self.check(value)
+
+    def _get_value(self):
+        return self.checked()
 
 
 class Span(Widget):
     """ Wraps an HTML element of type <span> """
     classes = [ "ltk-span" ]
     tag = "span"
+
+
+class Slider(Widget):
+    """ Wraps a jQuery slider widget """
+    classes = [ "ltk-slider" ]
+
+    def __init__(self, value, min_value=0, max_value=10, horizontal=True, style=None):
+        Widget.__init__(self, style or DEFAULT_CSS)
+        self.element.slider(to_js({
+            "min": min_value,
+            "max": max_value,
+            "value": value,
+            "orientation": "horizontal" if horizontal else "vertical",
+            "range": "min",
+        }))
+        self.set_value(value)
+        self.on("slidechange", proxy(lambda *args: self.trigger("change")))
+
+    def _set_value(self, value):
+        if value != self._get_value():
+            self.element.slider("value", value)
+
+    def _get_value(self):
+        return self.element.slider("value")
 
 
 class Switch(HBox):
@@ -550,11 +660,12 @@ class Switch(HBox):
             checked = self.element.find(".ltk-checkbox").prop("checked")
             self.element.prop("checked", checked)
 
+        self.checkbox = Checkbox(checked)
         element_id = f"edit-switch-{get_time()}"
         HBox.__init__(self,
             Div(label)
                 .addClass("ltk-switch-label"),
-            Checkbox(checked)
+            self.checkbox
                 .attr("id", element_id)
                 .addClass("ltk-switch-checkbox")
                 .on("change", proxy(toggle_edit)),
@@ -564,16 +675,22 @@ class Switch(HBox):
                 .addClass("ltk-switch"),
             style or DEFAULT_CSS
         )
-
-        self.check(checked)
+        self.checkbox.set_value(checked)
 
     def check(self, checked):
         """ Check or uncheck the switch """
-        self.element.find(".ltk-checkbox").prop("checked", "checked" if checked else None)
+        self.checkbox.check(checked)
 
     def checked(self):
         """ Return whether the switch is checked or not """
-        return self.element.find(".ltk-checkbox").prop("checked") == "checked"
+        return self.checkbox.checked()
+
+    def _set_value(self, value):
+        self.checkbox._set_value(value) # pylint: disable=protected-access
+
+    def _get_value(self):
+        return self.checkbox._get_value() # pylint: disable=protected-access
+
 
 class Label(Widget):
     """ Wraps an HTML element of type <label> browser DOM element """
@@ -582,10 +699,18 @@ class Label(Widget):
 
     def __init__(self, label, input_widget=None, style=None):
         Widget.__init__(self, style or DEFAULT_CSS)
-        if input_widget:
-            element = input_widget.element if isinstance(input_widget, Widget) else input_widget
-            self.elemeet.append(element)
-        self.element.append(label)
+        self.input_widget = input_widget
+        self.set_value(label)
+
+    def _get_value(self):
+        return self.element.text()
+
+    def _set_value(self, value):
+        if self.input_widget:
+            element = self.input_widget.element if isinstance(self.input_widget, Widget) else self.input_widget
+            self.element.empty().append(element, value)
+        else:
+            self.element.text(value)
 
 
 class Button(Widget):
@@ -603,7 +728,8 @@ class Button(Widget):
             style:dict [optional] CSS values to set on the element
         """
         Widget.__init__(self, style or DEFAULT_CSS)
-        self.element.text(label).on("click", proxy(click))
+        self.element.text(label)
+        self.on("click", proxy(click))
 
 
 class Link(Text):
@@ -612,7 +738,8 @@ class Link(Text):
     tag = "a"
 
     def __init__(self, href, *items):
-        Text.__init__(self, *items)
+        Text.__init__(self)
+        self.append(*items)
         self.attr("href", href)
         self.attr("target", "_blank")
 
@@ -816,13 +943,13 @@ class TableRow(Widget):
     tag = "tr"
 
 
-class TableHeader(Text):
+class TableHeader(Widget):
     """ Wraps an HTML element of type <th> """
     classes = [ "ltk-th" ]
     tag = "th"
 
 
-class TableData(Text):
+class TableData(Widget):
     """ Wraps an HTML element of type <td> """
     classes = [ "ltk-td" ]
     tag = "td"
@@ -943,13 +1070,13 @@ class VerticalSplitPane(SplitPane):
         x.height(value)
 
 
-class TextArea(Text):
+class TextArea(Widget):
     """ Wraps an HTML element of type <textarea> """
     classes = [ "ltk-textarea" ]
     tag = "textarea"
 
     def __init__(self, text="", style=None):
-        Text.__init__(self, style or DEFAULT_CSS)
+        Widget.__init__(self, style or DEFAULT_CSS)
         self.element.text(text)
 
 
@@ -1015,8 +1142,8 @@ class Menu(Widget):
         self.label = MenuLabel(label)
         self.popup = MenuPopup(*items)
         Widget.__init__(self, self.label, self.popup, style or DEFAULT_CSS)
-        self.label.on("click", proxy(lambda event: self.show(event))) # pylint: disable=unnecessary-lambda
-        self.label.on("click", proxy(lambda event: self.show(event))) # pylint: disable=unnecessary-lambda
+        self.label.on("click", None, None, proxy(lambda event: self.show(event))) # pylint: disable=unnecessary-lambda
+        self.label.on("click", None, None, proxy(lambda event: self.show(event))) # pylint: disable=unnecessary-lambda
 
     def replace_other(self, event):
         """ Replaces the menu with the other menu """
@@ -1091,20 +1218,21 @@ class Select(Widget):
     classes = [ "ltk-select" ]
     tag = "select"
 
-    def __init__(self, options, selected, handler, style=None):
-        Widget.__init__(self,
-            [
-                Option(text).prop("selected", "selected" if text == selected else "")
-                for text in options
-            ],
-            style
-        )
+    def __init__(self, options, selected, handler=None, style=None):
+        Widget.__init__(self, [Option(text) for text in options], style)
+        assert isinstance(options, list), f"Select: Expected options to be a list, not {type(options)}"
+        self.options = options
         self.handler = handler
-        self.element.on("change", proxy(lambda event: schedule(self.changed, f"{self}.changed")))
+        self.set_value(selected)
+        self.on("change", proxy(lambda event: schedule(self.changed, f"{self}.changed")))
 
     def get_selected_index(self):
         """  Returns the index of the selected option """
         return self.element.prop("selectedIndex")
+
+    def set_selected_index(self, index):
+        """  Returns the index of the selected option """
+        return self.element.prop("selectedIndex", index)
 
     def get_selected_option(self):
         """ Returns the selected option """
@@ -1112,7 +1240,20 @@ class Select(Widget):
 
     def changed(self):
         """ Called when the selected option changes """
+        if not self.handler:
+            return
         self.handler(self.get_selected_index(), self.get_selected_option())
+    
+    def _set_value(self, value):
+        if isinstance(value, int):
+            value = self.options[value]
+        try:
+            self.set_selected_index(self.options.index(value))
+        except ValueError as e:
+            raise ValueError(f"Invalid value {value} for options {self.options}") from e
+    def _get_value(self):
+        return self.get_selected_index()
+
 
 
 class Form(Widget):
@@ -1255,7 +1396,7 @@ class Canvas(Widget):
             try:
                 return getattr(self.context, name)
             except: # pylint: disable=bare-except
-                error = f"LTK widget {self} does not have attribute {name}"
+                error = f"Widget {self} does not have attribute {name}"
                 raise AttributeError(error) # pylint: disable=raise-missing-from
 
     def __setattr__(self, name, value):

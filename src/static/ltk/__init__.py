@@ -1,5 +1,5 @@
 """
-Copyright 2023 - All Rights Reserved - chrislaffra.com - See LICENSE
+Copyright 2024 - All Rights Reserved - chrislaffra.com - See LICENSE
 
 LTK (Little Toolkit) is a library for building client-side web applications using Python and CSS.
 """

@@ -323,8 +323,9 @@
     }
     setTimeout(window.check_loaded, 10000);
 
+    const console_log = console.log;
     window.log = (message) => {
-        console.log(message);
+        console_log(message);
     }
 
     // this function is implemented in lsp.py

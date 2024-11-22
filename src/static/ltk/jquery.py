@@ -8,6 +8,10 @@ import time
 
 import pyscript # pylint: disable=import-error
 from pyscript import window # pylint: disable=import-error
+try:
+    import pyodide # pylint: disable=import-error
+except:
+    pass
 
 
 __all__ = [
@@ -18,13 +22,12 @@ __all__ = [
 ]
 
 
-def is_micro_python():
-    """ Returns True if running on MicroPython, False otherwise. """
-    return "Clang" not in sys.version
+PYODIDE = "Clang" in sys.version
+MICROPYTHON = not PYODIDE
 
 
 def _fix_time_on_micropython():
-    if is_micro_python():
+    if MICROPYTHON:
         class MonkeyPatchedTimeModuleForMicroPython:
             """ Monkey patches the time module on MicroPython. """
         clone = MonkeyPatchedTimeModuleForMicroPython()
@@ -252,6 +255,14 @@ def observe(element, handler):
     observer.observe(element[0], config)
 
 
+def error(message):
+    """ Displays an error message in the browser console. """
+    if PYODIDE:
+        import traceback  # pylint: disable=import-outside-toplevel,import-error
+        traceback.print_exc()
+    print(message)
+
+
 def proxy(function):
     """
     Returns a proxy for the given function.
@@ -260,11 +271,20 @@ def proxy(function):
     """
     if not function:
         return None
-    try:
-        import pyodide # pylint: disable=import-outside-toplevel,import-error
-        return pyodide.ffi.create_proxy(function)
-    except: # pylint: disable=bare-except
-        return function
+
+    def function_called_from_javascript(*args):
+        try:
+            return function(*args)
+        except Exception as e: # pylint: disable=broad-except
+            error(f"Error calling function from JavaScript {function}: {e}")
+            return None
+
+    if PYODIDE:
+        return pyodide.ffi.create_proxy(function_called_from_javascript)
+    else:
+        return function_called_from_javascript
+
+window.proxy = proxy
 
 
 def get_url_parameter(key):
@@ -288,7 +308,7 @@ def push_state(url):
     window.history.pushState(None, "", url)
 
 
-def inject_script(file_or_url_or_text, script_type=None, worker=None):
+def inject_script(file_or_url_or_text, script_type=None, worker=None, at_end=True):
     """ Injects the given script into the document. """
     try:
         with open(file_or_url_or_text, encoding="utf-8") as fp:
@@ -302,10 +322,13 @@ def inject_script(file_or_url_or_text, script_type=None, worker=None):
         script.attr("type", script_type)
     if worker:
         script.attr("worker", "")
-    script.prependTo(window.document.head)
+    if at_end:
+        script.appendTo(window.document.head)
+    else:
+        script.prependTo(window.document.head)
 
 
-def inject_css(file_or_url_or_text):
+def inject_css(file_or_url_or_text, at_end=True):
     """ Injects the given CSS file or text into the document. """
     try:
         with open(file_or_url_or_text, encoding="utf-8") as fp:
@@ -315,11 +338,14 @@ def inject_css(file_or_url_or_text):
             node = create("<style>").text(file_or_url_or_text)
         else:
             node = create("<link>").attr("rel", "stylesheet").attr("href", file_or_url_or_text)
-    node.prependTo(window.document.head)
+    if at_end:
+        node.appendTo(window.document.head)
+    else:
+        node.prependTo(window.document.head)
 
 
 _fix_time_on_micropython()
 
 if not pyscript.RUNNING_IN_WORKER:
-    inject_script("ltk/ltk.js")
-    inject_css("ltk/ltk.css")
+    inject_script("ltk/ltk.js", at_end=False)
+    inject_css("ltk/ltk.css", at_end=False)

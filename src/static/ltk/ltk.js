@@ -1,4 +1,4 @@
-/* LTK - Copyright 2023 - All Rights Reserved - chrislaffra.com - See LICENSE  */
+/* LTK - Copyright 2024 - All Rights Reserved - chrislaffra.com - See LICENSE  */
 
 (function ltk() {
     if (window.__ltk__) return
@@ -125,4 +125,5 @@
         const viewportBottom = viewportTop + $(window).height();
         return elementBottom > viewportTop && elementTop < viewportBottom;
     };
+
 })()

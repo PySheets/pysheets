@@ -39,9 +39,9 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
     sheet = None
 
     def __init__(self, sheet, key: str, model: models.Cell, td=None):
+        self.model = model
         super().__init__()
         CellView.sheet= sheet
-        self.model = model
         if not key:
             raise ValueError("Missing key for cell")
         if not self.model:

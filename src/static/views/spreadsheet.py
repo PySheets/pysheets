@@ -1151,7 +1151,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             ltk.Select(constants.FONT_NAMES, "Arial", set_font).attr(
                 "id", "cell-font-family"
             ),
-            ltk.Select(map(str, constants.FONT_SIZES), "12", set_font_size).attr(
+            ltk.Select(list(map(str, constants.FONT_SIZES)), "12", set_font_size).attr(
                 "id", "cell-font-size"
             ),
             ltk.Select(["normal", "italic"], "normal", set_font_style).attr(
