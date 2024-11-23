@@ -371,13 +371,13 @@ def start_worker_with_packages(packages):
             "static/constants.py": "./constants.py",
             "static/lsp.py": "./lsp.py",
             "static/worker_patch.py": "./worker_patch.py",
-            "static/ltk/jquery.py": "ltk/jquery.py",
-            "static/ltk/widgets.py": "ltk/widgets.py",
-            "static/ltk/pubsub.py": "ltk/pubsub.py",
-            "static/ltk/__init__.py": "ltk/__init__.py",
-            "static/ltk/logger.py": "ltk/logger.py",
-            "static/ltk/ltk.js": "ltk/ltk.js",
-            "static/ltk/ltk.css": "ltk/ltk.css"
+            "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/jquery.py": "ltk/jquery.py",
+            "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/widgets.py": "ltk/widgets.py",
+            "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/pubsub.py": "ltk/pubsub.py",
+            "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/__init__.py": "ltk/__init__.py",
+            "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/logger.py": "ltk/logger.py",
+            "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.js": "ltk/ltk.js",
+            "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/ltk.css": "ltk/ltk.css",
         }
     }
     worker = XWorker("worker.py", config=ltk.to_js(config), type="pyodide")
