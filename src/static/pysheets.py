@@ -40,6 +40,8 @@ state.console.write(
     .css("min-width", 45)
 )
 
+ltk.window.development_location = "C:/Users/laffr/dev/pysheets/src/static"
+
 
 def load_ui():
     """
