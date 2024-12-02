@@ -222,8 +222,8 @@ class WidgetProxy(ltk.Widget):
     buffer = []
 
     def __init__(self, selector):
-        ltk.Widget.__init__(self)
         self.selector = selector
+        ltk.Widget.__init__(self)
         self.attributes = {}
         ltk.schedule(self.send_to_main, "Flush widget proxy buffer")
 
@@ -237,7 +237,9 @@ class WidgetProxy(ltk.Widget):
         """ Handle setting the element property """
 
     def __getattr__(self, name):
-        return getattr(ltk.window.jQuery(self.selector), name)
+        ltk.window.console.log(f"__getattr__ {name}")
+        value = getattr(ltk.window.jQuery(self.__getattribute__("selector")), name)
+        return value
 
     def find(self, selector):
         """ Wraps existing LTK Widget operation for buffering """
