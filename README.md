@@ -119,6 +119,17 @@ This example shows how to download details about the [CloudSlurp](https://www.cl
 
 
 
+## Example: Python Popularity 🚀
+
+![PySheets](src/static/icons/python-popularity.png)
+
+This example takes data from the [State of Python 2024](http://blog.jetbrains.com/pycharm/2024/12/the-state-of-python/) report.
+All the code in this example was AI-generated. No Python knowledge was needed to generate this dataflow.
+
+<a href="https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/src/static/examples/python-popularity.json" target="_blank">Run the Python Popularity example now</a>
+
+
+
 # Find out more
 
 Information sources for PySheets:
