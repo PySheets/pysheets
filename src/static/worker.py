@@ -243,7 +243,6 @@ def handle_run(data): # pylint: disable=too-many-locals
     cache.update(inputs)
     try:
         result = run_in_worker(script)
-        print("ran in worker", key, inputs)
     except Exception:  # pylint: disable=broad-except
         stack = format_exception()
         print("fail in worker", key, inputs, stack)
