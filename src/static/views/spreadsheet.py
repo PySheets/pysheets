@@ -45,7 +45,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.pubsub.TOPIC_WORKER_READY, self.worker_ready)
         ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_API_SET_CELLS, self.handle_set_cells)
         self.cell_views = {}
-        self.selection = ltk.Input("").addClass("selection")
+        self.selection = ltk.TextArea("").addClass("selection")
         self.multi_selection = selection.MultiSelection(self)
         self.selection_edited = False
         self.mousedown = False
