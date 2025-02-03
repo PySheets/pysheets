@@ -469,8 +469,8 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         This is used when the cell's script contains the "# no-worker" directive.
         """
         try:
-            exec(self.model.script[1:])
-        except Exception as e:
+            exec(self.model.script[1:]) # pylint: disable=exec-used
+        except Exception as e: # pylint: disable=broad-except
             print(f"Error: {e}")
 
     def show_loading(self):
@@ -593,7 +593,10 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             for method, url, status, size, text in result["network"]:
                 text = text.replace('\n', '\\n')
                 url = ltk.window.decodeURIComponent(url).replace("/load?url=", "")
-                state.console.write(f"{ltk.get_time()}", f"[Network] {method} {status} {url} => size={size} response='{text}'")
+                state.console.write(
+                    f"{ltk.get_time()}",
+                    f"[Network] {method} {status} {url} => size={size} response='{text}'"
+                )
         if result["error"]:
             error = result["error"]
             duration = result["duration"]

@@ -303,7 +303,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         if cell and cell.model.script != script:
             cell.set(script, evaluate)
         self.sync()
-        
+
     def schedule_ai(self):
         """
         Schedule tasks to scan the spreadsheet for cells to make AI suggestions for.
