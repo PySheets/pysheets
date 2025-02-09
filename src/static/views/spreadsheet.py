@@ -239,12 +239,12 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                 the cell key, a preview, and potentially a prompt.
         """
         key = result["key"]
-        preview.add(self, key, result["preview"])
         cell: CellView = self.get_cell(key)
         cell.handle_worker_result(result)
         if result.get("prompt"):
             self.add_completion_button(key, result["prompt"])
         self.reselect()
+        preview.add(self, key, result["preview"])
 
     def add_completion_button(self, key, prompt):
         """
@@ -1062,7 +1062,13 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         ltk.find("#reload-button").css("display", "none")
         packages = " ".join(ltk.find("#packages").val().replace(",", " ").split())
         history.add(models.PackagesChanged(packages=packages).apply(self.model))
-        state.start_worker()
+        ltk.schedule(self.reload_page, "reload page", 0.5)
+        
+    def reload_page(self):
+        """
+        Reloads the current page.
+        """
+        ltk.window.location.reload()
 
     def set_name(self):
         """
