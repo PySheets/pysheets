@@ -102,6 +102,24 @@ pysheets.load_sheet("{url}")
         """)
         ltk.find("#import-dialog").remove()
 
+    def load_duckdb(event): # pylint: disable=unused-argument
+        ltk.find("#packages").val("duckdb fsspec " + ltk.find("#packages").val())
+        ltk.find("#reload-button").click()
+        url = ltk.find("#import-web-url").val()
+        state.UI.current.set(f"""=
+import io
+import urllib.request
+import duckdb
+
+url = "{url}"
+csv_bytes = io.BytesIO(urllib.request.urlopen(url).read())
+csv_sql = duckdb.read_csv(csv_bytes)
+duckdb.sql('''
+    SELECT * FROM csv_sql
+''').df()
+        """)
+        ltk.find("#import-dialog").remove()
+
     (ltk.Div(
         ltk.VBox(
             ltk.HBox(
@@ -122,6 +140,10 @@ pysheets.load_sheet("{url}")
                     .addClass("import-final-button")
                     .attr("disabled", True),
                 ltk.Button("Load as Dataframe", load_dataframe)
+                    .addClass("import-load-dataframe-button")
+                    .addClass("import-final-button")
+                    .attr("disabled", True),
+                ltk.Button("Load with DuckDB", load_duckdb)
                     .addClass("import-load-dataframe-button")
                     .addClass("import-final-button")
                     .attr("disabled", True),
