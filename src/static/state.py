@@ -362,6 +362,7 @@ def start_worker_with_packages(packages):
         "packages": [ 
             "pandas",
             "matplotlib",
+            "micropip",
             "numpy",
             "openpyxl",
             "requests"

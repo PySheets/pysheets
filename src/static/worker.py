@@ -6,6 +6,7 @@ code, find dependencies, and perform code completion.
 """
 
 import json
+import importlib
 import sys
 import time
 import re
@@ -15,6 +16,7 @@ import api
 import constants
 import lsp
 import ltk
+import micropip
 import worker_patch
 
 import polyscript # type: ignore    pylint: disable=import-error
@@ -422,6 +424,20 @@ def handle_set_cells(cells):
         cache[key] = value
 
 
+def handle_wait_for_packages(packages):
+    """
+    Handle a request from the UI to wait for a set of packages to be installed.
+    """
+    def check_packages():
+        installed = micropip.list()
+        for package in packages.split():
+            if not package in installed:
+                return ltk.window.setTimeout(check_packages, "check packages", 2)
+        polyscript.xworker.sync.publish(
+            "Worker", "Sheet", constants.TOPIC_WORKER_PACKAGES_LOADED, repr(sys.version)
+        )
+    check_packages()
+
 def handle_request(sender, topic, request): # pylint: disable=unused-argument
     """
     Handles various requests received by the worker process, including:
@@ -483,6 +499,8 @@ def handle_request(sender, topic, request): # pylint: disable=unused-argument
             handle_set_cells(data)
         elif topic == constants.TOPIC_WORKER_IMPORT_WEB:
             handle_import_web(data)
+        elif topic == constants.TOPIC_WORKER_WAIT_FOR_PACKAGES:
+            handle_wait_for_packages(data)
         elif topic == constants.TOPIC_WORKER_UPLOAD:
             handle_upload(data)
         elif topic == constants.TOPIC_WORKER_PREVIEW_IMPORT_WEB:
@@ -518,6 +536,9 @@ polyscript.xworker.sync.subscribe(
 )
 polyscript.xworker.sync.subscribe(
     "Worker", constants.TOPIC_API_SET_CELLS, "pyodide-worker"
+)
+polyscript.xworker.sync.subscribe(
+    "Worker", constants.TOPIC_WORKER_WAIT_FOR_PACKAGES, "pyodide-worker"
 )
 polyscript.xworker.sync.publish(
     "Worker", "Sheet", ltk.pubsub.TOPIC_WORKER_READY, repr(sys.version)

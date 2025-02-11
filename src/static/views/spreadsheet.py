@@ -43,6 +43,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         self.clear()
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_WORKER_RESULT, self.handle_worker_result)
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.pubsub.TOPIC_WORKER_READY, self.worker_ready)
+        ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_PACKAGES_LOADED, self.packages_loaded)
         ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_API_SET_CELLS, self.handle_set_cells)
         self.cell_views = {}
         self.selection = ltk.TextArea("").addClass("selection")
@@ -53,6 +54,12 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         self.create_ui()
         self.setup_pubsub()
         ltk.window.addEventListener("beforeunload", ltk.proxy(lambda event: self.before_unload()))
+        ltk.publish(
+            "Application",
+            "Worker",
+            constants.TOPIC_WORKER_WAIT_FOR_PACKAGES,
+            self.model.packages
+        )
 
     def handle_set_cells(self, cells):
         """
@@ -647,6 +654,17 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
 
     def worker_ready(self, data): # pylint: disable=unused-argument
         """
+        This method is called when the worker is ready, but packages are not yet loaded.
+        """
+        ltk.publish(
+            "Application",
+            "Worker",
+            constants.TOPIC_WORKER_WAIT_FOR_PACKAGES,
+            self.model.packages
+        )
+
+    def packages_loaded(self, data): # pylint: disable=unused-argument
+        """
         This method is called when the worker is ready to process cells in the spreadsheet.
 
         It iterates through all the formula cells in the model and runs them.
@@ -1063,7 +1081,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         packages = " ".join(ltk.find("#packages").val().replace(",", " ").split())
         history.add(models.PackagesChanged(packages=packages).apply(self.model))
         ltk.schedule(self.reload_page, "reload page", 0.5)
-        
+
     def reload_page(self):
         """
         Reloads the current page.
