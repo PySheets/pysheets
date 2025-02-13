@@ -223,8 +223,8 @@ class WidgetProxy(ltk.Widget):
 
     def __init__(self, selector):
         self.selector = selector
-        ltk.Widget.__init__(self)
         self.attributes = {}
+        ltk.Widget.__init__(self)
         ltk.schedule(self.send_to_main, "Flush widget proxy buffer")
 
     @property
@@ -371,12 +371,15 @@ class WidgetProxy(ltk.Widget):
         """
         Send the currently recorded operations to the main thread.
         """
+        if not WidgetProxy.buffer:
+            return
         polyscript.xworker.sync.publish(
             "Worker",
             "Application",
             constants.TOPIC_WORKER_WIDGET_PROXY,
             json.dumps({ "operations": WidgetProxy.buffer })
         )
+        print(f"flushed {len(WidgetProxy.buffer)} operations to main thread")
         WidgetProxy.buffer.clear()
 
 

@@ -39,6 +39,8 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
     sheet = None
 
     def __init__(self, sheet, key: str, model: models.Cell, td=None):
+        if "# run-with-pyodide" in model.script:
+            state.run_with_pyodide()
         self.model = model
         super().__init__()
         CellView.sheet= sheet
@@ -60,8 +62,6 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         self.model.listen(self.model_changed)
         self.observer.observe(self.element[0], self.observer_config)
         self.on("mouseenter", self.sheet.cell_enter)
-        if "# no-worker" in self.model.script:
-            self.run_in_main()
 
     @classmethod
     def cellview_mutated(cls, mutation_records):
@@ -457,8 +457,12 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         """
         state.console.remove(self.model.key)
         if self.is_formula():
-            self.needs_evaluation = True
-            self.resolve_inputs()
+            if "# no-worker" in self.model.script:
+                state.check_packages()
+                self.run_in_main()
+            else:
+                self.needs_evaluation = True
+                self.resolve_inputs()
         else:
             self.update(0, self.model.script)
 
@@ -469,9 +473,12 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         This is used when the cell's script contains the "# no-worker" directive.
         """
         try:
-            exec(self.model.script[1:]) # pylint: disable=exec-used
+            exec(self.model.script[1:], {}) # pylint: disable=exec-used
         except Exception as e: # pylint: disable=broad-except
-            print(f"Error: {e}")
+            print(f"Error running in main: {e}")
+            ltk.window.console.orig_log(e, self.model.script)
+            import traceback
+            traceback.print_exc()
 
     def show_loading(self):
         """
@@ -493,7 +500,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         """
         Resolves the input cells required to evaluate the current cell's formula or script.
         """
-        if self.is_running():
+        if self.is_running() or "# no-worker" in self.model.script:
             return
         self.start_running()
         ltk.publish(

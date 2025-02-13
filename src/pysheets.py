@@ -129,17 +129,19 @@ def root():
     """
     Renders the main index page of the application.
     """
-    pyodide = request.args.get(constants.PYTHON_RUNTIME) == "py"
+    packages = request.args.get(constants.PYTHON_PACKAGES, "") or ""
+    pyodide = request.args.get(constants.PYTHON_RUNTIME) == "py" or packages != ""
     runtime = RUNTIME_PYODIDE if pyodide else RUNTIME_MICROPYTHON
     interpreter = "/pyodide/pyodide.js" if pyodide else "/micropython/micropython.mjs"
     pyscript = PYSCRIPT_OFFLINE if HOSTING == OFFLINE else PYSCRIPT_ONLINE
+    print("Packages: ", packages)
     return render_template("index.html", **{
         "loading": "Loading...",
         "files": FILES,
         "version": VERSION,
         "version_pyscript": VERSION_PYSCRIPT,
         "pyscript": pyscript,
-        "packages": '["pyscript-ltk"]',
+        "packages": json.dumps(packages.split(",")) if packages else "[]",
         "interpreter": interpreter if HOSTING == OFFLINE else "",
         "runtime": runtime,
         "editor_width": 350,

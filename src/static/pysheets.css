@@ -556,7 +556,7 @@ h3 {
 
 .ai-container {
     height: 30%;
-    min-height: 120px;
+    min-height: 60px;
     overflow: hidden;
     background-color: #f7f7f7;
 }
@@ -582,8 +582,8 @@ h3 {
 }
 
 .editor-container {
-    height: 50%;
-    min-height: 50%;
+    height: 45%;
+    min-height: 75px;
     overflow: hidden;
     background-color: #f7f7f7;
 }

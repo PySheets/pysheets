@@ -20,6 +20,7 @@ WORKER_DOTS = ""
 UID = ltk.get_url_parameter(constants.SHEET_ID)
 OPEN_URL = ltk.get_url_parameter(constants.OPEN_ID)
 NEW = ltk.get_url_parameter(constants.NEW_SHEET)
+PACKAGES = ltk.get_url_parameter(constants.PACKAGES)
 SHEET = None
 UI = None
 
@@ -405,6 +406,23 @@ def check_worker(packages):
             f"[Error] It takes longer for the worker to start than expected. {packages_note}",
             action=ltk.Button("⚠️ Fix", fix_packages).addClass("small-button completion-button")
         )
+
+
+def run_with_pyodide():
+    """
+    Runs the current sheet using PyOdide.
+    """
+    current = ltk.window.location.href
+    if "runtime=py" not in current:
+        ltk.window.location = current.replace("&runtime=mpy", "") + "&runtime=py"
+
+
+def check_packages():
+    """
+    Runs the current sheet with the right packages.
+    """
+    if PACKAGES != SHEET.packages:
+        ltk.window.location.href += "&packages=" + SHEET.packages
 
 
 def worker_ready(data):
