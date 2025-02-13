@@ -7,6 +7,7 @@ integrating with the underlying spreadsheet model and other components like the 
 """
 
 import collections
+import re
 import random
 
 import ltk
@@ -43,23 +44,17 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         self.clear()
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.TOPIC_WORKER_RESULT, self.handle_worker_result)
         ltk.subscribe(constants.PUBSUB_SHEET_ID, ltk.pubsub.TOPIC_WORKER_READY, self.worker_ready)
-        ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_WORKER_PACKAGES_LOADED, self.packages_loaded)
         ltk.subscribe(constants.PUBSUB_SHEET_ID, constants.TOPIC_API_SET_CELLS, self.handle_set_cells)
         self.cell_views = {}
         self.selection = ltk.TextArea("").addClass("selection")
         self.multi_selection = selection.MultiSelection(self)
         self.selection_edited = False
         self.mousedown = False
+        self.recording = False
         self.fill_cache()
         self.create_ui()
         self.setup_pubsub()
         ltk.window.addEventListener("beforeunload", ltk.proxy(lambda event: self.before_unload()))
-        ltk.publish(
-            "Application",
-            "Worker",
-            constants.TOPIC_WORKER_WAIT_FOR_PACKAGES,
-            self.model.packages
-        )
 
     def handle_set_cells(self, cells):
         """
@@ -654,24 +649,13 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
 
     def worker_ready(self, data): # pylint: disable=unused-argument
         """
-        This method is called when the worker is ready, but packages are not yet loaded.
-        """
-        ltk.publish(
-            "Application",
-            "Worker",
-            constants.TOPIC_WORKER_WAIT_FOR_PACKAGES,
-            self.model.packages
-        )
-
-    def packages_loaded(self, data): # pylint: disable=unused-argument
-        """
         This method is called when the worker is ready to process cells in the spreadsheet.
 
         It iterates through all the formula cells in the model and runs them.
         """
         for key, cell in self.model.cells.items():
             if cell.script.startswith("="):
-                self.get_cell(key).worker_ready()
+                self.get_cell(key).evaluate()
         self.sync()
         if self.editor.get() == "Loading...":
             self.complete_prompt()
@@ -726,6 +710,56 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         src = ltk.find(".preview img").attr("src")
         return src if isinstance(src, str) else "/icons/screenshot.png"
+
+    def record(self, event=None): # pylint: disable=unused-argument
+        """
+        Converts speech to text for the ai prompt using the Web Speech API.
+        Appends recognized text to the AI prompt textarea.
+        """
+        recognition = ltk.window.webkitSpeechRecognition.new()
+
+        def on_result(event):
+            if event.results:
+                ltk.window.console.orig_log("Speech result:", event.results)
+                text = " ".join([
+                    event.results[n][0].transcript
+                    for n in range(event.results.length)
+                ])
+                commands = {
+                    "new line": "\n",
+                    "next line": "\n",
+                    "period": ".",
+                    "comma": ",",
+                    "question mark": "?",
+                    "exclamation mark": "!",
+                    "new paragraph": "\n\n",
+                    "([a-zA-Z0-9,.]+)[ \t\n]+oops": lambda m: m.group(0).split(" ")[0],
+                }
+                for command, replacement in commands.items():
+                    text = re.sub(command, replacement, text)
+
+                ltk.find("#ai-prompt").val(text)
+
+        def on_end(event): # pylint: disable=unused-argument
+            pass
+
+        recognition.continuous = True
+        recognition.interimResults = True
+        recognition.lang = "en"
+        recognition.onresult = ltk.proxy(on_result)
+        recognition.onend = ltk.proxy(on_end)
+
+        button = ltk.find("#record-ai-prompt-button")
+        if self.recording:
+            self.recording = False
+            button.html("🎤") 
+            recognition.abort()
+        else:
+            self.recording = True
+            button.html("⏹️")
+            ltk.find("#ai-prompt").val("")
+            recognition.start()
+
 
     def complete_prompt(self, event=None): # pylint: disable=unused-argument
         """
@@ -908,6 +942,10 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             ltk.HBox(
                 ltk.Text().text("LLM Prompt")
                     .css("margin-right", 8),
+                ltk.Button("🎤", ltk.proxy(lambda event: self.record(event))) # pylint: disable=unnecessary-lambda
+                    .addClass("small-button record")
+                    .attr("title", "Use Speech Recognition to generate a prompt")   
+                    .attr("id", "record-ai-prompt-button"),
                 ltk.Button("generate code", ltk.proxy(lambda event: self.complete_prompt(event))) # pylint: disable=unnecessary-lambda
                     .addClass("small-button")
                     .attr("id", "generate-button"),
@@ -1002,6 +1040,9 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             .on("focus", ltk.proxy(lambda event: self.clear_name())) \
             .on("blur", ltk.proxy(lambda event: self.reset_name())) \
             .on("change", ltk.proxy(lambda event: self.set_name()))
+
+        if hasattr(ltk.window.navigator, "brave"):
+            ltk.find("#record-ai-prompt-button").css("display", "none")
 
     def enter(self, event):
         """ Handle the mouse entering a cell """

@@ -78,8 +78,6 @@ TOPIC_WORKER_IMPORT_WEB = "worker.import.web"
 TOPIC_WORKER_IMPORTED_WEB = "worker.imported.web"
 TOPIC_WORKER_UPLOAD = "worker.import.upload"
 TOPIC_WORKER_UPLOADED = "worker.imported.uploaded"
-TOPIC_WORKER_WAIT_FOR_PACKAGES = "worker.packages.wait"
-TOPIC_WORKER_PACKAGES_LOADED = "worker.packages.loaded"
 
 URL = "url"
 PROMPT = "prompt"

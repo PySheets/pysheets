@@ -55,7 +55,7 @@ def load_ui():
 
     def load_sheet_with_model(model):
         if model.new and not state.NEW:
-            ltk.window.alert("This sheet is not available on this browser.")
+            ltk.window.alert("This sheet is not available in this browser.")
         state.UID = model.uid
         state.SHEET = model
         state.UI = SpreadsheetView(model)

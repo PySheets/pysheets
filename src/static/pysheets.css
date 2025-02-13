@@ -110,6 +110,10 @@ div {
     margin-left: 61px;
 }
 
+button {
+    cursor: pointer;
+}
+
 .buy-button,
 .star-button,
 .learn-button {
@@ -932,6 +936,15 @@ td:hover .debug-info {
 #reload-button {
     font-size: 12px;
     background-color: rgb(78, 145, 78);
+    margin-top: 2px;
+    min-width: 45px;
+    color: white;
+    margin-left: 12px;
+}
+
+#record-ai-prompt-button {
+    font-size: 12px;
+    background-color: rgb(255, 242, 215);
     margin-top: 2px;
     min-width: 45px;
     color: white;
