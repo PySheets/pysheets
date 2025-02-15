@@ -73,6 +73,7 @@ def import_sheet():
         return ltk.window.alert("Please select an empty cell and press 'import' again.")
 
     def load_from_web(event): # pylint: disable=unused-argument
+        state.UI.set_random_color()
         ltk.publish(
             "Importer",
             "Worker",
@@ -97,15 +98,18 @@ def import_sheet():
 
     def load_dataframe(event): # pylint: disable=unused-argument
         url = ltk.find("#import-web-url").val()
+        state.UI.set_random_color()
         state.UI.current.set(f"""=
 pysheets.load_sheet("{url}")
         """)
         ltk.find("#import-dialog").remove()
 
     def load_duckdb(event): # pylint: disable=unused-argument
-        ltk.find("#packages").val("duckdb fsspec " + ltk.find("#packages").val())
+        packages = set(["duckdb", "fsspec"] + ltk.find("#packages").val().split())
+        ltk.find("#packages").val(" ".join(list(packages)))
         ltk.find("#reload-button").click()
         url = ltk.find("#import-web-url").val()
+        state.UI.set_random_color()
         state.UI.current.set(f"""=
 import io
 import urllib.request
@@ -120,47 +124,49 @@ duckdb.sql('''
         """)
         ltk.find("#import-dialog").remove()
 
-    (ltk.Div(
-        ltk.VBox(
-            ltk.HBox(
-                ltk.Input("")
-                    .addClass("import-web-url-input")
-                    .attr("id", "import-web-url")
-                    .on("input", ltk.proxy(load_from_web))
-                    .attr("placeholder", "Enter a web url..."),
-            ),
-            ltk.HBox(
-                ltk.Div()
-                    .addClass("import-data-preview")
-                    .attr("id", "import-data-preview")
-            ),
-            ltk.HBox(
-                ltk.Button("Import into Sheet", import_into_sheet)
-                    .addClass("import-into-sheet-button")
-                    .addClass("import-final-button")
-                    .attr("disabled", True),
-                ltk.Button("Load as Dataframe", load_dataframe)
-                    .addClass("import-load-dataframe-button")
-                    .addClass("import-final-button")
-                    .attr("disabled", True),
-                ltk.Button("Load with DuckDB", load_duckdb)
-                    .addClass("import-load-dataframe-button")
-                    .addClass("import-final-button")
-                    .attr("disabled", True),
-                ltk.Button("Cancel", handle_import_done)
-                    .addClass("import-cancel-button")
-                    .addClass("import-final-button")
+    dialog = (
+        ltk.Div(
+            ltk.VBox(
+                ltk.HBox(
+                    ltk.Input("")
+                        .addClass("import-web-url-input")
+                        .attr("id", "import-web-url")
+                        .on("input", ltk.proxy(load_from_web))
+                        .attr("placeholder", "Enter a web url..."),
+                ),
+                ltk.HBox(
+                    ltk.Div()
+                        .addClass("import-data-preview")
+                        .attr("id", "import-data-preview")
+                ),
+                ltk.HBox(
+                    ltk.Button("Import into Sheet", import_into_sheet)
+                        .addClass("import-into-sheet-button")
+                        .addClass("import-final-button")
+                        .attr("disabled", True),
+                    ltk.Button("Load as Dataframe", load_dataframe)
+                        .addClass("import-load-dataframe-button")
+                        .addClass("import-final-button")
+                        .attr("disabled", True),
+                    ltk.Button("Load with DuckDB", load_duckdb)
+                        .addClass("import-load-dataframe-button")
+                        .addClass("import-final-button")
+                        .attr("disabled", True),
+                    ltk.Button("Cancel", handle_import_done)
+                        .addClass("import-cancel-button")
+                        .addClass("import-final-button")
+                )
             )
         )
+        .addClass("import-dialog")
+        .attr("id", "import-dialog")
+        .attr("title", "Import Data")
+        .dialog()
     )
-    .addClass("import-dialog")
-    .attr("id", "import-dialog")
-    .attr("title", "Import Data")
-    .dialog({
-        "modal": True,
-        "width": 800,
-        "height": "auto",
-    }))
+    dialog.dialog("option", "modal", True)
+    dialog.dialog("option", "width", 800)
+    dialog.dialog("option", "height", "auto")
+
 
 
 def create_file_menu():

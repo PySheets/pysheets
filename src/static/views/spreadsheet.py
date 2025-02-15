@@ -28,6 +28,19 @@ from views.cell import CellView
 
 completion_cache = {}
 
+PASTEL_COLORS = [
+    "#FFB3BA", # pastel pink
+    "#BAFFC9", # pastel green
+    "#BAE1FF", # pastel blue
+    "#FFFFBA", # pastel yellow
+    "#FFE4E1", # pastel rose
+    "#E0FFFF", # pastel cyan
+    "#D8BFD8", # pastel purple
+    "#F0FFF0", # pastel honeydew
+    "#F5F5DC", # pastel beige
+    "#E6E6FA"  # pastel lavender
+]
+
 
 class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
@@ -256,8 +269,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
             key (str): The cell key, e.g. 'A2'.
             prompt (str): The prompt to be inserted when the completion button is clicked.
         """
-        if ltk.find(f"#completion-{key}").length:
-            return
+        ltk.find(f"#completion-{key}").remove()
         ltk.find(".ai-button-container").append(
             ltk.Button(f"{constants.ICON_STAR} {key}", ltk.proxy(lambda event: self.insert_prompt(prompt)))
                 .addClass("small-button toolbar-button")
@@ -865,8 +877,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         """
         Sets a random background color for the current cell and the selection.
         """
-        pastels = [ "#ffb3ba", "#ffdfba", "#ffffba", "#baffc9", "#bae1ff" ]
-        color = random.choice(pastels)
+        color = random.choice(PASTEL_COLORS)
         cell = self.current
         cell.css("background-color", color)
         self.selection.css("background-color", color)
@@ -1119,8 +1130,11 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         Saves the specified Python packages and reloads the spreadsheet page with those packages.
         """
         ltk.find("#reload-button").css("display", "none")
-        packages = " ".join(ltk.find("#packages").val().replace(",", " ").split())
-        history.add(models.PackagesChanged(packages=packages).apply(self.model))
+        old_packages = set(self.model.packages.split(" "))
+        new_packages = set(ltk.find("#packages").val().replace(",", " ").split())
+        if new_packages == old_packages:
+            return
+        history.add(models.PackagesChanged(packages=" ".join(new_packages)).apply(self.model))
         ltk.schedule(self.reload_page, "reload page", 0.5)
 
     def reload_page(self):
