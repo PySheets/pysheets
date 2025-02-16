@@ -259,7 +259,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         if result.get("prompt"):
             self.add_completion_button(key, result["prompt"])
         self.reselect()
-        preview.add(self, key, result["preview"])
+        preview_ui = preview.add(self, key, result["preview"])
 
     def add_completion_button(self, key, prompt):
         """

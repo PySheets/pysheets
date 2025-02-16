@@ -4,6 +4,8 @@ Copyright (c) 2024 laffra - All Rights Reserved.
 Manages the preview views for a sheet in the application.
 """
 
+import re
+
 import constants
 import history
 import ltk
@@ -49,6 +51,38 @@ class PreviewView(ltk.Div):
         self.model.listen(self.model_changed)
         self.set_html(self.model.html)
         self.fix_images()
+
+    def add_filters(self):
+        """
+        Adds filters to the preview table headers if it was generated from a SQL query.
+        """
+        cell = state.SHEET.get_cell(self.model.key)
+        if not "import duckdb" in cell.script:
+            return
+
+        names = []
+
+        def remove_column(name):
+            if not name:
+                clause = "*"
+            else:
+                names.remove(name)
+                clause = ",".join(names)
+            cell.script = re.sub("SELECT .* FROM", f"SELECT {clause} FROM", cell.script)
+
+        def edit(_index, element):
+            th = ltk.find(element)
+            name = th.text()
+            if name:
+                names.append(name)
+            th.addClass("preview-filter")
+            th.append(
+                ltk.Span("X" if name else "A&nbsp;&nbsp;")
+                    .addClass("preview-filter-checkbox")
+                    .on("click", ltk.proxy(lambda event: remove_column(name)))
+            )
+
+        self.find("thead th").each(edit)
 
     def model_changed(self, preview, info): # pylint: disable=unused-argument
         """
@@ -146,6 +180,7 @@ class PreviewView(ltk.Div):
         )
         self.make_resizable()
         self.draw_arrows()
+        self.add_filters()
 
     def fix_html(self, html):
         """
@@ -218,6 +253,7 @@ def add(sheet, key, html):
     previews[key].set_html(html)
     if old_html != html:
         history.add(models.PreviewValueChanged(key, html))
+    return previews[key]
 
 def remove(key):
     """

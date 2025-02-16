@@ -1213,3 +1213,16 @@ input[type="checkbox"]:focus-visible {
     margin-right: 20px;
     cursor: pointer;
 }
+
+.preview th {
+    position: relative;
+}
+
+.preview .preview-filter-checkbox {
+    margin-left: 5px;
+    color: red;
+}
+
+.preview .preview-filter-checkbox:not(:disabled):checked {
+    background-color: green
+}
