@@ -5,7 +5,6 @@ This module provides a worker for a PyScript-based application to run Python
 code, find dependencies, and perform code completion.
 """
 
-import collections
 import json
 import sys
 import time
@@ -16,7 +15,6 @@ import api
 import constants
 import lsp
 import ltk
-import micropip
 import worker_patch
 
 import polyscript # type: ignore    pylint: disable=import-error

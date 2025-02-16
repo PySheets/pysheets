@@ -477,7 +477,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         except Exception as e: # pylint: disable=broad-except
             print(f"Error running in main: {e}")
             ltk.window.console.orig_log(e, self.model.script)
-            import traceback
+            import traceback # pylint: disable=import-outside-toplevel
             traceback.print_exc()
 
     def show_loading(self):

@@ -259,7 +259,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         if result.get("prompt"):
             self.add_completion_button(key, result["prompt"])
         self.reselect()
-        preview_ui = preview.add(self, key, result["preview"])
+        preview.add(self, key, result["preview"])
 
     def add_completion_button(self, key, prompt):
         """
@@ -764,7 +764,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
         button = ltk.find("#record-ai-prompt-button")
         if self.recording:
             self.recording = False
-            button.html("🎤") 
+            button.html("🎤")
             recognition.abort()
         else:
             self.recording = True
@@ -955,7 +955,7 @@ class SpreadsheetView():     # pylint: disable=too-many-instance-attributes,too-
                     .css("margin-right", 8),
                 ltk.Button("🎤", ltk.proxy(lambda event: self.record(event))) # pylint: disable=unnecessary-lambda
                     .addClass("small-button record")
-                    .attr("title", "Use Speech Recognition to generate a prompt")   
+                    .attr("title", "Use Speech Recognition to generate a prompt")
                     .attr("id", "record-ai-prompt-button"),
                 ltk.Button("generate code", ltk.proxy(lambda event: self.complete_prompt(event))) # pylint: disable=unnecessary-lambda
                     .addClass("small-button")
