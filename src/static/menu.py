@@ -118,9 +118,12 @@ import duckdb
 url = "{url}"
 csv_bytes = io.BytesIO(urllib.request.urlopen(url).read())
 csv_sql = duckdb.read_csv(csv_bytes)
-duckdb.sql('''
+select = '''
     SELECT * FROM csv_sql
-''').df()
+'''
+where = '''
+'''
+duckdb.sql(f"{{select}} {{where}}").df()
         """)
         ltk.find("#import-dialog").remove()
 

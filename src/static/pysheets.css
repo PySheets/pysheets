@@ -1218,6 +1218,20 @@ input[type="checkbox"]:focus-visible {
     position: relative;
 }
 
+.preview-filter-filter {
+    margin-left: 8px;
+}
+
+.preview-filter-value {
+    background-color: white;
+    width: 60px;
+    margin-left: 8px;
+}
+
+.preview-filter {
+    min-width: 60px;
+}
+
 .preview .preview-filter-checkbox {
     margin-left: 5px;
     color: red;

@@ -118,7 +118,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             evaluate (bool, optional): When false does evaluate the new script.
         """
         self.inputs.clear()
-        self.remove_preview()
+        self.deactivate_preview()
         if self.model.script != script:
             history.add(
                 models.CellScriptChanged(self.model.key, self.model.script, script)
@@ -326,6 +326,18 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
         """
         ltk.find(f"#preview-{self.model.key}").remove()
         preview.remove(self.model.key)
+
+    def activate_preview(self):
+        """
+        Activates the preview for the cell by setting the opacity of the preview element to 1.
+        """
+        ltk.find(f"#preview-{self.model.key}").css("opacity", 1)
+
+    def deactivate_preview(self):
+        """
+        Deactivates the preview for the cell by setting the opacity of the preview element to 0.5.
+        """
+        ltk.find(f"#preview-{self.model.key}").css("opacity", 0.5)
 
     def draw_cell_arrows(self):
         """
@@ -627,6 +639,7 @@ class CellView(ltk.Widget): # pylint: disable=too-many-public-methods
             value = value[1:-1] if value.startswith("'") and value.endswith("'") else value
         self.update(result["duration"], value)
         self.notify()
+        self.activate_preview()
 
     def __repr__(self):
         return f"cell[{self.model.key}]"

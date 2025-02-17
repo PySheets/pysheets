@@ -41,7 +41,7 @@ class PreviewView(ltk.Div):
             .css("top", self.model.top or top)
             .css("width", self.model.width or "")
             .css("height", self.model.height or "")
-            .on("click", ltk.proxy(lambda event: self.click()))
+            .on("click", ltk.proxy(self.click))
             .on("mousemove", ltk.proxy(lambda event: self.move()))
             .on("mouseleave", ltk.proxy(lambda event: selection.remove_arrows(0)))
             .on("resizestop", ltk.proxy(lambda event, ui: self.resize(event)))
@@ -62,27 +62,63 @@ class PreviewView(ltk.Div):
 
         names = []
 
-        def remove_column(name):
-            if not name:
-                clause = "*"
-            else:
-                names.remove(name)
-                clause = ",".join(names)
-            cell.script = re.sub("SELECT .* FROM", f"SELECT {clause} FROM", cell.script)
+        def add_all_columns():
+            cell.script = re.sub("SELECT .* FROM", "SELECT * FROM", cell.script)
 
-        def edit(_index, element):
-            th = ltk.find(element)
-            name = th.text()
-            if name:
-                names.append(name)
-            th.addClass("preview-filter")
-            th.append(
-                ltk.Span("X" if name else "A&nbsp;&nbsp;")
-                    .addClass("preview-filter-checkbox")
-                    .on("click", ltk.proxy(lambda event: remove_column(name)))
+        def remove_column(name):
+            index = names.index(name)
+            names.remove(name)
+            clause = ",".join(names)
+            state.UI.select(state.UI.get_cell(self.model.key))
+            state.UI.editor.set(re.sub("SELECT .* FROM", f"SELECT {clause} FROM", cell.script))
+            self.find("thead").find("th").eq(index + 1).remove()
+            self.find("tbody").find("tr").each(
+                lambda _, element: ltk.find(element).find("td").eq(index).remove()
             )
 
-        self.find("thead th").each(edit)
+        def set_condition(name, operator, value):
+            clause = f"{name} {operator} {value}"
+            cell.script = re.sub("where = '''.*'''", f"where = '''WHERE {clause}'''", cell.script)
+
+        def edit_column_header(index, element):
+            try:
+                th = ltk.find(element)
+                name = th.text()
+                if name:
+                    names.append(name)
+
+                    def change_filter(index, option):
+                        th.find(".preview-filter-value") \
+                            .css("display", "none" if index == 0 else "inline-block") \
+                            .focus()
+                    
+                    def set_value(_event):
+                        value = th.find(".preview-filter-value").val()
+                        operator = th.find(".preview-filter-filter").prop("value")
+                        set_condition(name, operator, value)
+
+                    th.addClass("preview-filter").append(
+                        ltk.Break(),
+                        ltk.Select(["▼", "<", ">", "=", "!=", "..."], "▼", change_filter)
+                            .addClass("preview-filter-filter"),
+                        ltk.Input("")
+                            .on("change", ltk.proxy(set_value))
+                            .css("display", "none")
+                            .addClass("preview-filter-value"),
+                        ltk.Span("X" if name else "All&nbsp;&nbsp;")
+                            .addClass("preview-filter-checkbox")
+                            .on("click", ltk.proxy(lambda event: remove_column(name))),
+                    )
+                else:
+                    th.append(
+                        ltk.Span("All&nbsp;&nbsp;")
+                            .addClass("preview-filter-checkbox")
+                            .on("click", ltk.proxy(lambda event: add_all_columns())),
+                    )
+            except Exception as e:
+                print("edit_column_header", e)
+
+        self.find("thead th").each(edit_column_header)
 
     def model_changed(self, preview, info): # pylint: disable=unused-argument
         """
@@ -135,11 +171,12 @@ class PreviewView(ltk.Div):
         """
         self.draw_arrows()
 
-    def click(self):
+    def click(self, event):
         """
         Event handler for when the user click inside the preview header.
         """
-        self.appendTo(self.parent())  # raise
+        if event.target.tagName in ["TD", "TH", "DIV"]:
+            self.appendTo(self.parent())  # raise
 
     def toggle_size(self, event):
         """
@@ -180,7 +217,6 @@ class PreviewView(ltk.Div):
         )
         self.make_resizable()
         self.draw_arrows()
-        self.add_filters()
 
     def fix_html(self, html):
         """
@@ -251,9 +287,11 @@ def add(sheet, key, html):
     else:
         old_html = previews[key].model.html
     previews[key].set_html(html)
+    previews[key].add_filters()
     if old_html != html:
         history.add(models.PreviewValueChanged(key, html))
     return previews[key]
+
 
 def remove(key):
     """
