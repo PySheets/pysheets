@@ -98,14 +98,14 @@ class PreviewView(ltk.Div):
                         set_condition(name, operator, value)
 
                     th.addClass("preview-filter").append(
-                        ltk.Break(),
+                        ltk.create("<br>"),
                         ltk.Select(["▼", "<", ">", "=", "!=", "..."], "▼", change_filter)
                             .addClass("preview-filter-filter"),
                         ltk.Input("")
                             .on("change", ltk.proxy(set_value))
                             .css("display", "none")
                             .addClass("preview-filter-value"),
-                        ltk.Span("X" if name else "All&nbsp;&nbsp;")
+                        ltk.Span("X" if name else "All")
                             .addClass("preview-filter-checkbox")
                             .on("click", ltk.proxy(lambda event: remove_column(name))),
                     )
