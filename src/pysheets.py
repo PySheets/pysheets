@@ -76,7 +76,7 @@ def handle_404(error): # pylint: disable=unused-argument
     return "Nothing here"
 
 
-VERSION_PYSCRIPT = "2024.10.2"
+VERSION_PYSCRIPT = "2025.2.3"
 PATH = os.path.join(os.path.dirname(__file__), "static").replace("\\", "/")
 RUNTIME_PYODIDE = "py"
 RUNTIME_MICROPYTHON = "mpy"
