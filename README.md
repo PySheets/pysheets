@@ -83,11 +83,11 @@ the ability to interact with the main UI from a cell function.
 
 ## Example: DuckDB 🦆
 
-![PySheets](src/static/icons/screenshot-duckdb.png)
+![PySheets](src/static/icons/screenshot-quack.png)
 
 This example shows how to load a CSV from the web and load it into DuckDB.
 
-<a href="https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/src/static/examples/duckdb.json" target="_blank">Run the DuckDB example now</a>
+<a href="https://pysheets.app/?open=https://raw.githubusercontent.com/PySheets/pysheets/refs/heads/main/src/static/examples/quack.json" target="_blank">Run the DuckDB example now</a>
 
 
 ## Example: Basic Accounting ⊞
