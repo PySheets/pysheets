@@ -103,7 +103,7 @@ def create_preview(result): # pylint: disable=too-many-return-statements
         html = io.StringIO()
         result.save(html, "html")
         return html.getvalue()
-    except Exception as e: # pylint: disable=broad-except
+    except Exception: # pylint: disable=broad-except
         print(result.__class__.__name__)
         traceback.print_exc()
     try:

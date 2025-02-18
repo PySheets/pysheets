@@ -105,6 +105,8 @@ pysheets.load_sheet("{url}")
         ltk.find("#import-dialog").remove()
 
     def load_polars(event): # pylint: disable=unused-argument
+        packages = set(["polars", "pyarrow"] + ltk.find("#packages").val().split())
+        ltk.find("#packages").val(" ".join(list(packages)))
         url = ltk.find("#import-web-url").val()
         state.UI.set_random_color()
         state.UI.current.set(f"""=
@@ -116,12 +118,11 @@ url = "{url}"
 csv_bytes = io.BytesIO(urllib.request.urlopen(url).read())
 polars.read_csv(csv_bytes)
         """)
-        ltk.find("#import-dialog").remove()
+        ltk.find("#reload-button").click()
 
     def load_duckdb(event): # pylint: disable=unused-argument
         packages = set(["duckdb", "fsspec"] + ltk.find("#packages").val().split())
         ltk.find("#packages").val(" ".join(list(packages)))
-        ltk.find("#reload-button").click()
         url = ltk.find("#import-web-url").val()
         state.UI.set_random_color()
         state.UI.current.set(f"""=
@@ -136,7 +137,7 @@ select = '''SELECT * FROM csv_sql'''
 where = ''''''
 duckdb.sql(f"{{select}} {{where}}").df()
         """)
-        ltk.find("#import-dialog").remove()
+        ltk.find("#reload-button").click()
 
     dialog = (
         ltk.Div(
