@@ -104,6 +104,20 @@ pysheets.load_sheet("{url}")
         """)
         ltk.find("#import-dialog").remove()
 
+    def load_polars(event): # pylint: disable=unused-argument
+        url = ltk.find("#import-web-url").val()
+        state.UI.set_random_color()
+        state.UI.current.set(f"""=
+import io
+import urllib.request
+import polars
+
+url = "{url}"
+csv_bytes = io.BytesIO(urllib.request.urlopen(url).read())
+polars.read_csv(csv_bytes)
+        """)
+        ltk.find("#import-dialog").remove()
+
     def load_duckdb(event): # pylint: disable=unused-argument
         packages = set(["duckdb", "fsspec"] + ltk.find("#packages").val().split())
         ltk.find("#packages").val(" ".join(list(packages)))
@@ -144,11 +158,15 @@ duckdb.sql(f"{{select}} {{where}}").df()
                         .addClass("import-into-sheet-button")
                         .addClass("import-final-button")
                         .attr("disabled", True),
-                    ltk.Button("Load as Dataframe", load_dataframe)
+                    ltk.Button("Pandas", load_dataframe)
                         .addClass("import-load-dataframe-button")
                         .addClass("import-final-button")
                         .attr("disabled", True),
-                    ltk.Button("Load with DuckDB", load_duckdb)
+                    ltk.Button("Polars", load_polars)
+                        .addClass("import-load-dataframe-button")
+                        .addClass("import-final-button")
+                        .attr("disabled", True),
+                    ltk.Button("DuckDB", load_duckdb)
                         .addClass("import-load-dataframe-button")
                         .addClass("import-final-button")
                         .attr("disabled", True),

@@ -5,6 +5,9 @@ This module provides a worker for a PyScript-based application to run Python
 code, find dependencies, and perform code completion.
 """
 
+import io
+import base64
+
 import json
 import sys
 import time
@@ -38,15 +41,12 @@ def get_image_data(figure):
     Returns:
         str: An HTML string representing the figure as an image.
     """
-    from io import BytesIO # pylint: disable=import-outside-toplevel
-    import base64 # pylint: disable=import-outside-toplevel
-
     #
     # Use the built-in agg backend.
     # This reduces rendering time for plots from ~6s to 70ms
     #
     matplotlib.use("agg")
-    bytes_io = BytesIO()
+    bytes_io = io.BytesIO()
     figure.set_edgecolor("#BBB")
     figure.savefig(bytes_io, bbox_inches="tight", format="png")
     bytes_io.seek(0)
@@ -99,6 +99,13 @@ def create_preview(result): # pylint: disable=too-many-return-statements
         return result._repr_html_() # pylint: disable=protected-access
     except Exception: # pylint: disable=broad-except
         pass  # print(traceback.format_exc())
+    try:
+        html = io.StringIO()
+        result.save(html, "html")
+        return html.getvalue()
+    except Exception as e: # pylint: disable=broad-except
+        print(result.__class__.__name__)
+        traceback.print_exc()
     try:
         return api.get_dict_table(result)
     except Exception: # pylint: disable=broad-except
@@ -244,9 +251,9 @@ def handle_run(data): # pylint: disable=too-many-locals
     try:
         result = run_in_worker(script)
     except Exception as e:  # pylint: disable=broad-except
+        traceback.print_exc()
         result = e
         stack = format_exception()
-        print("fail in worker", key, inputs, stack)
         ltk.window.console.orig_log(f"Error in cell '{key}': {stack}")
 
         try:
@@ -286,8 +293,11 @@ def handle_run(data): # pylint: disable=too-many-locals
 
     try:
         kind = result.__class__.__name__
-        if isinstance(result, pandas.DataFrame):
-            kind = f"DataFrame with {len(result):,} rows"
+        if result.__class__.__name__ == "DataFrame":
+            try:
+                kind = f"DataFrame with {len(result):,} rows"
+            except Exception as e: # pylint: disable=broad-except
+                kind = f"Dataframe - Error: {e}"
         elif hasattr(result, "size"):
             kind = f"{kind} with {result.size:,} items"
         cache[key] = results[key] = result
@@ -312,10 +322,17 @@ def handle_run(data): # pylint: disable=too-many-locals
         )
         return
 
+    try:
+        columns = result.columns.values
+    except Exception: # pylint: disable=broad-except
+        try:
+            columns = result.columns
+        except Exception: # pylint: disable=broad-except
+            columns = []
     prompt = (
-        get_visualization_prompt(key, results[key].columns.values)
-        if isinstance(result, pandas.DataFrame)
-        else ""
+        get_visualization_prompt(key, columns)
+        if result.__class__.__name__ == "DataFrame"
+        else f"No visualization prompt for {result.__class__.__name__}"
     )
 
     try:
@@ -492,6 +509,7 @@ def handle_request(sender, topic, request): # pylint: disable=unused-argument
             print("Error: Unexpected topic request", topic)
     except Exception as e: # pylint: disable=broad-exception-caught
         print("Error: Cannot handle request", request, e)
+        traceback.print_exc()
 
 
 polyscript.xworker.sync.handler = handle_request

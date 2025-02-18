@@ -80,18 +80,18 @@ class PreviewView(ltk.Div):
             clause = f"{name} {operator} {value}"
             cell.script = re.sub("where = '''.*'''", f"where = '''WHERE {clause}'''", cell.script)
 
-        def edit_column_header(index, element):
+        def edit_column_header(_index, element):
             try:
                 th = ltk.find(element)
                 name = th.text()
                 if name:
                     names.append(name)
 
-                    def change_filter(index, option):
+                    def change_filter(index, _option):
                         th.find(".preview-filter-value") \
                             .css("display", "none" if index == 0 else "inline-block") \
                             .focus()
-                    
+
                     def set_value(_event):
                         value = th.find(".preview-filter-value").val()
                         operator = th.find(".preview-filter-filter").prop("value")
@@ -115,7 +115,7 @@ class PreviewView(ltk.Div):
                             .addClass("preview-filter-checkbox")
                             .on("click", ltk.proxy(lambda event: add_all_columns())),
                     )
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 print("edit_column_header", e)
 
         self.find("thead th").each(edit_column_header)
