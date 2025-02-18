@@ -118,6 +118,7 @@ url = "{url}"
 csv_bytes = io.BytesIO(urllib.request.urlopen(url).read())
 polars.read_csv(csv_bytes)
         """)
+        ltk.find("#import-dialog").remove()
         ltk.find("#reload-button").click()
 
     def load_duckdb(event): # pylint: disable=unused-argument
@@ -137,6 +138,7 @@ select = '''SELECT * FROM csv_sql'''
 where = ''''''
 duckdb.sql(f"{{select}} {{where}}").df()
         """)
+        ltk.find("#import-dialog").remove()
         ltk.find("#reload-button").click()
 
     dialog = (
